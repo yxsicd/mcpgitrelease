@@ -1,7 +1,7 @@
 {
   "schema": "mcpgitrelease/channel/v2",
   "channel": "main",
-  "updated_at": "2026-07-18T19:12:40Z",
+  "updated_at": "2026-07-18T19:23:49Z",
   "binary": {
     "tag": "mcpgit-db3d7fa0eed3",
     "source_repository": "yxsicd/MCPGit",
@@ -50,14 +50,14 @@
     ]
   },
   "deployment": {
-    "tag": "deploy-e4078be99fef",
+    "tag": "deploy-1238d1e538e5",
     "source_repository": "yxsicd/mcpgitrelease",
-    "source_revision": "e4078be99fef68becc47060a4cd8e3a1839874b3",
+    "source_revision": "1238d1e538e56e4ae55f9bf76424b7d6a61bf8f5",
     "artifact": {
       "format": "tar.gz",
-      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/deploy-e4078be99fef/mcpgit-deploy.tar.gz",
-      "sha256": "f8f89128351dcc11d1eb340ec15dec3c3a57a6de3aca3e95c2d7640fdf7c1747",
-      "size": 7193
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/deploy-1238d1e538e5/mcpgit-deploy.tar.gz",
+      "sha256": "971b4f58f74288d7c9b19c5a11f7c652d355ebc4123ecfbb6a15d50d4be0be1f",
+      "size": 7220
     }
   },
   "promoted_from": "dev"
