@@ -1,7 +1,7 @@
 {
   "schema": "mcpgitrelease/channel/v2",
   "channel": "prod",
-  "updated_at": "2026-07-18T19:24:09Z",
+  "updated_at": "2026-07-18T19:24:51Z",
   "binary": {
     "tag": "mcpgit-db3d7fa0eed3",
     "source_repository": "yxsicd/MCPGit",
