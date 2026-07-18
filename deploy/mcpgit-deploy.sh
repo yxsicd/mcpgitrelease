@@ -22,11 +22,11 @@ MCPGit binary tar.gz, and the matching devbase Docker tar.zst.
 Options:
   --instance NAME       Container and instance name (default: mcpgit)
   --install-root DIR    Persistent deployment state directory
-  --config FILE         MCPGit configuration; inferred from an old container
+  --config FILE         MCPGit configuration; old or bundled config is used by default
   --data-source VALUE   Named volume or bind directory mounted at /data
   --netrc FILE          Netrc file; inferred from an old container
   --network NAME        Docker network; inferred or created as mcpgit
-  --runtime-env FILE    Additional MCPGit environment file
+  --runtime-env FILE    Remote/backend environment; old or bundled env is used by default
   --traefik-host HOST   Enable Traefik and route this hostname
   --no-traefik          Disable Traefik even if a legacy instance used it
   --rollback            Roll back to the previous managed or legacy instance
@@ -203,7 +203,7 @@ esac
 install_manifest=$bundle_dir/install-linux-$host_arch.env
 [[ -r "$install_manifest" ]] || die "installer manifest is missing: $install_manifest"
 
-required_keys='|MCPGIT_INSTALL_SCHEMA|MCPGIT_CHANNEL|MCPGIT_ARCH|MCPGIT_BINARY_TAG|MCPGIT_BINARY_REVISION|MCPGIT_BINARY_FILE|MCPGIT_BINARY_SHA256|MCPGIT_DEVBASE_TAG|MCPGIT_DEVBASE_IMAGE|MCPGIT_DEVBASE_FILE|MCPGIT_DEVBASE_SHA256|'
+required_keys='|MCPGIT_INSTALL_SCHEMA|MCPGIT_CHANNEL|MCPGIT_ARCH|MCPGIT_BINARY_TAG|MCPGIT_BINARY_REVISION|MCPGIT_BINARY_FILE|MCPGIT_BINARY_SHA256|MCPGIT_DEVBASE_TAG|MCPGIT_DEVBASE_IMAGE|MCPGIT_DEVBASE_FILE|MCPGIT_DEVBASE_SHA256|MCPGIT_DEPLOY_TAG|MCPGIT_DEPLOY_FILE|MCPGIT_DEPLOY_SHA256|'
 seen='|'
 while IFS= read -r line || [[ -n "$line" ]]; do
   line=${line%$'\r'}
@@ -225,8 +225,10 @@ done
 [[ "$MCPGIT_BINARY_REVISION" =~ ^[0-9a-f]{40}$ ]] || die "invalid binary revision"
 [[ "$MCPGIT_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid binary checksum"
 [[ "$MCPGIT_DEVBASE_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid devbase checksum"
+[[ "$MCPGIT_DEPLOY_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid deployment checksum"
 [[ "$MCPGIT_BINARY_FILE" == mcpgit-linux-$host_arch.tar.gz ]] || die "unexpected binary filename"
 [[ "$MCPGIT_DEVBASE_FILE" == mcpgit-devbase-linux-$host_arch.docker.tar.zst ]] || die "unexpected devbase filename"
+[[ "$MCPGIT_DEPLOY_FILE" == mcpgit-deploy.tar.gz ]] || die "unexpected deployment filename"
 
 binary_archive=$bundle_dir/$MCPGIT_BINARY_FILE
 devbase_archive=$bundle_dir/$MCPGIT_DEVBASE_FILE
@@ -306,10 +308,18 @@ if [[ -n "$runtime_env_input" ]]; then
 elif [[ "$old_exists" == true ]]; then
   docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$instance" | grep -E '^(MCPGIT_[A-Z0-9_]*|RUST_LOG)=[^[:cntrl:]]*$' > "$runtime_env" || true
   chmod 0600 "$runtime_env"
+elif [[ -r "$bundle_dir/mcpgit-runtime.env" ]]; then
+  install -m 0600 "$bundle_dir/mcpgit-runtime.env" "$runtime_env"
 else
   : > "$runtime_env"
   chmod 0600 "$runtime_env"
 fi
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+  line=${line%$'\r'}
+  [[ -z "$line" || "$line" == \#* || "$line" =~ ^(MCPGIT_[A-Z0-9_]*|RUST_LOG)=[^[:cntrl:]]*$ ]] \
+    || die "runtime env contains an unsupported line"
+done < "$runtime_env"
 
 if [[ "$traefik_mode" == auto && "$old_exists" == true ]]; then
   old_traefik=$(docker inspect --format '{{index .Config.Labels "traefik.enable"}}' "$instance" 2>/dev/null || true)

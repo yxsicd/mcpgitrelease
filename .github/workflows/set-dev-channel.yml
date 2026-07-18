@@ -9,6 +9,9 @@ on:
       devbase_tag:
         description: Immutable devbase-* release tag
         required: true
+      deployment_tag:
+        description: Immutable deploy-* release tag
+        required: true
 
 permissions:
   contents: write
@@ -33,9 +36,10 @@ jobs:
           mkdir metadata
           gh release download "${{ inputs.binary_tag }}" --pattern binary-release.json --dir metadata
           gh release download "${{ inputs.devbase_tag }}" --pattern devbase-release.json --dir metadata
+          gh release download "${{ inputs.deployment_tag }}" --pattern deployment-release.json --dir metadata
       - name: Compose and validate dev channel
         run: |
-          python3 tools/scripts/release_tool.py compose --channel dev --binary metadata/binary-release.json --devbase metadata/devbase-release.json --output channel/channel.json
+          python3 tools/scripts/release_tool.py compose --channel dev --binary metadata/binary-release.json --devbase metadata/devbase-release.json --deployment metadata/deployment-release.json --output channel/channel.json
           python3 tools/scripts/release_tool.py validate channel/channel.json --channel dev
           for arch in amd64 arm64; do
             python3 tools/scripts/release_tool.py installer-env --manifest channel/channel.json --arch "$arch" --output "channel/install-linux-$arch.env"

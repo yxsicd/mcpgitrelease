@@ -10,10 +10,11 @@ image.
 - main: https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/channel.json
 - prod: https://raw.githubusercontent.com/yxsicd/mcpgitrelease/prod/channel.json
 
-Each channel is a small, atomic pointer to two immutable GitHub Releases:
+Each channel is a small, atomic pointer to three immutable GitHub Releases:
 
     channel -> binary release (hot)
             -> devbase release (cold)
+            -> deployment release (small, architecture-independent)
 
 The matching strict offline installer manifests are:
 
@@ -27,17 +28,19 @@ SHA-256 checksums. The target host does not need jq or Python.
 
 1. Run publish-devbase only when Node, Bun, Python, or system tools change.
 2. Run publish-binary for an MCPGit source revision.
-3. Run set-dev-channel with the two immutable tags.
-4. Validate dev, then run promote-channel with target main.
-5. Validate main, then promote to prod.
+3. Run publish-deployment whenever deployment or configuration defaults change.
+4. Run set-dev-channel with the three immutable tags.
+5. Validate dev, then run promote-channel with target main.
+6. Validate main, then promote to prod.
 
-Promotion copies the exact binary and devbase objects. It never rebuilds or
+Promotion copies the exact binary, devbase, and deployment objects. It never rebuilds or
 re-uploads them.
 
 The workflow files are:
 
 - publish-binary.yml
 - publish-devbase.yml
+- publish-deployment.yml
 - set-dev-channel.yml
 - promote-channel.yml
 - gc-releases.yml
@@ -47,14 +50,18 @@ GitHub Release assets are the public distribution source.
 
 ## Offline deployment
 
-Prepare one directory containing the three files for the target architecture:
+Prepare one directory containing the channel manifest and the two
+architecture-specific assets:
 
     install-linux-amd64.env
     mcpgit-linux-amd64.tar.gz
     mcpgit-devbase-linux-amd64.docker.tar.zst
 
-For arm64, replace amd64 with arm64. Copy the deploy directory from this
-repository or extract mcpgit-deploy.tar.gz from the binary Release.
+For arm64, replace amd64 with arm64. Extract mcpgit-deploy.tar.gz from the
+deployment Release into the same directory. The kit includes a fixed full-feature
+mcpgit.toml and mcpgit-runtime.env.example. Copy the latter to
+mcpgit-runtime.env and configure the remote Git backend, organization, and
+bootstrap repository names.
 
 Install or upgrade:
 
@@ -62,7 +69,8 @@ Install or upgrade:
 ./deploy/mcpgit-deploy.sh \
   --bundle /path/to/downloaded/files \
   --instance mcpgit \
-  --config /path/to/mcpgit.toml
+  --runtime-env /path/to/mcpgit-runtime.env \
+  --netrc /path/to/netrc
 ~~~
 
 If a container named mcpgit already exists, the script automatically preserves:
@@ -103,8 +111,9 @@ Useful overrides:
 ## Retention
 
 retention.json protects every Release referenced by dev, main, or prod, plus
-explicitly pinned tags. It retains the newest 35 binary releases and newest 5
-devbase releases. Unreferenced releases also receive a 14-day grace period.
+explicitly pinned tags. It retains the newest 35 binary releases, newest 5
+devbase releases, and newest 20 small deployment releases. Unreferenced releases
+also receive a 14-day grace period.
 
 The scheduled GC workflow only produces a plan. Deletion requires a manual run
 with execute enabled. Unknown tag families are never deleted.

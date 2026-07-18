@@ -23,6 +23,19 @@ def artifact(kind, arch):
 
 
 def metadata(kind):
+    if kind == "deployment":
+        return {
+            "kind": kind,
+            "tag": "deploy-" + "b" * 12,
+            "source_repository": "yxsicd/mcpgitrelease",
+            "source_revision": "b" * 40,
+            "artifact": {
+                "format": "tar.gz",
+                "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/deploy-tag/mcpgit-deploy.tar.gz",
+                "sha256": "a" * 64,
+                "size": 42,
+            },
+        }
     value = {
         "kind": kind,
         "tag": f"{kind}-tag",
@@ -37,40 +50,54 @@ def metadata(kind):
 
 class ReleaseToolTests(unittest.TestCase):
     def test_compose_and_validate(self):
-        manifest = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        manifest = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         release_tool.validate_manifest(manifest, "dev")
 
     def test_promotions_preserve_release_objects(self):
-        dev = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        dev = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         main = release_tool.promote(dev, "main")
         self.assertEqual(main["binary"], dev["binary"])
         self.assertEqual(main["devbase"], dev["devbase"])
+        self.assertEqual(main["deployment"], dev["deployment"])
         self.assertEqual(main["promoted_from"], "dev")
 
     def test_skipping_promotion_stage_is_rejected(self):
-        dev = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        dev = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         with self.assertRaises(release_tool.ManifestError):
             release_tool.promote(dev, "prod")
 
     def test_duplicate_architecture_is_rejected(self):
-        manifest = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        manifest = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         broken = copy.deepcopy(manifest)
         broken["binary"]["artifacts"][1]["arch"] = "amd64"
         with self.assertRaises(release_tool.ManifestError):
             release_tool.validate_manifest(broken)
 
     def test_wrong_artifact_format_is_rejected(self):
-        manifest = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        manifest = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         broken = copy.deepcopy(manifest)
         broken["devbase"]["artifacts"][0]["format"] = "tar.gz"
         with self.assertRaises(release_tool.ManifestError):
             release_tool.validate_manifest(broken)
 
     def test_installer_env_is_strict_and_arch_specific(self):
-        manifest = release_tool.compose("dev", metadata("binary"), metadata("devbase"))
+        manifest = release_tool.compose(
+            "dev", metadata("binary"), metadata("devbase"), metadata("deployment")
+        )
         value = release_tool.installer_env(manifest, "arm64")
         self.assertIn("MCPGIT_ARCH=arm64\n", value)
         self.assertIn("MCPGIT_DEVBASE_IMAGE=mcpgit-devbase:test\n", value)
+        self.assertIn("MCPGIT_DEPLOY_FILE=mcpgit-deploy.tar.gz\n", value)
         self.assertNotIn("amd64.tar.gz", value)
 
 

@@ -94,6 +94,5 @@ jobs:
             source_revision: $revision,
             artifacts: [$amd64[0], $arm64[0]]
           }' > dist/binary-release.json
-          tar -C deploy -czf dist/mcpgit-deploy.tar.gz compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit-deploy.sh
-          (cd dist && sha256sum mcpgit-linux-amd64.tar.gz mcpgit-linux-arm64.tar.gz mcpgit-deploy.tar.gz > SHA256SUMS)
-          gh release create "$tag" dist/mcpgit-linux-amd64.tar.gz dist/mcpgit-linux-arm64.tar.gz dist/mcpgit-deploy.tar.gz dist/SHA256SUMS dist/binary-release.json --target "${{ github.sha }}" --title "MCPGit ${amd_sha:0:12}" --notes "Immutable Linux amd64/arm64 MCPGit binaries from yxsicd/MCPGit@$amd_sha."
+          (cd dist && sha256sum mcpgit-linux-amd64.tar.gz mcpgit-linux-arm64.tar.gz > SHA256SUMS)
+          gh release create "$tag" dist/mcpgit-linux-amd64.tar.gz dist/mcpgit-linux-arm64.tar.gz dist/SHA256SUMS dist/binary-release.json --target "${{ github.sha }}" --title "MCPGit ${amd_sha:0:12}" --notes "Immutable Linux amd64/arm64 MCPGit binaries from yxsicd/MCPGit@$amd_sha."

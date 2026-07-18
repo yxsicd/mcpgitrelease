@@ -4,14 +4,15 @@
   "title": "MCPGit release channel",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "channel", "updated_at", "binary", "devbase"],
+  "required": ["schema", "channel", "updated_at", "binary", "devbase", "deployment"],
   "properties": {
     "schema": {"const": "mcpgitrelease/channel/v2"},
     "channel": {"enum": ["dev", "main", "prod"]},
     "updated_at": {"type": "string", "format": "date-time"},
     "promoted_from": {"enum": ["dev", "main"]},
     "binary": {"$ref": "#/$defs/binaryRelease"},
-    "devbase": {"$ref": "#/$defs/devbaseRelease"}
+    "devbase": {"$ref": "#/$defs/devbaseRelease"},
+    "deployment": {"$ref": "#/$defs/deploymentRelease"}
   },
   "$defs": {
     "artifact": {
@@ -74,6 +75,27 @@
           }
         }
       ]
+    },
+    "deploymentRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "source_repository", "source_revision", "artifact"],
+      "properties": {
+        "tag": {"type": "string", "pattern": "^deploy-[0-9a-f]{12}$"},
+        "source_repository": {"type": "string", "minLength": 1},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "url", "sha256", "size"],
+          "properties": {
+            "format": {"const": "tar.gz"},
+            "url": {"type": "string", "format": "uri", "pattern": "/mcpgit-deploy\\.tar\\.gz$"},
+            "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "size": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
     }
   }
 }

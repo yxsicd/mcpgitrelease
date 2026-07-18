@@ -1,0 +1,51 @@
+name: publish-deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-deployment
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and package deployment kit
+        run: |
+          set -euo pipefail
+          ./scripts/validate.sh
+          revision=$(git rev-parse HEAD)
+          tag="deploy-${revision:0:12}"
+          tar -C deploy -czf mcpgit-deploy.tar.gz compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit-deploy.sh mcpgit.toml mcpgit-runtime.env.example
+          digest=$(sha256sum mcpgit-deploy.tar.gz | awk '{print $1}')
+          size=$(stat -c '%s' mcpgit-deploy.tar.gz)
+          jq -n --arg tag "$tag" --arg revision "$revision" --arg sha256 "$digest" --argjson size "$size" '{
+            kind: "deployment",
+            tag: $tag,
+            source_repository: "yxsicd/mcpgitrelease",
+            source_revision: $revision,
+            artifact: {
+              format: "tar.gz",
+              url: ("https://github.com/yxsicd/mcpgitrelease/releases/download/" + $tag + "/mcpgit-deploy.tar.gz"),
+              sha256: $sha256,
+              size: $size
+            }
+          }' > deployment-release.json
+          sha256sum mcpgit-deploy.tar.gz > SHA256SUMS
+      - name: Publish immutable deployment release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag=$(jq -r .tag deployment-release.json)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "immutable release already exists: $tag" >&2
+            exit 1
+          fi
+          gh release create "$tag" mcpgit-deploy.tar.gz SHA256SUMS deployment-release.json --target "${{ github.sha }}" --title "MCPGit deployment ${tag#deploy-}" --notes "Immutable architecture-independent MCPGit offline deployment kit."

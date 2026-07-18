@@ -25,6 +25,7 @@ def referenced_tags(manifests: list[str]) -> set[str]:
         else:
             tags.add(manifest["binary"]["tag"])
             tags.add(manifest["devbase"]["tag"])
+            tags.add(manifest["deployment"]["tag"])
     return tags
 
 
@@ -33,6 +34,8 @@ def release_kind(tag: str) -> str | None:
         return "binary"
     if tag.startswith("devbase-"):
         return "devbase"
+    if tag.startswith("deploy-"):
+        return "deployment"
     return None
 
 
@@ -50,9 +53,10 @@ def plan_gc(
     keep_counts = {
         "binary": int(config["keep_newest_binary"]),
         "devbase": int(config["keep_newest_devbase"]),
+        "deployment": int(config.get("keep_newest_deployment", 0)),
     }
     pinned = set(config.get("pinned_tags", []))
-    by_kind: dict[str, list[dict[str, Any]]] = {"binary": [], "devbase": []}
+    by_kind: dict[str, list[dict[str, Any]]] = {"binary": [], "devbase": [], "deployment": []}
     for release in releases:
         kind = release_kind(release["tag_name"])
         if kind is not None and not release.get("draft", False):
