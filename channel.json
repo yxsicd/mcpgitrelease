@@ -1,9 +1,9 @@
 {
   "schema": "mcpgitrelease/channel/v2",
   "channel": "dev",
-  "updated_at": "2026-07-18T19:23:15Z",
+  "updated_at": "2026-07-18T19:34:57Z",
   "binary": {
-    "tag": "mcpgit-db3d7fa0eed3",
+    "tag": "mcpgit-db3d7fa0eed3-r1",
     "source_repository": "yxsicd/MCPGit",
     "source_revision": "db3d7fa0eed3d3cd407742c0daf184a645dcb4cd",
     "artifacts": [
@@ -11,17 +11,17 @@
         "os": "linux",
         "arch": "amd64",
         "format": "tar.gz",
-        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3/mcpgit-linux-amd64.tar.gz",
-        "sha256": "5f12456942b6fd849debc787ba7bf61306dd284450edcacc73d3a12ce0d768ee",
-        "size": 6453396
+        "sha256": "59cf668df7c1a4c1c89f766aa3d9dd44ba7adf9f7e210d651fef21a7b05200fb",
+        "size": 6398629,
+        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3-r1/mcpgit-linux-amd64.tar.gz"
       },
       {
         "os": "linux",
         "arch": "arm64",
         "format": "tar.gz",
-        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3/mcpgit-linux-arm64.tar.gz",
-        "sha256": "410cb85d029e74adf04b94f0b860c41a161b35bb5b42380b264177f601ac750a",
-        "size": 6083133
+        "sha256": "96f47e7469db64172703bd0a5979ccb80196f31df1420c8ee76c6d6d5731e05d",
+        "size": 6037502,
+        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3-r1/mcpgit-linux-arm64.tar.gz"
       }
     ]
   },
@@ -50,14 +50,14 @@
     ]
   },
   "deployment": {
-    "tag": "deploy-1238d1e538e5",
+    "tag": "deploy-37b0a8ad4ceb",
     "source_repository": "yxsicd/mcpgitrelease",
-    "source_revision": "1238d1e538e56e4ae55f9bf76424b7d6a61bf8f5",
+    "source_revision": "37b0a8ad4ceb68bec76bcdc9d21bc52d9b524da3",
     "artifact": {
       "format": "tar.gz",
-      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/deploy-1238d1e538e5/mcpgit-deploy.tar.gz",
-      "sha256": "971b4f58f74288d7c9b19c5a11f7c652d355ebc4123ecfbb6a15d50d4be0be1f",
-      "size": 7220
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/deploy-37b0a8ad4ceb/mcpgit-deploy.tar.gz",
+      "sha256": "dc43ce22209df95fe6c78812feb79fa927374a107933ba5da8a63aace442422e",
+      "size": 8192
     }
   }
 }
