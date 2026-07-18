@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/channel.schema.json",
+  "title": "MCPGit release channel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "channel", "updated_at", "release", "artifacts"],
+  "properties": {
+    "schema": {"const": "mcpgitrelease/channel/v1"},
+    "channel": {"enum": ["dev", "main", "prod"]},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "source_repository", "source_revision"],
+      "properties": {
+        "tag": {"type": "string", "minLength": 1},
+        "source_repository": {"type": "string", "minLength": 1},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["os", "arch", "format", "url", "sha256", "size"],
+        "properties": {
+          "os": {"const": "linux"},
+          "arch": {"enum": ["amd64", "arm64"]},
+          "format": {"const": "tar.gz"},
+          "url": {"type": "string", "format": "uri"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

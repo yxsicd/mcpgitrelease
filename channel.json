@@ -1,0 +1,28 @@
+{
+  "schema": "mcpgitrelease/channel/v1",
+  "channel": "main",
+  "updated_at": "2026-07-18T17:52:13Z",
+  "release": {
+    "tag": "mcpgit-db3d7fa0eed3",
+    "source_repository": "yxsicd/MCPGit",
+    "source_revision": "db3d7fa0eed3d3cd407742c0daf184a645dcb4cd"
+  },
+  "artifacts": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "format": "tar.gz",
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3/mcpgit-linux-amd64.tar.gz",
+      "sha256": "5f12456942b6fd849debc787ba7bf61306dd284450edcacc73d3a12ce0d768ee",
+      "size": 6453396
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "format": "tar.gz",
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-db3d7fa0eed3/mcpgit-linux-arm64.tar.gz",
+      "sha256": "410cb85d029e74adf04b94f0b860c41a161b35bb5b42380b264177f601ac750a",
+      "size": 6083133
+    }
+  ]
+}

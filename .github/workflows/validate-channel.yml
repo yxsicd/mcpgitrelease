@@ -1,0 +1,39 @@
+name: validate-channel
+
+on:
+  push:
+    branches: [dev, main, prod]
+    paths:
+      - channel.json
+      - channel.schema.json
+      - .github/workflows/validate-channel.yml
+  pull_request:
+    paths:
+      - channel.json
+      - channel.schema.json
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate channel manifest
+        env:
+          EXPECTED_CHANNEL: ${{ github.head_ref || github.ref_name }}
+        run: |
+          jq -e --arg channel "$EXPECTED_CHANNEL" '
+            .schema == "mcpgitrelease/channel/v1"
+            and .channel == $channel
+            and (.release.source_revision | test("^[0-9a-f]{40}$"))
+            and ([.artifacts[].arch] | sort == ["amd64", "arm64"])
+            and (all(.artifacts[];
+              .os == "linux"
+              and .format == "tar.gz"
+              and (.sha256 | test("^[0-9a-f]{64}$"))
+              and .size > 0
+              and (.url | startswith("https://github.com/yxsicd/mcpgitrelease/releases/download/"))
+            ))
+          ' channel.json
