@@ -27,7 +27,7 @@ SHA-256 checksums. The target host does not need jq or Python.
 ## Publishing
 
 1. Run publish-devbase only when Node, Bun, Python, or system tools change.
-2. Run publish-binary for an MCPGit source revision.
+2. Run publish-binary for an MCPGit source revision and packaging revision.
 3. Run publish-deployment whenever deployment or configuration defaults change.
 4. Run set-dev-channel with the three immutable tags.
 5. Validate dev, then run promote-channel with target main.
@@ -49,6 +49,25 @@ Actions build artifacts are retained for one day and are only staging files.
 GitHub Release assets are the public distribution source.
 
 ## Offline deployment
+
+The recommended entrypoint does not require reading channel.json or copying
+Release URLs:
+
+~~~sh
+curl -fsSL \
+  https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-fetch.sh \
+  | bash -s -- prod ./mcpgit-bundle
+~~~
+
+The bootstrap script detects amd64 or arm64, downloads the selected channel's
+strict installer manifest and all three assets, verifies every SHA-256 checksum,
+and extracts the deployment kit. To inspect before execution instead:
+
+~~~sh
+curl -fsSLO https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-fetch.sh
+less mcpgit-fetch.sh
+bash mcpgit-fetch.sh prod ./mcpgit-bundle
+~~~
 
 Prepare one directory containing the channel manifest and the two
 architecture-specific assets:

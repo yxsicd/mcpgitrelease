@@ -7,6 +7,10 @@ on:
         description: Full MCPGit commit SHA or ref to build
         required: true
         default: main
+      package_revision:
+        description: Positive packaging revision for the same source commit
+        required: true
+        default: "1"
 
 permissions:
   contents: write
@@ -74,13 +78,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PACKAGE_REVISION: ${{ inputs.package_revision }}
         run: |
           set -euo pipefail
+          [[ "$PACKAGE_REVISION" =~ ^[1-9][0-9]*$ ]]
           amd_sha=$(jq -r .source_revision dist/binary-amd64.json)
           arm_sha=$(jq -r .source_revision dist/binary-arm64.json)
           test "$amd_sha" = "$arm_sha"
           test "${#amd_sha}" = 40
-          tag="mcpgit-${amd_sha:0:12}"
+          tag="mcpgit-${amd_sha:0:12}-r$PACKAGE_REVISION"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "immutable release already exists: $tag" >&2
             exit 1
