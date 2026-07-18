@@ -1,6 +1,6 @@
 {
   "schema": "mcpgitrelease/channel/v1",
-  "channel": "main",
+  "channel": "prod",
   "updated_at": "2026-07-18T17:52:13Z",
   "release": {
     "tag": "mcpgit-db3d7fa0eed3",
