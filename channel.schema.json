@@ -4,35 +4,96 @@
   "title": "MCPGit release channel",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "channel", "updated_at", "release", "artifacts"],
+  "required": ["schema", "channel", "updated_at", "binary", "devbase", "deployment"],
   "properties": {
-    "schema": {"const": "mcpgitrelease/channel/v1"},
+    "schema": {"const": "mcpgitrelease/channel/v2"},
     "channel": {"enum": ["dev", "main", "prod"]},
     "updated_at": {"type": "string", "format": "date-time"},
-    "release": {
+    "promoted_from": {"enum": ["dev", "main"]},
+    "binary": {"$ref": "#/$defs/binaryRelease"},
+    "devbase": {"$ref": "#/$defs/devbaseRelease"},
+    "deployment": {"$ref": "#/$defs/deploymentRelease"}
+  },
+  "$defs": {
+    "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tag", "source_repository", "source_revision"],
+      "required": ["os", "arch", "format", "url", "sha256", "size"],
+      "properties": {
+        "os": {"const": "linux"},
+        "arch": {"enum": ["amd64", "arm64"]},
+        "format": {"enum": ["tar.gz", "docker.tar.zst"]},
+        "url": {"type": "string", "format": "uri"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "commonRelease": {
+      "type": "object",
+      "required": ["tag", "source_repository", "source_revision", "artifacts"],
       "properties": {
         "tag": {"type": "string", "minLength": 1},
         "source_repository": {"type": "string", "minLength": 1},
-        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "artifacts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/artifact"}
+        }
       }
     },
-    "artifacts": {
-      "type": "array",
-      "minItems": 2,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["os", "arch", "format", "url", "sha256", "size"],
-        "properties": {
-          "os": {"const": "linux"},
-          "arch": {"enum": ["amd64", "arm64"]},
-          "format": {"const": "tar.gz"},
-          "url": {"type": "string", "format": "uri"},
-          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-          "size": {"type": "integer", "minimum": 1}
+    "binaryRelease": {
+      "allOf": [
+        {"$ref": "#/$defs/commonRelease"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tag", "source_repository", "source_revision", "artifacts"],
+          "properties": {
+            "tag": {"type": "string"},
+            "source_repository": {"type": "string"},
+            "source_revision": {"type": "string"},
+            "artifacts": {"type": "array"}
+          }
+        }
+      ]
+    },
+    "devbaseRelease": {
+      "allOf": [
+        {"$ref": "#/$defs/commonRelease"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tag", "image", "source_repository", "source_revision", "artifacts"],
+          "properties": {
+            "tag": {"type": "string"},
+            "image": {"type": "string", "minLength": 1},
+            "source_repository": {"type": "string"},
+            "source_revision": {"type": "string"},
+            "artifacts": {"type": "array"}
+          }
+        }
+      ]
+    },
+    "deploymentRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "source_repository", "source_revision", "artifact"],
+      "properties": {
+        "tag": {"type": "string", "pattern": "^deploy-[0-9a-f]{12}$"},
+        "source_repository": {"type": "string", "minLength": 1},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "url", "sha256", "size"],
+          "properties": {
+            "format": {"const": "tar.gz"},
+            "url": {"type": "string", "format": "uri", "pattern": "/mcpgit-deploy\\.tar\\.gz$"},
+            "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "size": {"type": "integer", "minimum": 1}
+          }
         }
       }
     }

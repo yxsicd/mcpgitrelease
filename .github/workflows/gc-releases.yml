@@ -1,0 +1,57 @@
+name: gc-releases
+
+on:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Delete the planned unreferenced releases
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gc-releases
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: tools
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: channels/dev
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: channels/main
+      - uses: actions/checkout@v4
+        with:
+          ref: prod
+          path: channels/prod
+      - name: Plan or execute release retention
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXECUTE: ${{ inputs.execute || 'false' }}
+        run: |
+          args=(
+            --repository "${{ github.repository }}"
+            --config tools/retention.json
+            --manifest channels/dev/channel.json
+            --manifest channels/main/channel.json
+            --manifest channels/prod/channel.json
+          )
+          if [[ "$EXECUTE" == true ]]; then
+            args+=(--execute)
+          fi
+          python3 tools/scripts/gc_releases.py "${args[@]}" | tee gc-plan.json
+          cat gc-plan.json >> "$GITHUB_STEP_SUMMARY"

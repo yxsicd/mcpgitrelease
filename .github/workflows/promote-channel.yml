@@ -1,0 +1,58 @@
+name: promote-channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Promotion target
+        type: choice
+        required: true
+        options: [main, prod]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: channel-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Select source
+        id: select
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          if [[ "$TARGET" == main ]]; then
+            echo "source=dev" >> "$GITHUB_OUTPUT"
+          else
+            echo "source=main" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        with: {ref: main, path: tools}
+      - uses: actions/checkout@v4
+        with: {ref: "${{ steps.select.outputs.source }}", path: source}
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target }}", path: target}
+      - name: Promote exact immutable releases
+        run: |
+          python3 tools/scripts/release_tool.py promote --source source/channel.json --target "${{ inputs.target }}" --output target/channel.json
+          python3 tools/scripts/release_tool.py validate target/channel.json --channel "${{ inputs.target }}"
+          for arch in amd64 arm64; do
+            python3 tools/scripts/release_tool.py installer-env --manifest target/channel.json --arch "$arch" --output "target/install-linux-$arch.env"
+          done
+      - name: Commit channel pointer
+        working-directory: target
+        run: |
+          set -euo pipefail
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add channel.json install-linux-amd64.env install-linux-arm64.env
+          if git diff --cached --quiet; then
+            echo "target already points to this release"
+            exit 0
+          fi
+          git commit -m "release: promote ${{ steps.select.outputs.source }} to ${{ inputs.target }}"
+          git push origin "HEAD:${{ inputs.target }}"

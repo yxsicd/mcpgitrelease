@@ -1,0 +1,8 @@
+{
+  "schema": "mcpgitrelease/retention/v1",
+  "grace_days": 14,
+  "keep_newest_binary": 35,
+  "keep_newest_devbase": 5,
+  "keep_newest_deployment": 20,
+  "pinned_tags": []
+}

@@ -1,0 +1,39 @@
+[[repositories]]
+id = "works"
+path = "/data/repos/works"
+table_repository = "tablegit"
+binary_repository = "binarygit"
+link_repository = "linkgit"
+author_name = "mcpgit agent"
+author_email = "mcpgit-agent@example.invalid"
+
+[repositories.exec_sandbox]
+mode = "auto"
+bwrap_program = "bwrap"
+timeout_ms = 600000
+max_output_bytes = 20000
+
+[[repositories]]
+id = "tablegit"
+path = "/data/repos/tablegit"
+
+[[repositories.validation_commands]]
+id = "default"
+program = "python3"
+args = ["-c", "from pathlib import Path; import json; [json.loads(p.read_text(encoding='utf-8')) for p in Path('data/tables').rglob('*.json')]"]
+
+[[repositories]]
+id = "binarygit"
+path = "/data/repos/binarygit"
+
+[[repositories]]
+id = "linkgit"
+path = "/data/repos/linkgit"
+
+[[repositories]]
+id = "rootskills"
+path = "/data/repos/rootskills"
+
+[[repositories]]
+id = "mcpgitsystem"
+path = "/data/repos/mcpgitsystem"

@@ -1,0 +1,110 @@
+name: publish-devbase
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: MCPGit ref containing Dockerfile.devbase
+        required: true
+        default: main
+      version:
+        description: Cold base version, for example 2026.07.1
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-devbase
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yxsicd/MCPGit
+          ref: ${{ inputs.source_ref }}
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: '[[ "$VERSION" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]+$ ]]'
+      - name: Build and export compressed image
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          image="mcpgit-devbase:devbase-$VERSION"
+          docker buildx build --load --platform "linux/$ARCH" --build-arg "DEVBASE_VERSION=$VERSION" --build-arg "DEVBASE_SOURCE=https://github.com/yxsicd/MCPGit" -f Dockerfile.devbase -t "$image" .
+          docker save "$image" | zstd -T0 -10 -o "mcpgit-devbase-linux-$ARCH.docker.tar.zst"
+          digest=$(sha256sum "mcpgit-devbase-linux-$ARCH.docker.tar.zst" | awk '{print $1}')
+          size=$(stat -c '%s' "mcpgit-devbase-linux-$ARCH.docker.tar.zst")
+          jq -n --arg arch "$ARCH" --arg sha256 "$digest" --arg source_revision "$(git rev-parse HEAD)" --argjson size "$size" '{
+            os: "linux",
+            arch: $arch,
+            format: "docker.tar.zst",
+            filename: ("mcpgit-devbase-linux-" + $arch + ".docker.tar.zst"),
+            sha256: $sha256,
+            size: $size,
+            source_revision: $source_revision
+          }' > "devbase-$ARCH.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devbase-${{ matrix.arch }}
+          path: |
+            mcpgit-devbase-linux-${{ matrix.arch }}.docker.tar.zst
+            devbase-${{ matrix.arch }}.json
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: devbase-*
+          path: dist
+          merge-multiple: true
+      - name: Validate and publish immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          amd_sha=$(jq -r .source_revision dist/devbase-amd64.json)
+          arm_sha=$(jq -r .source_revision dist/devbase-arm64.json)
+          test "$amd_sha" = "$arm_sha"
+          tag="devbase-$VERSION"
+          image="mcpgit-devbase:$tag"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "immutable release already exists: $tag" >&2
+            exit 1
+          fi
+          for arch in amd64 arm64; do
+            jq --arg tag "$tag" 'del(.filename, .source_revision) | .url = ("https://github.com/yxsicd/mcpgitrelease/releases/download/" + $tag + "/mcpgit-devbase-linux-" + .arch + ".docker.tar.zst")' "dist/devbase-$arch.json" > "dist/artifact-$arch.json"
+          done
+          jq -n --arg tag "$tag" --arg image "$image" --arg revision "$amd_sha" --slurpfile amd64 dist/artifact-amd64.json --slurpfile arm64 dist/artifact-arm64.json '{
+            kind: "devbase",
+            tag: $tag,
+            image: $image,
+            source_repository: "yxsicd/MCPGit",
+            source_revision: $revision,
+            artifacts: [$amd64[0], $arm64[0]]
+          }' > dist/devbase-release.json
+          (cd dist && sha256sum mcpgit-devbase-linux-amd64.docker.tar.zst mcpgit-devbase-linux-arm64.docker.tar.zst > SHA256SUMS)
+          gh release create "$tag" dist/mcpgit-devbase-linux-amd64.docker.tar.zst dist/mcpgit-devbase-linux-arm64.docker.tar.zst dist/SHA256SUMS dist/devbase-release.json --target "${{ github.sha }}" --title "MCPGit development base $VERSION" --notes "Immutable cold development base for Linux amd64/arm64. MCPGit itself is not included."
