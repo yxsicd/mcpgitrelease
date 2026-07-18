@@ -32,6 +32,7 @@ jobs:
         with:
           repository: yxsicd/MCPGit
           ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.MCPGIT_DEPLOY_KEY }}
       - name: Validate version
         env:
           VERSION: ${{ inputs.version }}
