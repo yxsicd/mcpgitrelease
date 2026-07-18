@@ -49,7 +49,7 @@ def _validate_artifacts(kind: str, artifacts: Any) -> None:
     if not isinstance(artifacts, list) or len(artifacts) != 2:
         raise ManifestError(f"{kind}.artifacts must contain exactly amd64 and arm64")
     found: set[str] = set()
-    expected_format = "tar.gz" if kind == "binary" else "oci.tar.zst"
+    expected_format = "tar.gz" if kind == "binary" else "docker.tar.zst"
     for artifact in artifacts:
         if not isinstance(artifact, dict):
             raise ManifestError(f"{kind} artifact must be an object")

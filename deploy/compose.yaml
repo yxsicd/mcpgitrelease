@@ -57,3 +57,4 @@ networks:
 volumes:
   mcpgit_data:
     name: ${MCPGIT_DATA_SOURCE:?missing MCPGIT_DATA_SOURCE}
+    external: true

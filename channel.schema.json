@@ -21,7 +21,7 @@
       "properties": {
         "os": {"const": "linux"},
         "arch": {"enum": ["amd64", "arm64"]},
-        "format": {"enum": ["tar.gz", "oci.tar.zst"]},
+        "format": {"enum": ["tar.gz", "docker.tar.zst"]},
         "url": {"type": "string", "format": "uri"},
         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "size": {"type": "integer", "minimum": 1}

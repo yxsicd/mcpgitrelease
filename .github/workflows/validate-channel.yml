@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate channel manifest
         env:
-          EXPECTED_CHANNEL: ${{ github.head_ref || github.ref_name }}
+          EXPECTED_CHANNEL: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
         run: |
           schema=$(jq -r .schema channel.json)
           if [[ "$schema" == mcpgitrelease/channel/v1 ]]; then

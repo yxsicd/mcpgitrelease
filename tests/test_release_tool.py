@@ -11,7 +11,7 @@ SPEC.loader.exec_module(release_tool)
 
 
 def artifact(kind, arch):
-    suffix = "tar.gz" if kind == "binary" else "oci.tar.zst"
+    suffix = "tar.gz" if kind == "binary" else "docker.tar.zst"
     return {
         "os": "linux",
         "arch": arch,

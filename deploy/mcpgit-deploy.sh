@@ -17,7 +17,7 @@ Usage:
   mcpgit-deploy.sh --instance NAME --rollback [OPTIONS]
 
 The bundle directory must contain install-linux-<arch>.env, the matching
-MCPGit binary tar.gz, and the matching devbase OCI tar.zst.
+MCPGit binary tar.gz, and the matching devbase Docker tar.zst.
 
 Options:
   --instance NAME       Container and instance name (default: mcpgit)
@@ -108,11 +108,12 @@ old_env() {
 }
 
 wait_healthy() {
-  local container=$1 status
+  local container=$1 state health
   for attempt in $(seq 1 60); do
-    status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || true)
-    [[ "$status" == healthy ]] && return 0
-    [[ "$status" == exited || "$status" == dead ]] && return 1
+    state=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)
+    health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container" 2>/dev/null || true)
+    [[ "$state" == restarting || "$state" == exited || "$state" == dead ]] && return 1
+    [[ "$state" == running && "$health" == healthy ]] && return 0
     sleep 2
   done
   return 1
@@ -123,10 +124,9 @@ compose() {
 }
 
 atomic_link() {
-  local target=$1 link=$2 temp
-  temp=$link.next.$$
-  ln -s "$target" "$temp"
-  mv -Tf "$temp" "$link"
+  local target=$1 link=$2
+  ln -sfn "$target" "$link"
+  [[ "$(readlink "$link")" == "$target" ]] || die "failed to update release link"
 }
 
 write_instance_env() {
@@ -226,7 +226,7 @@ done
 [[ "$MCPGIT_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid binary checksum"
 [[ "$MCPGIT_DEVBASE_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid devbase checksum"
 [[ "$MCPGIT_BINARY_FILE" == mcpgit-linux-$host_arch.tar.gz ]] || die "unexpected binary filename"
-[[ "$MCPGIT_DEVBASE_FILE" == mcpgit-devbase-linux-$host_arch.oci.tar.zst ]] || die "unexpected devbase filename"
+[[ "$MCPGIT_DEVBASE_FILE" == mcpgit-devbase-linux-$host_arch.docker.tar.zst ]] || die "unexpected devbase filename"
 
 binary_archive=$bundle_dir/$MCPGIT_BINARY_FILE
 devbase_archive=$bundle_dir/$MCPGIT_DEVBASE_FILE
@@ -282,6 +282,7 @@ if [[ "$data_source" == */* ]]; then
   fi
   data_source=$bind_volume
 fi
+docker volume inspect "$data_source" >/dev/null 2>&1 || docker volume create "$data_source" >/dev/null
 
 if [[ -z "$netrc_path" && "$old_exists" == true ]]; then netrc_path=$(mount_source "$instance" /root/.netrc); fi
 if [[ -z "$netrc_path" && -r "${HOME:-}/.netrc" ]]; then netrc_path=$HOME/.netrc; fi
@@ -349,7 +350,9 @@ if ! compose up -d --force-recreate --no-build --pull never || ! wait_healthy "$
   elif [[ -n "$previous_release" && -r "$install_root/state/previous-instance.env" ]]; then
     atomic_link "$previous_release" "$install_root/current"
     cp "$install_root/state/previous-instance.env" "$instance_env"
-    compose up -d --force-recreate --no-build --pull never || true
+    if ! compose up -d --force-recreate --no-build --pull never || ! wait_healthy "$instance"; then
+      die "deployment and automatic rollback both failed; inspect docker logs $instance"
+    fi
   fi
   die "deployment failed and the previous instance was restored"
 fi

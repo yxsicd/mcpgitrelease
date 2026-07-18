@@ -51,7 +51,7 @@ Prepare one directory containing the three files for the target architecture:
 
     install-linux-amd64.env
     mcpgit-linux-amd64.tar.gz
-    mcpgit-devbase-linux-amd64.oci.tar.zst
+    mcpgit-devbase-linux-amd64.docker.tar.zst
 
 For arm64, replace amd64 with arm64. Copy the deploy directory from this
 repository or extract mcpgit-deploy.tar.gz from the binary Release.
