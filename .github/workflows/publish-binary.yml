@@ -1,0 +1,99 @@
+name: publish-binary
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Full MCPGit commit SHA or ref to build
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-binary
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yxsicd/MCPGit
+          ref: ${{ inputs.source_ref }}
+      - name: Build stripped binary
+        run: docker buildx build --platform "linux/${{ matrix.arch }}" --target artifact --output type=local,dest=out -f Dockerfile.binary .
+      - name: Package immutable asset
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          source_sha=$(git rev-parse HEAD)
+          chmod 755 out/mcpgit
+          tar -C out -czf "mcpgit-linux-$ARCH.tar.gz" mcpgit
+          digest=$(sha256sum "mcpgit-linux-$ARCH.tar.gz" | awk '{print $1}')
+          size=$(stat -c '%s' "mcpgit-linux-$ARCH.tar.gz")
+          jq -n --arg arch "$ARCH" --arg sha256 "$digest" --arg source_revision "$source_sha" --argjson size "$size" '{
+            os: "linux",
+            arch: $arch,
+            format: "tar.gz",
+            filename: ("mcpgit-linux-" + $arch + ".tar.gz"),
+            sha256: $sha256,
+            size: $size,
+            source_revision: $source_revision
+          }' > "binary-$ARCH.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.arch }}
+          path: |
+            mcpgit-linux-${{ matrix.arch }}.tar.gz
+            binary-${{ matrix.arch }}.json
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+      - name: Validate and publish immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          amd_sha=$(jq -r .source_revision dist/binary-amd64.json)
+          arm_sha=$(jq -r .source_revision dist/binary-arm64.json)
+          test "$amd_sha" = "$arm_sha"
+          test "${#amd_sha}" = 40
+          tag="mcpgit-${amd_sha:0:12}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "immutable release already exists: $tag" >&2
+            exit 1
+          fi
+          for arch in amd64 arm64; do
+            jq --arg tag "$tag" 'del(.filename, .source_revision) | .url = ("https://github.com/yxsicd/mcpgitrelease/releases/download/" + $tag + "/mcpgit-linux-" + .arch + ".tar.gz")' "dist/binary-$arch.json" > "dist/artifact-$arch.json"
+          done
+          jq -n --arg tag "$tag" --arg revision "$amd_sha" --slurpfile amd64 dist/artifact-amd64.json --slurpfile arm64 dist/artifact-arm64.json '{
+            kind: "binary",
+            tag: $tag,
+            source_repository: "yxsicd/MCPGit",
+            source_revision: $revision,
+            artifacts: [$amd64[0], $arm64[0]]
+          }' > dist/binary-release.json
+          tar -C deploy -czf dist/mcpgit-deploy.tar.gz compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit-deploy.sh
+          (cd dist && sha256sum mcpgit-linux-amd64.tar.gz mcpgit-linux-arm64.tar.gz mcpgit-deploy.tar.gz > SHA256SUMS)
+          gh release create "$tag" dist/mcpgit-linux-amd64.tar.gz dist/mcpgit-linux-arm64.tar.gz dist/mcpgit-deploy.tar.gz dist/SHA256SUMS dist/binary-release.json --target "${{ github.sha }}" --title "MCPGit ${amd_sha:0:12}" --notes "Immutable Linux amd64/arm64 MCPGit binaries from yxsicd/MCPGit@$amd_sha."

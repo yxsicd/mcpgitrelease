@@ -1,0 +1,55 @@
+name: set-dev-channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      binary_tag:
+        description: Immutable mcpgit-* release tag
+        required: true
+      devbase_tag:
+        description: Immutable devbase-* release tag
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: channel-dev
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, path: tools}
+      - uses: actions/checkout@v4
+        with: {ref: dev, path: channel}
+      - name: Download immutable release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir metadata
+          gh release download "${{ inputs.binary_tag }}" --pattern binary-release.json --dir metadata
+          gh release download "${{ inputs.devbase_tag }}" --pattern devbase-release.json --dir metadata
+      - name: Compose and validate dev channel
+        run: |
+          python3 tools/scripts/release_tool.py compose --channel dev --binary metadata/binary-release.json --devbase metadata/devbase-release.json --output channel/channel.json
+          python3 tools/scripts/release_tool.py validate channel/channel.json --channel dev
+          for arch in amd64 arm64; do
+            python3 tools/scripts/release_tool.py installer-env --manifest channel/channel.json --arch "$arch" --output "channel/install-linux-$arch.env"
+          done
+      - name: Commit channel pointer
+        working-directory: channel
+        run: |
+          set -euo pipefail
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add channel.json install-linux-amd64.env install-linux-arm64.env
+          if git diff --cached --quiet; then
+            echo "dev already points to the requested releases"
+            exit 0
+          fi
+          git commit -m "release: update dev channel"
+          git push origin HEAD:dev

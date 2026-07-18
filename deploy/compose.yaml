@@ -1,0 +1,59 @@
+services:
+  mcpgit:
+    image: ${MCPGIT_DEVBASE_IMAGE:?missing MCPGIT_DEVBASE_IMAGE}
+    pull_policy: never
+    container_name: ${MCPGIT_CONTAINER_NAME:?missing MCPGIT_CONTAINER_NAME}
+    restart: unless-stopped
+    entrypoint: ["/usr/bin/tini", "--", "/opt/mcpgit/runtime/docker-entrypoint.sh"]
+    command: ["--config", "/config/mcpgit.toml", "--transport", "streamable-http", "--bind", "0.0.0.0:8001"]
+    env_file:
+      - ${MCPGIT_RUNTIME_ENV_FILE:?missing MCPGIT_RUNTIME_ENV_FILE}
+    volumes:
+      - ${MCPGIT_INSTALL_ROOT:?missing MCPGIT_INSTALL_ROOT}:/opt/mcpgit:ro
+      - ${MCPGIT_CONFIG:?missing MCPGIT_CONFIG}:/config/mcpgit.toml:ro
+      - mcpgit_data:/data
+      - ${MCPGIT_NETRC:?missing MCPGIT_NETRC}:/root/.netrc:ro
+    expose:
+      - "8001"
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS
+          -H 'Content-Type: application/json'
+          -H 'Accept: application/json, text/event-stream'
+          --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"mcpgit-health","version":"1"}}}'
+          http://127.0.0.1:8001/mcp | grep -q '"result"'
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
+    labels:
+      - com.yxsicd.mcpgitrelease.managed=true
+      - com.yxsicd.mcpgitrelease.binary=${MCPGIT_BINARY_REVISION:?missing MCPGIT_BINARY_REVISION}
+      - "traefik.enable=${MCPGIT_TRAEFIK_ENABLE:-false}"
+      - "traefik.http.services.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}.loadbalancer.server.port=8001"
+      - 'traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}.rule=Host(`${MCPGIT_TRAEFIK_HOST:-localhost}`)'
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}.entrypoints=websecure"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}.tls=true"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}.service=${MCPGIT_TRAEFIK_SERVICE:-mcpgit}"
+      - 'traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.rule=HostRegexp(`{site:[a-z0-9-]+}-${MCPGIT_TRAEFIK_HOST:-localhost}`)'
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.entrypoints=websecure"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.tls=true"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.service=${MCPGIT_TRAEFIK_SERVICE:-mcpgit}"
+    networks:
+      - mcpgit
+
+networks:
+  mcpgit:
+    name: ${MCPGIT_NETWORK:?missing MCPGIT_NETWORK}
+    external: true
+
+volumes:
+  mcpgit_data:
+    name: ${MCPGIT_DATA_SOURCE:?missing MCPGIT_DATA_SOURCE}
