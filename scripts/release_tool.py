@@ -206,13 +206,16 @@ def installer_env(manifest: dict[str, Any], arch: str) -> str:
         "MCPGIT_BINARY_TAG": manifest["binary"]["tag"],
         "MCPGIT_BINARY_REVISION": manifest["binary"]["source_revision"],
         "MCPGIT_BINARY_FILE": binary["url"].rsplit("/", 1)[-1],
+        "MCPGIT_BINARY_URL": binary["url"],
         "MCPGIT_BINARY_SHA256": binary["sha256"],
         "MCPGIT_DEVBASE_TAG": manifest["devbase"]["tag"],
         "MCPGIT_DEVBASE_IMAGE": manifest["devbase"]["image"],
         "MCPGIT_DEVBASE_FILE": devbase["url"].rsplit("/", 1)[-1],
+        "MCPGIT_DEVBASE_URL": devbase["url"],
         "MCPGIT_DEVBASE_SHA256": devbase["sha256"],
         "MCPGIT_DEPLOY_TAG": manifest["deployment"]["tag"],
         "MCPGIT_DEPLOY_FILE": deployment["url"].rsplit("/", 1)[-1],
+        "MCPGIT_DEPLOY_URL": deployment["url"],
         "MCPGIT_DEPLOY_SHA256": deployment["sha256"],
     }
     for value in values.values():

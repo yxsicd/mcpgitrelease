@@ -21,7 +21,7 @@ jobs:
           ./scripts/validate.sh
           revision=$(git rev-parse HEAD)
           tag="deploy-${revision:0:12}"
-          tar -C deploy -czf mcpgit-deploy.tar.gz compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit-deploy.sh mcpgit.toml mcpgit-runtime.env.example
+          tar -C deploy -czf mcpgit-deploy.tar.gz compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit-deploy.sh mcpgit-fetch.sh mcpgit.toml mcpgit-runtime.env.example
           digest=$(sha256sum mcpgit-deploy.tar.gz | awk '{print $1}')
           size=$(stat -c '%s' mcpgit-deploy.tar.gz)
           jq -n --arg tag "$tag" --arg revision "$revision" --arg sha256 "$digest" --argjson size "$size" '{

@@ -98,6 +98,7 @@ class ReleaseToolTests(unittest.TestCase):
         self.assertIn("MCPGIT_ARCH=arm64\n", value)
         self.assertIn("MCPGIT_DEVBASE_IMAGE=mcpgit-devbase:test\n", value)
         self.assertIn("MCPGIT_DEPLOY_FILE=mcpgit-deploy.tar.gz\n", value)
+        self.assertIn("MCPGIT_BINARY_URL=https://github.com/", value)
         self.assertNotIn("amd64.tar.gz", value)
 
 
