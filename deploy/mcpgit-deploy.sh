@@ -268,6 +268,7 @@ fi
 
 if [[ -z "$config_path" && "$old_exists" == true ]]; then config_path=$(mount_source "$instance" /config/mcpgit.toml); fi
 if [[ -z "$config_path" && -r "$bundle_dir/mcpgit.toml" ]]; then config_path=$bundle_dir/mcpgit.toml; fi
+if [[ -z "$config_path" && -r "$script_dir/mcpgit.toml" ]]; then config_path=$script_dir/mcpgit.toml; fi
 [[ -n "$config_path" && -r "$config_path" ]] || die "MCPGit config is required"
 config_path=$(cd "$(dirname "$config_path")" && pwd -P)/$(basename "$config_path")
 

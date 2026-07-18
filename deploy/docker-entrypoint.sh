@@ -3,6 +3,12 @@ set -eu
 PATH=/opt/mcpgit/runtime:$PATH
 export PATH
 
+configure_credentials() {
+  if command -v git-credential-netrc >/dev/null 2>&1; then
+    git config --global credential.helper netrc
+  fi
+}
+
 configure_repo() {
   repo_dir=$1
   git -C "$repo_dir" config user.name "mcpgit agent"
@@ -59,6 +65,7 @@ bootstrap_remote_repos() {
   IFS=$old_ifs
 }
 
+configure_credentials
 configure_existing_repos
 bootstrap_remote_repos
 exec /opt/mcpgit/current/mcpgit "$@"
