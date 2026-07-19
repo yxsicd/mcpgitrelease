@@ -82,6 +82,11 @@ mcpgit.toml and mcpgit-runtime.env.example. Copy the latter to
 mcpgit-runtime.env and configure the remote Git backend, organization, and
 bootstrap repository names.
 
+The bundled full-feature repository baseline is `works`, `tablegit`,
+`binarygit`, `rootskills`, `mcpgitsystem`, and `safegit`. SafeGit root
+material is never included in a Release asset; provide it only through the
+mode-0600 runtime environment or the target's secret manager.
+
 Install or upgrade:
 
 ~~~sh
