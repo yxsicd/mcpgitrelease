@@ -21,14 +21,7 @@ services:
       - seccomp=unconfined
       - apparmor=unconfined
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          curl -fsS
-          -H 'Content-Type: application/json'
-          -H 'Accept: application/json, text/event-stream'
-          --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"mcpgit-health","version":"1"}}}'
-          http://127.0.0.1:8001/mcp | grep -q '"result"'
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8001/__mcpgit/sites >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 24

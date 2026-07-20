@@ -36,6 +36,12 @@ class DeploymentBaselineTests(unittest.TestCase):
             deploy,
         )
 
+    def test_healthcheck_does_not_require_an_mcp_identity(self) -> None:
+        compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("http://127.0.0.1:8001/__mcpgit/sites", compose)
+        self.assertNotIn('"method":"initialize"', compose)
+
 
 if __name__ == "__main__":
     unittest.main()
