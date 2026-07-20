@@ -16,8 +16,9 @@ Usage:
   mcpgit-deploy.sh --bundle DIR [OPTIONS]
   mcpgit-deploy.sh --instance NAME --rollback [OPTIONS]
 
-The bundle directory must contain install-linux-<arch>.env, the matching
-MCPGit binary tar.gz, and the matching devbase Docker tar.zst.
+The bundle directory must contain install-linux-<arch>.env and the matching
+MCPGit binary tar.gz. A cold install also needs the matching devbase Docker
+tar.zst; a managed hot update reuses the previously verified local devbase.
 
 Options:
   --instance NAME       Container and instance name (default: mcpgit)
@@ -223,6 +224,8 @@ done
 [[ "$MCPGIT_INSTALL_SCHEMA" == mcpgitrelease/install/v1 ]] || die "unsupported installer schema"
 [[ "$MCPGIT_ARCH" == "$host_arch" ]] || die "installer architecture mismatch"
 [[ "$MCPGIT_BINARY_REVISION" =~ ^[0-9a-f]{40}$ ]] || die "invalid binary revision"
+[[ "$MCPGIT_DEVBASE_TAG" =~ ^devbase-[0-9]{4}\.[0-9]{2}\.[0-9]+$ ]] || die "invalid devbase tag"
+[[ "$MCPGIT_DEVBASE_IMAGE" == "mcpgit-devbase:$MCPGIT_DEVBASE_TAG" ]] || die "invalid devbase image"
 [[ "$MCPGIT_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid binary checksum"
 [[ "$MCPGIT_DEVBASE_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid devbase checksum"
 [[ "$MCPGIT_DEPLOY_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid deployment checksum"
@@ -233,15 +236,43 @@ done
 binary_archive=$bundle_dir/$MCPGIT_BINARY_FILE
 devbase_archive=$bundle_dir/$MCPGIT_DEVBASE_FILE
 [[ -r "$binary_archive" ]] || die "binary archive is missing"
-[[ -r "$devbase_archive" ]] || die "devbase archive is missing"
 [[ "$(sha256_file "$binary_archive")" == "$MCPGIT_BINARY_SHA256" ]] || die "binary checksum mismatch"
-[[ "$(sha256_file "$devbase_archive")" == "$MCPGIT_DEVBASE_SHA256" ]] || die "devbase checksum mismatch"
 
-info "loading cold base image $MCPGIT_DEVBASE_IMAGE"
-docker load -i "$devbase_archive" >/dev/null
-docker image inspect "$MCPGIT_DEVBASE_IMAGE" >/dev/null 2>&1 || die "loaded archive did not provide $MCPGIT_DEVBASE_IMAGE"
-image_arch=$(docker image inspect --format '{{.Architecture}}' "$MCPGIT_DEVBASE_IMAGE")
-[[ "$image_arch" == "$host_arch" ]] || die "devbase image architecture mismatch: $image_arch"
+if [[ -n ${XDG_DATA_HOME:-} ]]; then
+  devbase_state_root=$XDG_DATA_HOME/mcpgitrelease/devbase
+elif [[ -n ${HOME:-} ]]; then
+  devbase_state_root=$HOME/.local/share/mcpgitrelease/devbase
+else
+  devbase_state_root=$install_root/state/devbase
+fi
+mkdir -p "$devbase_state_root"
+devbase_identity=$devbase_state_root/$MCPGIT_DEVBASE_TAG.image-id
+reuse_devbase=false
+if [[ -r "$devbase_identity" ]] && docker image inspect "$MCPGIT_DEVBASE_IMAGE" >/dev/null 2>&1; then
+  expected_image_id=$(cat "$devbase_identity")
+  actual_image_id=$(docker image inspect --format '{{.Id}}' "$MCPGIT_DEVBASE_IMAGE")
+  image_arch=$(docker image inspect --format '{{.Architecture}}' "$MCPGIT_DEVBASE_IMAGE")
+  if [[ "$expected_image_id" =~ ^sha256:[0-9a-f]{64}$ && "$actual_image_id" == "$expected_image_id" && "$image_arch" == "$host_arch" ]]; then
+    reuse_devbase=true
+  fi
+fi
+
+if [[ "$reuse_devbase" == true ]]; then
+  info "reusing verified cold base $MCPGIT_DEVBASE_IMAGE"
+else
+  [[ -r "$devbase_archive" ]] || die "verified devbase identity is unavailable and the cold archive is missing"
+  [[ "$(sha256_file "$devbase_archive")" == "$MCPGIT_DEVBASE_SHA256" ]] || die "devbase checksum mismatch"
+  info "loading verified cold base image $MCPGIT_DEVBASE_IMAGE"
+  docker load -i "$devbase_archive" >/dev/null
+  docker image inspect "$MCPGIT_DEVBASE_IMAGE" >/dev/null 2>&1 || die "loaded archive did not provide $MCPGIT_DEVBASE_IMAGE"
+  image_arch=$(docker image inspect --format '{{.Architecture}}' "$MCPGIT_DEVBASE_IMAGE")
+  [[ "$image_arch" == "$host_arch" ]] || die "devbase image architecture mismatch: $image_arch"
+  actual_image_id=$(docker image inspect --format '{{.Id}}' "$MCPGIT_DEVBASE_IMAGE")
+  [[ "$actual_image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || die "invalid loaded devbase image id"
+  temp_identity=$devbase_identity.new.$$
+  printf '%s\n' "$actual_image_id" > "$temp_identity"
+  mv -f "$temp_identity" "$devbase_identity"
+fi
 
 release_relative=releases/$MCPGIT_BINARY_REVISION
 release_dir=$install_root/$release_relative

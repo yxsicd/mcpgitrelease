@@ -11,7 +11,9 @@ usage() {
 Usage: mcpgit-fetch.sh [dev|main|prod] [TARGET_DIR]
 
 Downloads the correct Linux architecture assets and deployment kit from the
-selected public MCPGit channel, then verifies every SHA-256 checksum.
+selected public MCPGit channel, then verifies every SHA-256 checksum. Assets
+whose existing local file already matches the channel checksum are reused, so a
+normal hot update transfers only the changed MCPGit binary.
 EOF
 }
 
@@ -77,6 +79,10 @@ download() {
   local file=$1 url=$2 checksum=$3 part
   [[ "$url" == https://github.com/yxsicd/mcpgitrelease/releases/download/*"/$file" ]] || die "untrusted asset URL"
   [[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || die "invalid checksum for $file"
+  if [[ -r "$target/$file" && "$(sha256_file "$target/$file")" == "$checksum" ]]; then
+    echo "mcpgit-fetch: reusing verified cached asset $file"
+    return
+  fi
   part=$target/.$file.part.$$
   curl --fail --show-error --location --retry 3 --output "$part" "$url"
   if [[ "$(sha256_file "$part")" != "$checksum" ]]; then

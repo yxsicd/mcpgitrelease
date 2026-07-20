@@ -61,7 +61,10 @@ curl -fsSL \
 
 The bootstrap script detects amd64 or arm64, downloads the selected channel's
 strict installer manifest and all three assets, verifies every SHA-256 checksum,
-and extracts the deployment kit. To inspect before execution instead:
+and extracts the deployment kit. Reusing the same target directory makes this a
+hot update: unchanged devbase and deployment assets are accepted from the
+verified cache, so only a changed MCPGit binary is transferred. To inspect
+before execution instead:
 
 ~~~sh
 curl -fsSLO https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-fetch.sh
@@ -118,7 +121,10 @@ Explicit rollback:
 ~~~
 
 Managed upgrades keep both the previous binary link and previous base-image
-descriptor. Docker data volumes are never deleted by the deployment script.
+descriptor. Once a devbase archive has been verified and loaded, its exact local
+image ID is recorded; later binary-only upgrades reuse that identity without
+loading the cold archive. Docker data volumes are never deleted by the
+deployment script.
 
 Useful overrides:
 
