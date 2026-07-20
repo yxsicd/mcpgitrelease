@@ -39,6 +39,12 @@ services:
       - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.entrypoints=websecure"
       - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.tls=true"
       - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sites.service=${MCPGIT_TRAEFIK_SERVICE:-mcpgit}"
+      - 'traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}web.rule=Host(`${MCPGIT_TRAEFIK_HOST:-localhost}`)'
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}web.entrypoints=web"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}web.service=${MCPGIT_TRAEFIK_SERVICE:-mcpgit}"
+      - 'traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sitesweb.rule=HostRegexp(`{site:[a-z0-9-]+}-${MCPGIT_TRAEFIK_HOST:-localhost}`)'
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sitesweb.entrypoints=web"
+      - "traefik.http.routers.${MCPGIT_TRAEFIK_SERVICE:-mcpgit}sitesweb.service=${MCPGIT_TRAEFIK_SERVICE:-mcpgit}"
     networks:
       - mcpgit
 

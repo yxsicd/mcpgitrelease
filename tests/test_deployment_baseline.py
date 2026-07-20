@@ -42,6 +42,13 @@ class DeploymentBaselineTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8001/__mcpgit/sites", compose)
         self.assertNotIn('"method":"initialize"', compose)
 
+    def test_public_routes_cover_tls_and_tunnel_entrypoints(self) -> None:
+        compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("entrypoints=websecure", compose)
+        self.assertIn("web.entrypoints=web", compose)
+        self.assertIn("sitesweb.entrypoints=web", compose)
+
 
 if __name__ == "__main__":
     unittest.main()
