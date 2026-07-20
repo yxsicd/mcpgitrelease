@@ -28,6 +28,7 @@ class DeploymentBaselineTests(unittest.TestCase):
 
         self.assertIn("reusing verified cached asset", fetch)
         self.assertIn('[[ -r "$target/$file"', fetch)
+        self.assertIn("?mcpgit_fetch=$manifest_cache_key", fetch)
         self.assertIn("reusing verified cold base", deploy)
         self.assertIn("$MCPGIT_DEVBASE_TAG.image-id", deploy)
         self.assertIn('actual_image_id" == "$expected_image_id', deploy)

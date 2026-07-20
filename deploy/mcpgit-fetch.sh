@@ -48,7 +48,8 @@ target=$(mkdir -p "$target" && cd "$target" && pwd -P)
 manifest=$target/install-linux-$arch.env
 manifest_part=$target/.install-linux-$arch.env.part.$$
 trap 'rm -f -- "$manifest_part"' EXIT
-manifest_url=https://raw.githubusercontent.com/yxsicd/mcpgitrelease/$channel/install-linux-$arch.env
+manifest_cache_key=$(date +%s)
+manifest_url=https://raw.githubusercontent.com/yxsicd/mcpgitrelease/$channel/install-linux-$arch.env?mcpgit_fetch=$manifest_cache_key
 curl --fail --silent --show-error --location --retry 3 --output "$manifest_part" "$manifest_url"
 
 allowed='|MCPGIT_INSTALL_SCHEMA|MCPGIT_CHANNEL|MCPGIT_ARCH|MCPGIT_BINARY_FILE|MCPGIT_BINARY_URL|MCPGIT_BINARY_SHA256|MCPGIT_DEVBASE_FILE|MCPGIT_DEVBASE_URL|MCPGIT_DEVBASE_SHA256|MCPGIT_DEPLOY_FILE|MCPGIT_DEPLOY_URL|MCPGIT_DEPLOY_SHA256|'
