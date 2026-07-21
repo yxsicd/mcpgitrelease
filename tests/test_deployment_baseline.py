@@ -37,6 +37,13 @@ class DeploymentBaselineTests(unittest.TestCase):
             deploy,
         )
 
+    def test_container_name_can_reuse_a_legacy_compose_project(self) -> None:
+        deploy = (ROOT / "deploy" / "mcpgit-deploy.sh").read_text(encoding="utf-8")
+
+        self.assertIn("--project-name", deploy)
+        self.assertIn("project_name=$instance", deploy)
+        self.assertIn("project=mcpgitrelease-$project_name", deploy)
+
     def test_healthcheck_does_not_require_an_mcp_identity(self) -> None:
         compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")
 

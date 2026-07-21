@@ -22,6 +22,7 @@ tar.zst; a managed hot update reuses the previously verified local devbase.
 
 Options:
   --instance NAME       Container and instance name (default: mcpgit)
+  --project-name NAME   Compose project suffix (default: instance name)
   --install-root DIR    Persistent deployment state directory
   --config FILE         MCPGit configuration; old or bundled config is used by default
   --data-source VALUE   Named volume or bind directory mounted at /data
@@ -36,6 +37,7 @@ EOF
 
 bundle_dir=
 instance=mcpgit
+project_name=
 install_root=
 config_path=
 data_source=
@@ -50,6 +52,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --bundle) [[ $# -ge 2 ]] || die "--bundle requires a value"; bundle_dir=$2; shift 2 ;;
     --instance) [[ $# -ge 2 ]] || die "--instance requires a value"; instance=$2; shift 2 ;;
+    --project-name) [[ $# -ge 2 ]] || die "--project-name requires a value"; project_name=$2; shift 2 ;;
     --install-root) [[ $# -ge 2 ]] || die "--install-root requires a value"; install_root=$2; shift 2 ;;
     --config) [[ $# -ge 2 ]] || die "--config requires a value"; config_path=$2; shift 2 ;;
     --data-source) [[ $# -ge 2 ]] || die "--data-source requires a value"; data_source=$2; shift 2 ;;
@@ -65,6 +68,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$instance" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "invalid instance name"
+[[ -n "$project_name" ]] || project_name=$instance
+[[ "$project_name" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "invalid project name"
 if [[ -z "$install_root" ]]; then
   state_home=${XDG_DATA_HOME:-${HOME:-}/.local/share}
   [[ -n "$state_home" ]] || die "HOME or --install-root is required"
@@ -75,7 +80,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 compose_file=$install_root/runtime/compose.yaml
 instance_env=$install_root/state/instance.env
 runtime_env=$install_root/state/runtime.env
-project=mcpgitrelease-$instance
+project=mcpgitrelease-$project_name
 
 for command_name in docker tar; do
   command -v "$command_name" >/dev/null 2>&1 || die "required command is missing: $command_name"

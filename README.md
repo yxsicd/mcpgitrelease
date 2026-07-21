@@ -138,6 +138,12 @@ Useful overrides:
   --traefik-host prodmcpgit.example.com
 ~~~
 
+If a historical deployment used a Compose project name that differs from the
+container name, keep the container identity in --instance and pass the old
+project suffix through --project-name. For example, container lrigit in project
+mcpgitrelease-mcpgit uses --instance lrigit --project-name mcpgit. The same
+option is required for an explicit rollback of that instance.
+
 ## Retention
 
 retention.json protects every Release referenced by dev, main, or prod, plus
