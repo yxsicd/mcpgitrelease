@@ -1,4 +1,5 @@
 import pathlib
+import subprocess
 import unittest
 
 
@@ -41,8 +42,29 @@ class DeploymentBaselineTests(unittest.TestCase):
         deploy = (ROOT / "deploy" / "mcpgit-deploy.sh").read_text(encoding="utf-8")
 
         self.assertIn("--project-name", deploy)
+        self.assertIn("--compose-project", deploy)
         self.assertIn("project_name=$instance", deploy)
         self.assertIn("project=mcpgitrelease-$project_name", deploy)
+        self.assertIn("project=$compose_project", deploy)
+        self.assertIn("are mutually exclusive", deploy)
+
+        result = subprocess.run(
+            [
+                str(ROOT / "deploy" / "mcpgit-deploy.sh"),
+                "--instance",
+                "sample",
+                "--project-name",
+                "legacy",
+                "--compose-project",
+                "raw-project",
+                "--rollback",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("are mutually exclusive", result.stderr)
 
     def test_healthcheck_does_not_require_an_mcp_identity(self) -> None:
         compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")

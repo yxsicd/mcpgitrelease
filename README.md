@@ -139,10 +139,11 @@ Useful overrides:
 ~~~
 
 If a historical deployment used a Compose project name that differs from the
-container name, keep the container identity in --instance and pass the old
-project suffix through --project-name. For example, container lrigit in project
-mcpgitrelease-mcpgit uses --instance lrigit --project-name mcpgit. The same
-option is required for an explicit rollback of that instance.
+container name, keep the container identity in --instance. Use --project-name
+for a project with the standard mcpgitrelease- prefix (for example, lrigit uses
+--project-name mcpgit), or --compose-project for an exact legacy project name
+(for example, crcmcpgit). Use the same option for an explicit rollback. The two
+project overrides are mutually exclusive.
 
 ## Retention
 
