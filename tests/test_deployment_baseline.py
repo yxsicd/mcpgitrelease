@@ -72,6 +72,24 @@ class DeploymentBaselineTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8001/__mcpgit/sites", compose)
         self.assertNotIn('"method":"initialize"', compose)
 
+    def test_node_and_bun_are_composed_through_an_immutable_external_volume(self) -> None:
+        compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")
+        deploy = (ROOT / "deploy" / "mcpgit-deploy.sh").read_text(encoding="utf-8")
+        toolchain = (ROOT / "deploy" / "mcpgit-toolchain-init.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("mcpgit_toolchain:/opt/mcpgit-toolchain:ro", compose)
+        self.assertIn("external: true", compose)
+        self.assertIn("MCPGIT_TOOLCHAIN_VOLUME", deploy)
+        self.assertIn("docker volume inspect", deploy)
+        self.assertIn('node_image="node:22.23.1-bookworm-slim@$node_digest"', toolchain)
+        self.assertIn('bun_image="oven/bun:1.3.14@$bun_digest"', toolchain)
+        self.assertEqual(toolchain.count("node_digest=sha256:"), 2)
+        self.assertEqual(toolchain.count("bun_digest=sha256:"), 2)
+        self.assertNotIn(":latest", toolchain)
+        self.assertIn(":/opt/mcpgit-toolchain:ro", toolchain)
+
     def test_public_routes_cover_tls_and_tunnel_entrypoints(self) -> None:
         compose = (ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8")
 

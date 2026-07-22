@@ -10,6 +10,7 @@ services:
       - ${MCPGIT_RUNTIME_ENV_FILE:?missing MCPGIT_RUNTIME_ENV_FILE}
     volumes:
       - ${MCPGIT_INSTALL_ROOT:?missing MCPGIT_INSTALL_ROOT}:/opt/mcpgit:ro
+      - mcpgit_toolchain:/opt/mcpgit-toolchain:ro
       - ${MCPGIT_CONFIG:?missing MCPGIT_CONFIG}:/config/mcpgit.toml:ro
       - mcpgit_data:/data
       - ${MCPGIT_NETRC:?missing MCPGIT_NETRC}:/root/.netrc:ro
@@ -54,6 +55,9 @@ networks:
     external: true
 
 volumes:
+  mcpgit_toolchain:
+    name: ${MCPGIT_TOOLCHAIN_VOLUME:-mcpgit-toolchain-node22.23.1-bun1.3.14}
+    external: true
   mcpgit_data:
     name: ${MCPGIT_DATA_SOURCE:?missing MCPGIT_DATA_SOURCE}
     external: true

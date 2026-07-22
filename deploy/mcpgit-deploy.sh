@@ -27,6 +27,7 @@ Options:
   --install-root DIR    Persistent deployment state directory
   --config FILE         MCPGit configuration; old or bundled config is used by default
   --data-source VALUE   Named volume or bind directory mounted at /data
+  --toolchain-volume NAME External read-only Node/Bun toolchain volume
   --netrc FILE          Netrc file; inferred from an old container
   --network NAME        Docker network; inferred or created as mcpgit
   --runtime-env FILE    Remote/backend environment; old or bundled env is used by default
@@ -43,6 +44,7 @@ compose_project=
 install_root=
 config_path=
 data_source=
+toolchain_volume=mcpgit-toolchain-node22.23.1-bun1.3.14
 netrc_path=
 network=
 runtime_env_input=
@@ -59,6 +61,7 @@ while [[ $# -gt 0 ]]; do
     --install-root) [[ $# -ge 2 ]] || die "--install-root requires a value"; install_root=$2; shift 2 ;;
     --config) [[ $# -ge 2 ]] || die "--config requires a value"; config_path=$2; shift 2 ;;
     --data-source) [[ $# -ge 2 ]] || die "--data-source requires a value"; data_source=$2; shift 2 ;;
+    --toolchain-volume) [[ $# -ge 2 ]] || die "--toolchain-volume requires a value"; toolchain_volume=$2; shift 2 ;;
     --netrc) [[ $# -ge 2 ]] || die "--netrc requires a value"; netrc_path=$2; shift 2 ;;
     --network) [[ $# -ge 2 ]] || die "--network requires a value"; network=$2; shift 2 ;;
     --runtime-env) [[ $# -ge 2 ]] || die "--runtime-env requires a value"; runtime_env_input=$2; shift 2 ;;
@@ -71,6 +74,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$instance" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "invalid instance name"
+[[ "$toolchain_volume" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "invalid toolchain volume name"
 [[ -z "$project_name" || -z "$compose_project" ]] || die "--project-name and --compose-project are mutually exclusive"
 if [[ -n "$compose_project" ]]; then
   [[ "$compose_project" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die "invalid Compose project name"
@@ -94,6 +98,8 @@ for command_name in docker tar; do
   command -v "$command_name" >/dev/null 2>&1 || die "required command is missing: $command_name"
 done
 docker compose version >/dev/null 2>&1 || die "docker compose plugin is required"
+docker volume inspect "$toolchain_volume" >/dev/null 2>&1 \
+  || die "toolchain volume is missing: $toolchain_volume (run mcpgit-toolchain-init.sh)"
 
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then
@@ -153,6 +159,7 @@ write_instance_env() {
     printf 'MCPGIT_INSTALL_ROOT=%s\n' "$install_root"
     printf 'MCPGIT_CONFIG=%s\n' "$config_path"
     printf 'MCPGIT_DATA_SOURCE=%s\n' "$data_source"
+    printf 'MCPGIT_TOOLCHAIN_VOLUME=%s\n' "$toolchain_volume"
     printf 'MCPGIT_NETRC=%s\n' "$netrc_path"
     printf 'MCPGIT_NETWORK=%s\n' "$network"
     printf 'MCPGIT_RUNTIME_ENV_FILE=%s\n' "$runtime_env"

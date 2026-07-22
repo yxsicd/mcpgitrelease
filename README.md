@@ -26,7 +26,8 @@ SHA-256 checksums. The target host does not need jq or Python.
 
 ## Publishing
 
-1. Run publish-devbase only when Node, Bun, Python, or system tools change.
+1. Run publish-devbase only when Python or base-system tools change. Node and
+   Bun are composed through a separate versioned toolchain volume.
 2. Run publish-binary for an MCPGit source revision and packaging revision.
 3. Run publish-deployment whenever deployment or configuration defaults change.
 4. Run set-dev-channel with the three immutable tags.
@@ -89,6 +90,19 @@ The bundled full-feature repository baseline is `works`, `tablegit`,
 `binarygit`, `rootskills`, `mcpgitsystem`, and `safegit`. SafeGit root
 material is never included in a Release asset; provide it only through the
 mode-0600 runtime environment or the target's secret manager.
+
+Provision the immutable per-host toolchain once before install or upgrade:
+
+~~~sh
+./deploy/mcpgit-toolchain-init.sh
+~~~
+
+The script selects the host architecture, pulls Node 22.23.1 and Bun 1.3.14 by
+architecture-specific OCI digest, copies only their runtime trees into the
+`mcpgit-toolchain-node22.23.1-bun1.3.14` external volume, and verifies the
+volume through a read-only mount. MCPGit instances share that volume as
+`/opt/mcpgit-toolchain:ro`; a future toolchain update creates a differently
+named volume rather than mutating this one.
 
 Install or upgrade:
 
