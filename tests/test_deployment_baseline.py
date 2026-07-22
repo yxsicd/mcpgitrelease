@@ -87,6 +87,7 @@ class DeploymentBaselineTests(unittest.TestCase):
         self.assertIn('bun_image="oven/bun:1.3.14@$bun_digest"', toolchain)
         self.assertEqual(toolchain.count("node_digest=sha256:"), 2)
         self.assertEqual(toolchain.count("bun_digest=sha256:"), 2)
+        self.assertIn('docker --config "$public_config" pull', toolchain)
         self.assertNotIn(":latest", toolchain)
         self.assertIn(":/opt/mcpgit-toolchain:ro", toolchain)
 

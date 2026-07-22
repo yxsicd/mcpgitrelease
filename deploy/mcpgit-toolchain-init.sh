@@ -43,8 +43,22 @@ verify_volume() {
     '
 }
 
-docker pull "$node_image" >/dev/null
-docker pull "$bun_image" >/dev/null
+pull_public_image() {
+  local image=$1
+  local docker_host public_config rc
+  docker_host="${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}')}"
+  public_config="$(mktemp -d "${TMPDIR:-/tmp}/mcpgit-toolchain-docker.XXXXXX")"
+  printf '{}\n' > "$public_config/config.json"
+  set +e
+  DOCKER_HOST="$docker_host" docker --config "$public_config" pull "$image" >/dev/null
+  rc=$?
+  set -e
+  rm -rf -- "$public_config"
+  (( rc == 0 )) || die "failed to pull public image: $image"
+}
+
+pull_public_image "$node_image"
+pull_public_image "$bun_image"
 
 if docker volume inspect "$volume" >/dev/null 2>&1; then
   [[ "$(docker volume inspect --format '{{index .Labels "com.yxsicd.mcpgit.toolchain"}}' "$volume")" == node22.23.1-bun1.3.14 ]] \
