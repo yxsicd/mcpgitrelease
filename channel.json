@@ -1,27 +1,27 @@
 {
   "schema": "mcpgitrelease/channel/v2",
   "channel": "main",
-  "updated_at": "2026-07-21T20:36:49Z",
+  "updated_at": "2026-07-22T05:16:44Z",
   "binary": {
-    "tag": "mcpgit-1afb5c2c4e98-r1",
+    "tag": "mcpgit-c2245961a766-r1",
     "source_repository": "yxsicd/MCPGit",
-    "source_revision": "1afb5c2c4e9856acb403a015cff833d27e47f7c2",
+    "source_revision": "c2245961a7666dd06e19d1d107b0b8ab72af1a15",
     "artifacts": [
       {
         "os": "linux",
         "arch": "amd64",
         "format": "tar.gz",
-        "sha256": "53dd1cae4d9900a394bd174e255bb1b229606ca713c28a40a2780fe30bf22b8f",
-        "size": 7309953,
-        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-1afb5c2c4e98-r1/mcpgit-linux-amd64.tar.gz"
+        "sha256": "5e862dd46524cb12ab552ca53f6b4bf116c1a1c7102d796c4aeddd9bfdabb60d",
+        "size": 7336082,
+        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-c2245961a766-r1/mcpgit-linux-amd64.tar.gz"
       },
       {
         "os": "linux",
         "arch": "arm64",
         "format": "tar.gz",
-        "sha256": "c38224eca39eba48b590c3c753d53d25c3faaede3970a4d986ef47bbbcc39692",
-        "size": 6871185,
-        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-1afb5c2c4e98-r1/mcpgit-linux-arm64.tar.gz"
+        "sha256": "35ac312c6a7e68ca905d034617a44807befc62a66a53c64131ee1003c1b427c5",
+        "size": 6907879,
+        "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-c2245961a766-r1/mcpgit-linux-arm64.tar.gz"
       }
     ]
   },
