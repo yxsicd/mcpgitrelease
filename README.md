@@ -24,6 +24,72 @@ The matching strict offline installer manifests are:
 They contain only whitelisted key/value fields, filenames, image identity, and
 SHA-256 checksums. The target host does not need jq or Python.
 
+## Rust Client SDK
+
+The Rust Client SDK is an independent immutable Release family. It is not
+selected by `dev`, `main`, or `prod`, and downloading or configuring it never
+installs, upgrades, restarts, promotes, or rolls back an MCPGit instance.
+
+The current recommended release is:
+
+```text
+mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
+```
+
+It contains exactly four assets:
+
+- `mcpgit-client-sdk-release-v1.json` — source-bound asset manifest;
+- `mcpgit-service-sdk-2.0.0.crate` — standard Cargo package archive;
+- `mcpgit-service-client-2.0.0.crate` — standard Cargo package archive;
+- `mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz`
+  — complete offline local Cargo registry.
+
+The offline bundle contains the two MCPGit packages plus the exact transitive
+dependency closure, 129 `.crate` files in total. Every archive is bound by
+SHA-256. GitHub is only the immutable download location: the SDK is not
+published to crates.io and does not use GitHub Packages as a live Cargo
+registry.
+
+Download and verify the recommended bundle:
+
+~~~sh
+sdk_tag=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
+sdk_bundle=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz
+
+curl -fLO \
+  "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$sdk_bundle"
+shasum -a 256 "$sdk_bundle"
+# expected: 4d4c8a5cc67fccd19d1864750463ba14a64e59def3d70bf2237761220992b450
+~~~
+
+Configure a Rust client repository:
+
+~~~sh
+tar -xzf "$sdk_bundle"
+cd "$sdk_tag"
+./configure-project.sh /absolute/path/to/client-repository
+~~~
+
+Then use an ordinary exact Cargo version dependency:
+
+~~~toml
+[dependencies]
+mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+~~~
+
+The configuration script verifies every bundled crate, installs a
+project-local `file://` Cargo registry in `.mcpgit-sdk`, and writes the named
+`mcpgit-sdk` registry entry to `.cargo/config.toml`. After the first local
+registry initialization, the client repository builds without network access:
+
+~~~sh
+cargo build --offline
+~~~
+
+The earlier `mcpgit-client-sdk-git-dcde4121...` release is retained as an
+immutable audit record. New integrations should use the recommended release
+above.
+
 ## Publishing
 
 1. Run publish-devbase only when Python or base-system tools change. Node and
@@ -165,6 +231,10 @@ retention.json protects every Release referenced by dev, main, or prod, plus
 explicitly pinned tags. It retains the newest 35 binary releases, newest 5
 devbase releases, and newest 20 small deployment releases. Unreferenced releases
 also receive a 14-day grace period.
+
+Client SDK tags are separate from runtime channel retention and promotion. The
+GC must not infer that an SDK tag is a binary, devbase, or deployment object;
+unknown tag families remain fail-safe and are never deleted automatically.
 
 The scheduled GC workflow only produces a plan. Deletion requires a manual run
 with execute enabled. Unknown tag families are never deleted.
