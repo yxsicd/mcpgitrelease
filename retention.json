@@ -4,5 +4,6 @@
   "keep_newest_binary": 35,
   "keep_newest_devbase": 5,
   "keep_newest_deployment": 20,
+  "keep_newest_client_sdk": 5,
   "pinned_tags": []
 }

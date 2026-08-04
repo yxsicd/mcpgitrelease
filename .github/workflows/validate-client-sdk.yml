@@ -1,0 +1,26 @@
+name: validate-client-sdk
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - client-sdk.json
+      - client-sdk.schema.json
+      - scripts/client_sdk_tool.py
+      - .github/workflows/validate-client-sdk.yml
+  pull_request:
+    paths:
+      - client-sdk.json
+      - client-sdk.schema.json
+      - scripts/client_sdk_tool.py
+      - .github/workflows/validate-client-sdk.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/client_sdk_tool.py validate client-sdk.json

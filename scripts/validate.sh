@@ -5,6 +5,8 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 cd "$repo_root"
 
 bash -n deploy/mcpgit-deploy.sh
+bash -n deploy/mcpgit-preflight.sh
+python3 scripts/client_sdk_tool.py validate client-sdk.json
 sh -n deploy/docker-entrypoint.sh
 sh -n deploy/git-credential-netrc
 python3 -m unittest discover -s tests -v

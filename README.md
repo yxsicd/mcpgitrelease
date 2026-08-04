@@ -42,20 +42,39 @@ curl -fsSL \
 ~~~
 
 Use `dev` or `main` instead of `prod` only when the requested target channel is
-explicit. Configure the downloaded runtime environment, initialize the pinned
-toolchain volume, then deploy on the already approved host:
+explicit. Configure the downloaded runtime environment first:
 
 ~~~sh
 cp ./mcpgit-bundle/deploy/mcpgit-runtime.env.example \
-  ./mcpgit-bundle/deploy/mcpgit-runtime.env
+  ./mcpgit-bundle/mcpgit-runtime.env
 
 # Edit only the required repository, organization, route, and secret locations.
+~~~
+
+Run the bundled read-only preflight and inspect its JSON before activation:
+
+~~~sh
+./mcpgit-bundle/deploy/mcpgit-preflight.sh \
+  --bundle ./mcpgit-bundle \
+  --instance mcpgit \
+  --runtime-env ./mcpgit-bundle/mcpgit-runtime.env \
+  --netrc /absolute/path/to/netrc \
+  > mcpgit-preflight.json
+~~~
+
+Do not continue when it exits `2` or when `.blockers` is non-empty. The full
+Agent procedure is in `docs/AGENT_DEPLOYMENT_RUNBOOK.md`.
+
+Initialize the pinned toolchain volume, then deploy on the same approved host
+with the same arguments:
+
+~~~sh
 ./mcpgit-bundle/deploy/mcpgit-toolchain-init.sh
 
 ./mcpgit-bundle/deploy/mcpgit-deploy.sh \
   --bundle ./mcpgit-bundle \
   --instance mcpgit \
-  --runtime-env ./mcpgit-bundle/deploy/mcpgit-runtime.env \
+  --runtime-env ./mcpgit-bundle/mcpgit-runtime.env \
   --netrc /absolute/path/to/netrc
 ~~~
 
@@ -70,7 +89,13 @@ Deployment is complete only when all of the following are true:
 ### Path B: integrate a Rust client with an existing MCPGit instance
 
 Use the Client SDK Release. Do not run deployment scripts and do not modify the
-server container. The current recommended tag is:
+server container. The machine-readable authority for the recommended SDK is:
+
+```text
+https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/client-sdk.json
+```
+
+The current pointer selects:
 
 ```text
 mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
@@ -155,7 +180,9 @@ The Rust Client SDK is an independent immutable Release family. It is not
 selected by `dev`, `main`, or `prod`, and downloading or configuring it never
 installs, upgrades, restarts, promotes, or rolls back an MCPGit instance.
 
-The current recommended release is:
+`client-sdk.json` is the atomic recommendation pointer and is updated only after
+the immutable GitHub Release assets and manifest have been cross-checked. The
+current recommended release is:
 
 ```text
 mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
@@ -236,6 +263,8 @@ The workflow files are:
 - set-dev-channel.yml
 - promote-channel.yml
 - gc-releases.yml
+- set-client-sdk.yml
+- validate-client-sdk.yml
 
 Actions build artifacts are retained for one day and are only staging files.
 GitHub Release assets are the public distribution source.
@@ -358,8 +387,8 @@ devbase releases, and newest 20 small deployment releases. Unreferenced releases
 also receive a 14-day grace period.
 
 Client SDK tags are separate from runtime channel retention and promotion. The
-GC must not infer that an SDK tag is a binary, devbase, or deployment object;
-unknown tag families remain fail-safe and are never deleted automatically.
+GC classifies them explicitly, protects the tag selected by `client-sdk.json`,
+and retains the newest five SDK Releases in addition to the grace period.
 
 The scheduled GC workflow only produces a plan. Deletion requires a manual run
 with execute enabled. Unknown tag families are never deleted.

@@ -19,10 +19,14 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("cargo check --offline", README)
         self.assertIn("/__mcpgit/service-ws", README)
         self.assertIn("Do not invent or", README)
+        self.assertIn("mcpgit-preflight.sh", README)
+        self.assertIn("AGENT_DEPLOYMENT_RUNBOOK.md", README)
         self.assertIn("x-mcpgit-person-id", README)
 
     def test_client_sdk_release_is_documented_as_offline_and_channel_independent(self) -> None:
         self.assertIn("## Rust Client SDK", README)
+        self.assertIn("client-sdk.json", README)
+        self.assertIn("machine-readable authority", README)
         self.assertIn(
             "mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38",
             README,
@@ -35,7 +39,7 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("GitHub is only the immutable download location", README)
         self.assertIn("independent immutable Release family", README)
         self.assertIn("selected by `dev`, `main`, or `prod`", README)
-        self.assertIn("never deleted automatically", README)
+        self.assertIn("retains the newest five SDK Releases", README)
 
 
 if __name__ == "__main__":

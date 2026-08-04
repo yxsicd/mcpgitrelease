@@ -38,6 +38,22 @@ class DeploymentBaselineTests(unittest.TestCase):
             deploy,
         )
 
+    def test_deployment_release_contains_read_only_preflight(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "publish-deployment.yml").read_text(
+            encoding="utf-8"
+        )
+        fetch = (ROOT / "deploy" / "mcpgit-fetch.sh").read_text(encoding="utf-8")
+        preflight = (ROOT / "deploy" / "mcpgit-preflight.sh").read_text(encoding="utf-8")
+
+        self.assertIn("mcpgit-preflight.sh", workflow)
+        self.assertIn("mcpgit-preflight.sh", fetch)
+        self.assertIn("mcpgitrelease/preflight/v1", preflight)
+        self.assertIn('"blockers"', preflight)
+        self.assertNotIn("docker volume create", preflight)
+        self.assertNotIn("docker network create", preflight)
+        self.assertNotIn("docker load", preflight)
+        self.assertNotIn("compose up", preflight)
+
     def test_container_name_can_reuse_a_legacy_compose_project(self) -> None:
         deploy = (ROOT / "deploy" / "mcpgit-deploy.sh").read_text(encoding="utf-8")
 

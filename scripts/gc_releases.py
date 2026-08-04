@@ -20,7 +20,10 @@ def referenced_tags(manifests: list[str]) -> set[str]:
     tags: set[str] = set()
     for path in manifests:
         manifest = read_json(path)
-        if manifest.get("schema") == "mcpgitrelease/channel/v1":
+        schema = manifest.get("schema")
+        if schema == "mcpgitrelease/client-sdk/v1":
+            tags.add(manifest["tag"])
+        elif schema == "mcpgitrelease/channel/v1":
             tags.add(manifest["release"]["tag"])
         else:
             tags.add(manifest["binary"]["tag"])
@@ -30,6 +33,8 @@ def referenced_tags(manifests: list[str]) -> set[str]:
 
 
 def release_kind(tag: str) -> str | None:
+    if tag.startswith("mcpgit-client-sdk-"):
+        return "client_sdk"
     if tag.startswith("mcpgit-"):
         return "binary"
     if tag.startswith("devbase-"):
@@ -54,9 +59,15 @@ def plan_gc(
         "binary": int(config["keep_newest_binary"]),
         "devbase": int(config["keep_newest_devbase"]),
         "deployment": int(config.get("keep_newest_deployment", 0)),
+        "client_sdk": int(config.get("keep_newest_client_sdk", 0)),
     }
     pinned = set(config.get("pinned_tags", []))
-    by_kind: dict[str, list[dict[str, Any]]] = {"binary": [], "devbase": [], "deployment": []}
+    by_kind: dict[str, list[dict[str, Any]]] = {
+        "binary": [],
+        "devbase": [],
+        "deployment": [],
+        "client_sdk": [],
+    }
     for release in releases:
         kind = release_kind(release["tag_name"])
         if kind is not None and not release.get("draft", False):

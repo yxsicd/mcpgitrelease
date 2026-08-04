@@ -1,0 +1,54 @@
+name: set-client-sdk
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Immutable mcpgit-client-sdk-git-<source-sha> Release tag
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: client-sdk-pointer
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - name: Read and validate immutable Client SDK Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SDK_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [[ "$SDK_TAG" =~ ^mcpgit-client-sdk-git-[0-9a-f]{40}$ ]]
+          mkdir metadata
+          gh release download "$SDK_TAG" \
+            --pattern mcpgit-client-sdk-release-v1.json --dir metadata
+          gh release view "$SDK_TAG" \
+            --json tagName,isDraft,isPrerelease,publishedAt,url,assets \
+            > metadata/release.json
+          python3 scripts/client_sdk_tool.py compose \
+            --manifest metadata/mcpgit-client-sdk-release-v1.json \
+            --release metadata/release.json \
+            --output client-sdk.json
+          python3 scripts/client_sdk_tool.py validate client-sdk.json
+          scripts/validate.sh
+      - name: Commit recommended SDK pointer
+        run: |
+          set -euo pipefail
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add client-sdk.json
+          if git diff --cached --quiet; then
+            echo "Client SDK pointer already selects ${{ inputs.tag }}"
+            exit 0
+          fi
+          git commit -m "release: update recommended Client SDK"
+          git push origin HEAD:main

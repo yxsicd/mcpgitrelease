@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/client-sdk.schema.json",
+  "title": "MCPGit recommended Rust Client SDK",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "tag",
+    "release_url",
+    "source_repository",
+    "source_revision",
+    "registry_name",
+    "packages",
+    "assets"
+  ],
+  "properties": {
+    "schema": {"const": "mcpgitrelease/client-sdk/v1"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "tag": {"type": "string", "pattern": "^mcpgit-client-sdk-git-[0-9a-f]{40}$"},
+    "release_url": {"type": "string", "format": "uri"},
+    "source_repository": {"const": "yxsicd/MCPGit"},
+    "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "registry_name": {"const": "mcpgit-sdk"},
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mcpgit-service-client", "mcpgit-service-sdk"],
+      "properties": {
+        "mcpgit-service-client": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "mcpgit-service-sdk": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "file", "url", "sha256", "size"],
+        "properties": {
+          "role": {"enum": ["sdk_crate", "client_crate", "offline_registry_bundle"]},
+          "file": {"type": "string", "minLength": 1},
+          "url": {"type": "string", "format": "uri"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

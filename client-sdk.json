@@ -1,0 +1,36 @@
+{
+  "schema": "mcpgitrelease/client-sdk/v1",
+  "updated_at": "2026-08-04T16:46:41Z",
+  "tag": "mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38",
+  "release_url": "https://github.com/yxsicd/mcpgitrelease/releases/tag/mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38",
+  "source_repository": "yxsicd/MCPGit",
+  "source_revision": "8730092557649f2b4c6661d73424add50407cf38",
+  "registry_name": "mcpgit-sdk",
+  "packages": {
+    "mcpgit-service-client": "2.0.0",
+    "mcpgit-service-sdk": "2.0.0"
+  },
+  "assets": [
+    {
+      "role": "sdk_crate",
+      "file": "mcpgit-service-sdk-2.0.0.crate",
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38/mcpgit-service-sdk-2.0.0.crate",
+      "sha256": "e18449d9951a5a85fad77177dc56b482d967729270f502032a31744207464569",
+      "size": 28755
+    },
+    {
+      "role": "client_crate",
+      "file": "mcpgit-service-client-2.0.0.crate",
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38/mcpgit-service-client-2.0.0.crate",
+      "sha256": "bc7072533d8bb99bb794d0e8185a78e957cd4bc5ed98b9a86eaa009002599107",
+      "size": 21672
+    },
+    {
+      "role": "offline_registry_bundle",
+      "file": "mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz",
+      "url": "https://github.com/yxsicd/mcpgitrelease/releases/download/mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38/mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz",
+      "sha256": "4d4c8a5cc67fccd19d1864750463ba14a64e59def3d70bf2237761220992b450",
+      "size": 20580203
+    }
+  ]
+}
