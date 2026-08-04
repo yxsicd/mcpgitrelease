@@ -4,6 +4,131 @@ This public repository is the release and deployment control plane for MCPGit.
 It deliberately separates the hot MCPGit binary from the cold development base
 image.
 
+## Agent quick start
+
+An Agent must first classify the task. Do not mix these two paths:
+
+```text
+Need to run or upgrade an MCPGit server?
+  -> follow Path A: instance deployment
+
+Need Rust code to call an existing MCPGit server?
+  -> follow Path B: Client SDK integration
+```
+
+### Path A: deploy or upgrade an MCPGit instance
+
+Use the `dev`, `main`, or `prod` runtime channel. Do not use a
+`mcpgit-client-sdk-*` Release to deploy a server.
+
+Before changing a running instance, the Agent must record and preserve:
+
+- the exact target host and instance name;
+- the existing `/data` volume or bind path;
+- the runtime configuration and secret mounts;
+- the attached Docker network and public route;
+- the current container identity and rollback name.
+
+Never change the deployment host or Docker daemon without explicit user
+approval. Never delete the existing data volume. Never interpret an SDK Release
+as a runtime channel.
+
+Download the selected runtime channel:
+
+~~~sh
+curl -fsSL \
+  https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-fetch.sh \
+  | bash -s -- prod ./mcpgit-bundle
+~~~
+
+Use `dev` or `main` instead of `prod` only when the requested target channel is
+explicit. Configure the downloaded runtime environment, initialize the pinned
+toolchain volume, then deploy on the already approved host:
+
+~~~sh
+cp ./mcpgit-bundle/deploy/mcpgit-runtime.env.example \
+  ./mcpgit-bundle/deploy/mcpgit-runtime.env
+
+# Edit only the required repository, organization, route, and secret locations.
+./mcpgit-bundle/deploy/mcpgit-toolchain-init.sh
+
+./mcpgit-bundle/deploy/mcpgit-deploy.sh \
+  --bundle ./mcpgit-bundle \
+  --instance mcpgit \
+  --runtime-env ./mcpgit-bundle/deploy/mcpgit-runtime.env \
+  --netrc /absolute/path/to/netrc
+~~~
+
+Deployment is complete only when all of the following are true:
+
+1. the new container is healthy and restart count is zero;
+2. the exact original data source remains attached;
+3. MCP/HTTP initialization and Service metadata reads succeed;
+4. the expected public route resolves;
+5. the previous container remains available for rollback until acceptance.
+
+### Path B: integrate a Rust client with an existing MCPGit instance
+
+Use the Client SDK Release. Do not run deployment scripts and do not modify the
+server container. The current recommended tag is:
+
+```text
+mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
+```
+
+Download and verify the SDK bundle:
+
+~~~sh
+sdk_tag=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
+sdk_bundle="$sdk_tag.tar.gz"
+
+curl -fLO \
+  "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$sdk_bundle"
+printf '%s  %s\n' \
+  4d4c8a5cc67fccd19d1864750463ba14a64e59def3d70bf2237761220992b450 \
+  "$sdk_bundle" | shasum -a 256 -c -
+~~~
+
+Configure the client repository and add the dependency:
+
+~~~sh
+tar -xzf "$sdk_bundle"
+cd "$sdk_tag"
+./configure-project.sh /absolute/path/to/client-repository
+~~~
+
+```toml
+[dependencies]
+mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+```
+
+Then compile the client project:
+
+~~~sh
+cd /absolute/path/to/client-repository
+cargo check --offline
+~~~
+
+Integration is complete only when:
+
+1. Cargo resolves `mcpgit-service-client 2.0.0` and
+   `mcpgit-service-sdk 2.0.0` from `mcpgit-sdk`;
+2. the client compiles with `--offline` after local registry setup;
+3. the client connects to the intended MCPGit Service WebSocket endpoint;
+4. authenticated instances derive Person identity from credentials rather than
+   accepting a caller-supplied Person ID;
+5. structured and bulk channels use the same endpoint authority and credential.
+
+For a typical standalone instance the Service URL is:
+
+```text
+ws://<host>:8001/__mcpgit/service-ws
+```
+
+For TLS or a routed public host, use `wss://` and the deployed public hostname.
+Supply `Authorization` only when required by that instance. Do not invent or
+forward `x-mcpgit-person-id` as identity.
+
 ## Stable channels
 
 - dev: https://raw.githubusercontent.com/yxsicd/mcpgitrelease/dev/channel.json

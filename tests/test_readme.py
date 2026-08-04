@@ -7,6 +7,20 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 
 class ReadmeContractTests(unittest.TestCase):
+    def test_agent_quick_start_separates_deployment_and_integration(self) -> None:
+        self.assertIn("## Agent quick start", README)
+        self.assertIn("### Path A: deploy or upgrade an MCPGit instance", README)
+        self.assertIn("### Path B: integrate a Rust client", README)
+        self.assertIn("Never change the deployment host", README)
+        self.assertIn("Never delete the existing data volume", README)
+        self.assertIn("mcpgit-fetch.sh", README)
+        self.assertIn("mcpgit-deploy.sh", README)
+        self.assertIn("configure-project.sh", README)
+        self.assertIn("cargo check --offline", README)
+        self.assertIn("/__mcpgit/service-ws", README)
+        self.assertIn("Do not invent or", README)
+        self.assertIn("x-mcpgit-person-id", README)
+
     def test_client_sdk_release_is_documented_as_offline_and_channel_independent(self) -> None:
         self.assertIn("## Rust Client SDK", README)
         self.assertIn(
