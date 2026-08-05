@@ -31,7 +31,7 @@ counts, and SHA-256 digests from it. Never treat README text or GitHub
    against `client-sdk.json`:
 
    ```sh
-   sdk_tag=$(python3 -c "import json;print(json.load(open('client-sdk.json'))['tag'])")
+   sdk_tag=$(sed -n 's/.*"tag": *"\([^"]*\)".*/\1/p' client-sdk.json | head -1)
    bundle="$sdk_tag.tar.gz"
    curl -fLO "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$bundle"
    curl -fLO "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/mcpgit-service-sdk-2.0.0.crate"
@@ -119,6 +119,53 @@ counts, and SHA-256 digests from it. Never treat README text or GitHub
 
 4. Keep the new data volume for the instance lifetime. Upgrades and rollbacks
    must never delete it.
+
+## Automated credential lifecycle (curl only)
+
+No client-host Python is required for integration. Issuing, exporting,
+rotating, and revoking a scoped managed key are plain HTTP calls with curl;
+the Rust SDK performs the connection; the instance's own runtime image ships
+the Python used by bootstrap/provision scripts, so a new client machine needs
+only curl, cargo, and its secret store.
+
+Issue a managed key for an existing Person (systemadmin or another authorized
+caller):
+
+```sh
+curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies" \
+  -H "Authorization: Basic $AUTH" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"client/default\",\"person_id\":\"$PERSON_ID\"}"
+```
+
+The response contains the raw `pv_<credential-id>_<secret>` once; save it to a
+mode-0600 secret file or secret store immediately. The raw value remains
+recoverable on demand for authorized callers:
+
+```sh
+curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID/export" \
+  -H "Authorization: Basic $AUTH"
+```
+
+Rotate (old key stops working immediately, response returns the new key) and
+revoke (key dies on the next call):
+
+```sh
+curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID/rotate" \
+  -H "Authorization: Basic $AUTH"
+curl -fsS -X DELETE "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID" \
+  -H "Authorization: Basic $AUTH"
+```
+
+Scoped identity and grants are provisioned in the instance's SystemConfig
+repository (Person, membership, role, repository-scoped grant) and activated
+by the instance restart; provision scripts run inside the instance image.
+The client then connects with:
+
+```rust
+ServiceWebSocketConfig::new("ws://<host>:8001/__mcpgit/service-ws")
+    .with_authorization(format!("Bearer {key}"))
+```
 
 ## Bounded verification checks
 
