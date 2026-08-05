@@ -120,6 +120,31 @@ counts, and SHA-256 digests from it. Never treat README text or GitHub
 4. Keep the new data volume for the instance lifetime. Upgrades and rollbacks
    must never delete it.
 
+## Trust boundary and client key source
+
+Choose the trust boundary consciously:
+
+```text
+internal integration (client + MCPGit in one trusted system)
+  -> keep MCPGit on the internal network, never publish a public port;
+     client connects without credentials
+
+public exposure
+  -> route through the Gateway (mcpgitgw), which requires caller credentials
+
+fallback if a node endpoint is accidentally exposed
+  -> Guest-first: unauthenticated callers get only Guest read, never full
+     anonymous access
+```
+
+The client key source is the application's choice (environment variable,
+secret store, or process injection); the SDK only receives an Authorization
+string and does no key management. Never hardcode a key into source code,
+commit it to Git, or write it to logs. Every bootstrapped instance provisions
+three built-in Persons: `systemadmin` (control plane), `guest` (read-only
+fallback), and `builder` (business read/write on the standard business
+repositories).
+
 ## Automated credential lifecycle (curl only)
 
 No client-host Python is required for integration. Issuing, exporting,
