@@ -9,14 +9,18 @@ image.
 An Agent must first classify the task. Do not mix these two paths:
 
 ```text
-Need to run or upgrade an MCPGit server?
-  -> follow Path A: instance deployment
-
 Need Rust code to call an existing MCPGit server?
-  -> follow Path B: Client SDK integration
+  -> Mode 1: Client SDK integration
+
+Need your own brand-new MCPGit instance, then Rust code against it?
+  -> Mode 2: deploy a new instance, then use Mode 1
 ```
 
-### Path A: deploy or upgrade an MCPGit instance
+The complete two-mode runbook (download, offline installation, async client
+guidance, and bounded verification checks) is in
+[`docs/CLIENT_INTEGRATION.md`](docs/CLIENT_INTEGRATION.md).
+
+### Mode 2 instance side: deploy or upgrade an MCPGit instance
 
 Use the `dev`, `main`, or `prod` runtime channel. Do not use a
 `mcpgit-client-sdk-*` Release to deploy a server.
@@ -86,7 +90,7 @@ Deployment is complete only when all of the following are true:
 4. the expected public route resolves;
 5. the previous container remains available for rollback until acceptance.
 
-### Path B: integrate a Rust client with an existing MCPGit instance
+### Mode 1 client side: integrate a Rust client with an existing MCPGit instance
 
 Use the Client SDK Release. Do not run deployment scripts and do not modify the
 server container. The machine-readable authority for the recommended SDK is:

@@ -9,8 +9,14 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 class ReadmeContractTests(unittest.TestCase):
     def test_agent_quick_start_separates_deployment_and_integration(self) -> None:
         self.assertIn("## Agent quick start", README)
-        self.assertIn("### Path A: deploy or upgrade an MCPGit instance", README)
-        self.assertIn("### Path B: integrate a Rust client", README)
+        self.assertIn("Mode 1: Client SDK integration", README)
+        self.assertIn("Mode 2: deploy a new instance", README)
+        self.assertIn(
+            "### Mode 2 instance side: deploy or upgrade an MCPGit instance",
+            README,
+        )
+        self.assertIn("### Mode 1 client side: integrate a Rust client", README)
+        self.assertIn("docs/CLIENT_INTEGRATION.md", README)
         self.assertIn("Never change the deployment host", README)
         self.assertIn("Never delete the existing data volume", README)
         self.assertIn("mcpgit-fetch.sh", README)
