@@ -1,0 +1,39 @@
+ARG MCPGIT_BASE_IMAGE=debian:bookworm-slim
+FROM ${MCPGIT_BASE_IMAGE}
+
+ARG MCPGIT_SOURCE_SHA
+ARG MCPGIT_RELEASE_ID
+ARG MCPGIT_BASE_VERSION
+ARG MCPGIT_BASE_IMAGE_ID
+ARG MCPGIT_TOOLS_VERSION
+ARG MCPGIT_PROGRAM_VERSION
+ARG MCPGIT_MANIFEST_SHA256
+ARG MCPGIT_BASE_ARCHIVE_SHA256
+ARG MCPGIT_TOOLS_ARCHIVE_SHA256
+ARG MCPGIT_PROGRAM_ARCHIVE_SHA256
+ARG MCPGIT_EXEC_MCPGIT_SHA256
+ARG MCPGIT_EXEC_MCPGITGW_SHA256
+ARG MCPGIT_EXEC_NODE_SHA256
+ARG MCPGIT_EXEC_BUN_SHA256
+ARG MCPGIT_EXEC_CREDENTIAL_SHA256
+
+COPY tools /opt/mcpgit/tools
+COPY program /opt/mcpgit/program
+
+LABEL org.opencontainers.image.version="git-${MCPGIT_SOURCE_SHA}" \
+      org.opencontainers.image.revision="${MCPGIT_SOURCE_SHA}" \
+      com.yxsicd.mcpgit.distribution="github-offline-v2" \
+      com.yxsicd.mcpgit.release-id="${MCPGIT_RELEASE_ID}" \
+      com.yxsicd.mcpgit.base-version="${MCPGIT_BASE_VERSION}" \
+      com.yxsicd.mcpgit.base-image-id="${MCPGIT_BASE_IMAGE_ID}" \
+      com.yxsicd.mcpgit.tools-version="${MCPGIT_TOOLS_VERSION}" \
+      com.yxsicd.mcpgit.program-version="${MCPGIT_PROGRAM_VERSION}" \
+      com.yxsicd.mcpgit.manifest-sha256="${MCPGIT_MANIFEST_SHA256}" \
+      com.yxsicd.mcpgit.base-archive-sha256="${MCPGIT_BASE_ARCHIVE_SHA256}" \
+      com.yxsicd.mcpgit.tools-archive-sha256="${MCPGIT_TOOLS_ARCHIVE_SHA256}" \
+      com.yxsicd.mcpgit.program-archive-sha256="${MCPGIT_PROGRAM_ARCHIVE_SHA256}" \
+      com.yxsicd.mcpgit.exec.mcpgit-sha256="${MCPGIT_EXEC_MCPGIT_SHA256}" \
+      com.yxsicd.mcpgit.exec.mcpgitgw-sha256="${MCPGIT_EXEC_MCPGITGW_SHA256}" \
+      com.yxsicd.mcpgit.exec.node-sha256="${MCPGIT_EXEC_NODE_SHA256}" \
+      com.yxsicd.mcpgit.exec.bun-sha256="${MCPGIT_EXEC_BUN_SHA256}" \
+      com.yxsicd.mcpgit.exec.credential-sha256="${MCPGIT_EXEC_CREDENTIAL_SHA256}"

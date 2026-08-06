@@ -1,0 +1,316 @@
+#!/usr/bin/env python3
+"""Create, verify, inspect, and safely extract MCPGit offline release manifests."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import re
+import tarfile
+import tempfile
+
+SCHEMA = "mcpgit.offline-release.v1"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$")
+IMAGE_TAG_RE = re.compile(
+    r"^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*:"
+    r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+)
+
+
+def fail(message: str) -> None:
+    raise SystemExit(f"mcpgit-offline-release: {message}")
+
+
+def digest(path: pathlib.Path) -> tuple[str, int]:
+    hasher = hashlib.sha256()
+    size = 0
+    with path.open("rb") as source:
+        while chunk := source.read(1024 * 1024):
+            hasher.update(chunk)
+            size += len(chunk)
+    return hasher.hexdigest(), size
+
+
+def artifact(kind: str, version: str, path: pathlib.Path, **extra: object) -> dict[str, object]:
+    sha256, size = digest(path)
+    return {
+        "kind": kind,
+        "version": version,
+        "file": path.name,
+        "sha256": sha256,
+        "bytes": size,
+        **extra,
+    }
+
+
+def load_manifest(path: pathlib.Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"cannot read manifest: {error}")
+    if not isinstance(value, dict) or value.get("schema") != SCHEMA:
+        fail(f"manifest schema must be {SCHEMA}")
+    if not SHA_RE.fullmatch(str(value.get("source_sha", ""))):
+        fail("manifest source_sha must be a full lowercase Git SHA")
+    if not SAFE_NAME_RE.fullmatch(str(value.get("release_id", ""))):
+        fail("manifest release_id is invalid")
+    if not isinstance(value.get("created_unix"), int) or int(value["created_unix"]) <= 0:
+        fail("manifest created_unix must be a positive integer")
+    layers = value.get("layers")
+    if not isinstance(layers, list) or len(layers) not in (3, 4):
+        fail("manifest must contain three or four layers")
+    expected = ["base_image", "tools_volume", "program"]
+    kinds = [layer.get("kind") for layer in layers if isinstance(layer, dict)]
+    if len(kinds) != len(layers) or kinds[:3] != expected:
+        fail("manifest layers must start with base_image, tools_volume, program")
+    if len(layers) == 4 and kinds[3] != "instance_templates":
+        fail("optional fourth manifest layer must be instance_templates")
+    names: set[str] = set()
+    for layer in layers:
+        if not isinstance(layer, dict):
+            fail("manifest layer must be an object")
+        name = str(layer.get("file", ""))
+        if not SAFE_NAME_RE.fullmatch(name) or pathlib.PurePosixPath(name).name != name:
+            fail("manifest layer file must be one safe basename")
+        if name in names:
+            fail("manifest layer files must be unique")
+        names.add(name)
+        if not SHA256_RE.fullmatch(str(layer.get("sha256", ""))):
+            fail(f"manifest layer {name} has an invalid SHA-256")
+        if not isinstance(layer.get("bytes"), int) or int(layer["bytes"]) <= 0:
+            fail(f"manifest layer {name} has an invalid byte count")
+        if not SAFE_NAME_RE.fullmatch(str(layer.get("version", ""))):
+            fail(f"manifest layer {name} has an invalid version")
+    base = layers[0]
+    if not IMAGE_TAG_RE.fullmatch(str(base.get("image_tag", ""))):
+        fail("base image_tag is invalid")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", str(base.get("image_id", ""))):
+        fail("base image_id is invalid")
+    if not SAFE_NAME_RE.fullmatch(str(layers[2].get("target", ""))):
+        fail("program target is invalid")
+    return value
+
+
+def command_create(args: argparse.Namespace) -> None:
+    source_sha = args.source_sha
+    if not SHA_RE.fullmatch(source_sha):
+        fail("--source-sha must be a full lowercase Git SHA")
+    paths = [pathlib.Path(value).resolve() for value in [args.base, args.tools, args.program]]
+    if any(not path.is_file() for path in paths):
+        fail("all three layer archives must be regular files")
+    layers = [
+        artifact(
+            "base_image",
+            args.base_version,
+            paths[0],
+            image_tag=args.base_image_tag,
+            image_id=args.base_image_id,
+        ),
+        artifact("tools_volume", args.tools_version, paths[1]),
+        artifact("program", args.program_version, paths[2], target=args.target),
+    ]
+    if getattr(args, "templates", None):
+        templates_path = pathlib.Path(args.templates).resolve()
+        if not templates_path.is_file():
+            fail("--templates must be a regular archive")
+        layers.append(
+            artifact("instance_templates", args.templates_version, templates_path)
+        )
+    manifest = {
+        "schema": SCHEMA,
+        "release_id": args.release_id,
+        "source_sha": source_sha,
+        "created_unix": args.created_unix,
+        "layers": layers,
+    }
+    output = pathlib.Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    data = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
+    with tempfile.NamedTemporaryFile(dir=output.parent, delete=False) as temporary:
+        temporary.write(data)
+        temporary.flush()
+        os.fsync(temporary.fileno())
+        temporary_path = pathlib.Path(temporary.name)
+    os.replace(temporary_path, output)
+    load_manifest(output)
+
+
+def command_verify(args: argparse.Namespace) -> None:
+    manifest_path = pathlib.Path(args.manifest).resolve()
+    manifest = load_manifest(manifest_path)
+    asset_dir = pathlib.Path(args.asset_dir).resolve()
+    for layer in manifest["layers"]:
+        path = asset_dir / layer["file"]
+        if not path.is_file():
+            fail(f"missing release asset: {layer['file']}")
+        sha256, size = digest(path)
+        if sha256 != layer["sha256"] or size != layer["bytes"]:
+            fail(f"release asset digest or size mismatch: {layer['file']}")
+    print(json.dumps({"ok": True, "release_id": manifest["release_id"]}, sort_keys=True))
+
+
+def layer_by_kind(manifest: dict[str, object], kind: str) -> dict[str, object]:
+    for layer in manifest["layers"]:
+        if layer["kind"] == kind:
+            return layer
+    fail(f"manifest has no layer kind: {kind}")
+
+
+def command_verify_layer(args: argparse.Namespace) -> None:
+    manifest = load_manifest(pathlib.Path(args.manifest).resolve())
+    layer = layer_by_kind(manifest, args.kind)
+    asset = pathlib.Path(args.asset).resolve()
+    if asset.name != layer["file"] or not asset.is_file():
+        fail(f"release asset does not match layer {args.kind}: {asset.name}")
+    sha256, size = digest(asset)
+    if sha256 != layer["sha256"] or size != layer["bytes"]:
+        fail(f"release asset digest or size mismatch: {layer['file']}")
+    print(
+        json.dumps(
+            {"kind": args.kind, "ok": True, "release_id": manifest["release_id"]},
+            sort_keys=True,
+        )
+    )
+
+
+def command_find_installed_layer(args: argparse.Namespace) -> None:
+    release_root = pathlib.Path(args.release_root).resolve()
+    if not release_root.exists():
+        return
+    if not release_root.is_dir() or release_root.is_symlink():
+        fail("installed release root must be a real directory")
+    expected_directory = {"tools_volume": "tools", "program": "program"}[args.kind]
+    for release_dir in sorted(release_root.iterdir()):
+        if not release_dir.is_dir() or release_dir.is_symlink():
+            continue
+        manifest_path = release_dir / "manifest.json"
+        if not manifest_path.is_file() or manifest_path.is_symlink():
+            continue
+        manifest = load_manifest(manifest_path)
+        if release_dir.name != manifest["release_id"]:
+            fail(f"installed release directory does not match its manifest: {release_dir.name}")
+        layer = layer_by_kind(manifest, args.kind)
+        if layer["version"] != args.version or layer["sha256"] != args.sha256:
+            continue
+        layer_directory = release_dir / expected_directory
+        if not layer_directory.is_dir() or layer_directory.is_symlink():
+            fail(f"installed {args.kind} layer is not a real directory: {release_dir.name}")
+        print(layer_directory)
+        return
+
+
+def command_assets(args: argparse.Namespace) -> None:
+    manifest = load_manifest(pathlib.Path(args.manifest))
+    for layer in manifest["layers"]:
+        print(layer["file"])
+
+
+def command_field(args: argparse.Namespace) -> None:
+    value: object = load_manifest(pathlib.Path(args.manifest))
+    for component in args.path.split("."):
+        if isinstance(value, list):
+            try:
+                value = value[int(component)]
+            except (ValueError, IndexError):
+                fail(f"field path is invalid: {args.path}")
+        elif isinstance(value, dict) and component in value:
+            value = value[component]
+        else:
+            fail(f"field path is invalid: {args.path}")
+    if isinstance(value, (dict, list)):
+        print(json.dumps(value, sort_keys=True))
+    else:
+        print(value)
+
+
+def command_extract(args: argparse.Namespace) -> None:
+    archive = pathlib.Path(args.archive).resolve()
+    destination = pathlib.Path(args.destination).resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(archive, "r:gz") as bundle:
+        members = bundle.getmembers()
+        names: set[str] = set()
+        for member in members:
+            path = pathlib.PurePosixPath(member.name)
+            if path.is_absolute() or ".." in path.parts or not path.parts:
+                fail(f"unsafe archive path: {member.name}")
+            if path.parts[0] != args.root:
+                fail(f"archive member is outside expected root {args.root}: {member.name}")
+            normalized = path.as_posix().rstrip("/")
+            if normalized in names:
+                fail(f"duplicate archive member: {member.name}")
+            names.add(normalized)
+            if member.issym() or member.islnk() or not (member.isdir() or member.isfile()):
+                fail(f"unsupported archive member: {member.name}")
+        bundle.extractall(destination, members=members)
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser()
+    commands = root.add_subparsers(dest="command", required=True)
+    create = commands.add_parser("create")
+    for name in [
+        "release_id",
+        "source_sha",
+        "base",
+        "base_version",
+        "base_image_tag",
+        "base_image_id",
+        "tools",
+        "tools_version",
+        "program",
+        "program_version",
+        "target",
+        "output",
+    ]:
+        create.add_argument("--" + name.replace("_", "-"), required=True)
+    create.add_argument("--templates", required=False)
+    create.add_argument("--templates-version", required=False)
+    create.add_argument("--created-unix", type=int, required=True)
+    create.set_defaults(handler=command_create)
+    verify = commands.add_parser("verify")
+    verify.add_argument("--manifest", required=True)
+    verify.add_argument("--asset-dir", required=True)
+    verify.set_defaults(handler=command_verify)
+    verify_layer = commands.add_parser("verify-layer")
+    verify_layer.add_argument("--manifest", required=True)
+    verify_layer.add_argument(
+        "--kind", required=True, choices=["base_image", "tools_volume", "program"]
+    )
+    verify_layer.add_argument("--asset", required=True)
+    verify_layer.set_defaults(handler=command_verify_layer)
+    find_installed_layer = commands.add_parser("find-installed-layer")
+    find_installed_layer.add_argument("--release-root", required=True)
+    find_installed_layer.add_argument(
+        "--kind", required=True, choices=["tools_volume", "program"]
+    )
+    find_installed_layer.add_argument("--version", required=True)
+    find_installed_layer.add_argument("--sha256", required=True)
+    find_installed_layer.set_defaults(handler=command_find_installed_layer)
+    assets = commands.add_parser("assets")
+    assets.add_argument("--manifest", required=True)
+    assets.set_defaults(handler=command_assets)
+    field = commands.add_parser("field")
+    field.add_argument("--manifest", required=True)
+    field.add_argument("--path", required=True)
+    field.set_defaults(handler=command_field)
+    extract = commands.add_parser("extract")
+    extract.add_argument("--archive", required=True)
+    extract.add_argument("--destination", required=True)
+    extract.add_argument("--root", required=True, choices=["tools", "program"])
+    extract.set_defaults(handler=command_extract)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    args.handler(args)
+
+
+if __name__ == "__main__":
+    main()
