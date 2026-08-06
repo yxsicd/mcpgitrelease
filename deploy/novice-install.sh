@@ -15,6 +15,9 @@ set -eu
 MCPGIT_CHANNEL_URL="${MCPGIT_CHANNEL_URL:-https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/offline-latest.json}"
 # 实例名：容器/数据卷/配置名（建议改：每个环境唯一，例如 mcpgit-demo）
 MCPGIT_INSTANCE="${MCPGIT_INSTANCE:-mcpgit}"
+# 不可变组织 id（UUID）：实例核心身份，persons/grants/SafeGit 都绑定它；
+# 名字可改，id 不可改。留空时首次安装自动生成并持久化到数据卷。
+MCPGIT_ORG_ID="${MCPGIT_ORG_ID:-}"
 # 服务端口：对外 MCP/Service 端口（可改：端口冲突时）
 MCPGIT_PORT="${MCPGIT_PORT:-8001}"
 # 数据卷：实例专属持久卷（建议改：正式环境用独立命名，如 mcpgit-demo-data）
@@ -96,6 +99,7 @@ Usage: novice-install.sh [options]
   --port PORT         host port for the Service endpoint (default: $MCPGIT_PORT)
   --guest-repo REPO   guest-readable repo (default: works)
   --builder-repos R   builder repos, comma separated (default: works,tablegit,binarygit)
+  --download-only     download the bundle and stop (no Docker needed for this)
   --rebuild           force rebuilding the offline runtime image
 All settings can also be set via MCPGIT_* environment variables; see the top
 of this script for defaults and which ones to customize.
@@ -112,6 +116,7 @@ port=${MCPGIT_PORT}
 guest_repo=works
 builder_repos=works,tablegit,binarygit
 rebuild=false
+download_only=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --bundle) bundle=$2; shift 2 ;;
@@ -122,6 +127,7 @@ while [ $# -gt 0 ]; do
     --port) port=$2; shift 2 ;;
     --guest-repo) guest_repo=$2; shift 2 ;;
     --builder-repos) builder_repos=$2; shift 2 ;;
+    --download-only) download_only=true; shift ;;
     --rebuild) rebuild=true; shift ;;
     *) usage ;;
   esac
@@ -134,6 +140,13 @@ if [ -z "$bundle" ] \
   tag=$(resolve_tag)
   [ -n "$tag" ] || { echo "cannot resolve offline release tag" >&2; exit 1; }
   fetch_bundle "$tag" "$bundle"
+fi
+
+if [ "$download_only" = true ]; then
+  echo "PASS: bundle ready at $bundle (no Docker required for downloading)"
+  echo "Copy the directory to the install machine, then run:"
+  echo "  deploy/novice-install.sh --bundle $bundle --instance $instance"
+  exit 0
 fi
 
 manifest="$bundle/mcpgit-offline-release-v1.json"
@@ -177,11 +190,10 @@ else
   docker load < "$base_archive"
 fi
 
-runtime_image="mcpgit-offline-runtime:$instance"
+runtime_image="mcpgit-offline-runtime:offline"
 [ -n "$data_volume" ] || data_volume="${instance}_data"
 update_mode=false
-if docker container inspect "$instance" >/dev/null 2>&1 \
-  && docker volume inspect "$data_volume" >/dev/null 2>&1; then
+if docker volume inspect "$data_volume" >/dev/null 2>&1; then
   update_mode=true
 fi
 deployed_program_version=
@@ -234,13 +246,26 @@ else
   echo "==> offline runtime image already present: $runtime_image"
 fi
 
+org_id=${MCPGIT_ORG_ID:-}
+if [ -z "$org_id" ] && docker volume inspect "$data_volume" >/dev/null 2>&1; then
+  org_id=$(docker run --rm -v "$data_volume":/data \
+    --entrypoint sh "$runtime_image" -c \
+    'cat /data/.mcpgit-org-id 2>/dev/null || true' 2>/dev/null \
+    | tr -d '[:space:]')
+fi
+if [ -z "$org_id" ]; then
+  org_id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+fi
+echo "==> organization id (immutable identity): $org_id"
+
 repos="works rootskills mcpgitsystem safegit systemconfig tablegit binarygit"
 if [ "$update_mode" = false ]; then
   echo "==> preparing data volume $data_volume"
   docker volume create "$data_volume" >/dev/null
   if [ -n "$templates_archive" ] && [ -f "$bundle/$templates_archive" ]; then
     cp "$bundle/$templates_archive" "$ctx/instance-templates.tar.gz"
-    docker run --rm -v "$data_volume":/data -v "$ctx":/provision:ro \
+    docker run --rm -e ORG_ID="$org_id" \
+      -v "$data_volume":/data -v "$ctx":/provision:ro \
       --entrypoint sh "$runtime_image" -c '
         set -eu
         mkdir -p /data/repos
@@ -255,6 +280,7 @@ if [ "$update_mode" = false ]; then
             git -C "$dir" commit -qm "Initialize $r from template"
           fi
         done
+        printf "%s\n" "$ORG_ID" > /data/.mcpgit-org-id
       '
   else
     docker run --rm -v "$data_volume":/data --entrypoint sh "$runtime_image" -c "
@@ -270,6 +296,7 @@ for r in $repos; do
   git -C \"\$dir\" add .
   git -C \"\$dir\" commit -qm init
 done
+printf "%s\n" "$org_id" > /data/.mcpgit-org-id
 "
   fi
 fi
@@ -277,10 +304,10 @@ fi
 config_dir="${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit/instances}"
 mkdir -p "$config_dir"
 config="$config_dir/$instance.toml"
-if [ ! -f "$config" ]; then
+if [ ! -f "$config" ] || ! grep -q "instance_id = \"$org_id\"" "$config" 2>/dev/null; then
   {
     echo "[system_config]"
-    echo "instance_id = \"$instance\""
+    echo "instance_id = \"$org_id\""
     echo "path = \"/data/repos/systemconfig\""
     echo "revision = \"refs/heads/main\""
   } > "$config"
@@ -435,7 +462,7 @@ docker run --rm \
   "$runtime_image" \
   /provision/provision-repositories.py \
   --repo /data/repos/systemconfig \
-  --instance-id "$instance" \
+  --instance-id "$org_id" \
   --repos "$repo_specs"
 
 echo "==> provisioning built-in auth persons"
@@ -447,7 +474,7 @@ docker run --rm \
   "$runtime_image" \
   /bundle/bootstrap-builtin-auth.py \
   --repo /data/repos/systemconfig \
-  --instance-id "$instance" \
+  --instance-id "$org_id" \
   --zone "$zone" \
     --guest-repository "$guest_repo" \
     --builder-repositories "$builder_repos" \
@@ -484,6 +511,8 @@ else
 fi
 echo "  skills table: run Service table.initialize (repo=rootskills,"
 echo "    root=.agents/skills) once; see rootskills/docs/SKILLS_TABLE.md"
+echo "  organization id (immutable identity): $org_id"
+echo "  instance name (renameable label): $instance"
 echo "  endpoint:  http://127.0.0.1:$port"
 echo "  data volume: $data_volume"
 if [ "$update_mode" = false ]; then
