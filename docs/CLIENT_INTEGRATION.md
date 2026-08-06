@@ -169,6 +169,15 @@ command; defaults work without any of them:
 | `MCPGIT_NETRC` | (none) | 可改：配 GitHub 后启用远端同步 |
 | `MCPGIT_BUNDLE_DIR` | `$HOME/.mcpgit/bundle` | 可改：缓存目录 |
 | `MCPGIT_RELEASE_TAG` | (latest) | 建议改：仅在回滚/固定版本时 |
+| `MCPGIT_ORG_ID` | (auto UUID) | 可改：显式指定不可变组织 id |
+
+Instance identity: the immutable **organization id** is a UUID generated on
+first install and stored in the data volume (`/.mcpgit-org-id`); it is bound
+to SystemConfig rows, persons/grants, and SafeGit. The instance **name**
+(`MCPGIT_INSTANCE`) is only a container/volume/display label and can be
+renamed later without identity drift: reinstall the same data volume under a
+new name, and the org id stays the same. To recover an identity, reuse the
+same `--data-volume` (or set `MCPGIT_ORG_ID` explicitly).
 
 Example pinning a version and a unique instance:
 
