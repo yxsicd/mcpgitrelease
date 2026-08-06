@@ -1,94 +1,83 @@
-# MCPGit Client Integration (two modes)
+# MCPGit Client Onboarding (two modes)
 
-This is the Agent-facing integration runbook. Classify the task before doing
-anything else:
+This document is the authoritative integration runbook for a new Rust client.
+The public mirror in `yxsicd/mcpgitrelease/docs/CLIENT_INTEGRATION.md` is the
+Agent-facing copy; keep both in sync when this contract changes.
 
-```text
-I already have an MCPGit instance   -> Mode 1: Client SDK connects to it
-I need my own brand-new instance     -> Mode 2: deploy an instance, then Mode 1
-```
-
-Both modes depend only on immutable bytes published in this repository's
-GitHub Releases. Download and installation are independent: you may download
-everything first and install offline later. The two `mcpgit-service-*` crates
-are not published to crates.io; they always come from the SDK Release in this
-repository.
-
-## Machine-readable authority
+An Agent must first classify the task:
 
 ```text
-https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/client-sdk.json
+I already have an MCPGit instance -> Mode 1: Client SDK connects to it
+I need my own brand-new instance  -> Mode 2: deploy instance, then Mode 1
 ```
 
-`client-sdk.json` is the atomic pointer to the recommended
+Both modes depend only on immutable bytes published to GitHub
+(`yxsicd/mcpgitrelease`). Download and installation are independent: download
+first, install offline later. The SDK is not published to crates.io; the two
+`mcpgit-service-*` crates always come from the GitHub SDK Release.
+
+## Shared: recommended SDK pointer
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/client-sdk.json
+```
+
+`client-sdk.json` is the atomic authority for the recommended
 `mcpgit-client-sdk-git-<source-sha>` Release. Read the tag, asset URLs, byte
-counts, and SHA-256 digests from it. Never treat README text or GitHub
-"Latest" as authority.
+counts, and SHA-256 digests from it; never trust README text or GitHub
+"Latest".
+
+Download the recommended Release assets (two `.crate` files and the offline
+registry bundle) and verify every SHA-256 against the pointer before use.
 
 ## Mode 1: connect to an existing instance
 
-1. Download the recommended SDK Release assets and verify every SHA-256
-   against `client-sdk.json`:
+1. Configure the client repository with the SDK bundle:
 
    ```sh
-   sdk_tag=$(sed -n 's/.*"tag": *"\([^"]*\)".*/\1/p' client-sdk.json | head -1)
-   bundle="$sdk_tag.tar.gz"
-   curl -fLO "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$bundle"
-   curl -fLO "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/mcpgit-service-sdk-2.0.0.crate"
-   curl -fLO "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/mcpgit-service-client-2.0.0.crate"
-   shasum -a 256 "$bundle" mcpgit-service-sdk-2.0.0.crate mcpgit-service-client-2.0.0.crate
-   ```
-
-   Compare the printed digests with the `sha256` values in `client-sdk.json`.
-
-2. Configure the client repository with the offline registry bundle:
-
-   ```sh
-   tar -xzf "$bundle"
-   cd "$sdk_tag"
+   tar -xzf mcpgit-client-sdk-git-<source-sha>.tar.gz
+   cd mcpgit-client-sdk-git-<source-sha>
    ./configure-project.sh /absolute/path/to/client-repository
    ```
 
-3. Declare the dependencies. Async clients must take the runtime crate from
-   the same `mcpgit-sdk` registry; a crates.io tokio creates a second,
-   independent tokio crate instance and the SDK reactor fails with
-   `there is no reactor running`.
+2. Declare the dependency (and, in bundle mode, the runtime crate too):
 
    ```toml
    [dependencies]
    mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+   # Required for async clients in offline-bundle mode: the runtime crate must
+   # come from the same registry, otherwise cargo compiles two independent
+   # tokio instances and the SDK reactor rejects the client runtime.
    tokio = { version = "1", features = ["macros", "rt-multi-thread"], registry = "mcpgit-sdk" }
    ```
 
-4. Build and connect:
+3. Connect and verify:
 
    ```sh
-   cd /absolute/path/to/client-repository
    cargo build --offline
    cargo run --example onboarding -- ws://<host>:8001/__mcpgit/service-ws
    ```
 
-   Use `wss://` for TLS or a routed public host. Supply `Authorization` only
-   when the instance requires it. The URL Host selects the configured default
+   Use `wss://` for TLS/routed hosts. Supply `Authorization` only when the
+   instance requires it. The URL Host selects the configured default
    organization; a non-default organization uses the canonical
-   `<service>-o<short-hash>` first label. Never invent or forward
-   `x-mcpgit-person-id` as identity.
+   `<service>-o<short-hash>` first label.
 
-5. Integration is complete when the client prints `mcpgit.service.v2`
+4. Integration is complete when the example prints `mcpgit.service.v2`
    metadata, lists repositories, and reads one file.
 
 ## Mode 2: create a brand-new instance, then connect
 
-1. Create a fresh named data volume that will be this instance's exclusive
-   `/data`:
+1. Create a fresh named data volume and record it as the instance's exclusive
+   `/data` source:
 
    ```sh
    docker volume create mcpgit-<instance>-data
    ```
 
-2. Deploy a new instance from the public runtime channel. The deployment kit
-   accepts a new instance name and data source; it never reuses another
-   instance's SystemConfig or volume:
+2. Deploy the instance with the public runtime channel (or the exact
+   source-bound `mcpgit-git-<sha>` offline Release when a specific source is
+   required):
 
    ```sh
    curl -fsSL \
@@ -103,126 +92,167 @@ counts, and SHA-256 digests from it. Never treat README text or GitHub
      --netrc /absolute/path/to/netrc
    ```
 
-   A new instance needs its own runtime env naming its repositories,
-   organization/route, and SystemConfig. When a specific source revision is
-   required instead of a channel, use the source-bound
-   `mcpgit-git-<sha>` offline Release in this repository (manifest plus
-   Base/Tools/Program layers) and assemble the runtime image locally; never
-   mix layers from different manifests.
+   A new instance requires a runtime env that names its own repositories,
+   organization/route, and SystemConfig. Never reuse another instance's
+   SystemConfig volume or identity.
 
-3. Wait until the container is `healthy` with restart count zero, then run
-   Mode 1 against its Service endpoint:
+3. Wait until the new container is `healthy` with restart count zero, then run
+   Mode 1 against its Service endpoint.
 
-   ```text
-   ws://<host>:8001/__mcpgit/service-ws
-   ```
+4. Keep the new data volume for the instance lifetime. Do not delete it as
+   part of upgrades or rollbacks.
 
-4. Keep the new data volume for the instance lifetime. Upgrades and rollbacks
-   must never delete it.
+## Mode 2 offline (fetch on A, install on B)
 
-## Trust boundary and client key source
-
-Choose the trust boundary consciously:
-
-```text
-internal integration (client + MCPGit in one trusted system)
-  -> keep MCPGit on the internal network, never publish a public port;
-     client connects without credentials
-
-public exposure
-  -> route through the Gateway (mcpgitgw), which requires caller credentials
-
-fallback if a node endpoint is accidentally exposed
-  -> Guest-first: unauthenticated callers get only Guest read, never full
-     anonymous access
-```
-
-The client key source is the application's choice (environment variable,
-secret store, or process injection); the SDK only receives an Authorization
-string and does no key management. Never hardcode a key into source code,
-commit it to Git, or write it to logs. Every bootstrapped instance provisions
-three built-in Persons: `systemadmin` (control plane), `guest` (read-only
-fallback), and `builder` (business read/write on the standard business
-repositories).
-
-## Automated credential lifecycle (curl only)
-
-No client-host Python is required for integration. Issuing, exporting,
-rotating, and revoking a scoped managed key are plain HTTP calls with curl;
-the Rust SDK performs the connection; the instance's own runtime image ships
-the Python used by bootstrap/provision scripts, so a new client machine needs
-only curl, cargo, and its secret store.
-
-Issue a managed key for an existing Person (systemadmin or another authorized
-caller):
+Deployment is split into fetch and install so an online machine (A) downloads
+everything once and an offline machine (B) installs without any network
+access. The bundle is self-contained: manifest, three release layers, the
+standard seven-repository instance templates (secrets-free), the manifest
+parser, the built-in auth bootstrap script, and the offline runtime
+Dockerfile. Templates ship as plain directories (no `.git`); the installer
+initializes each as a fresh Git repository in the data volume, and remotes
+are configured later by the operator (offline-first, GitHub optional).
 
 ```sh
+# Machine A (online): download and verify one immutable bundle
+./deploy/novice-fetch.sh <release-tag> ./bundle
+# copy ./bundle to machine B (USB/SCP), then:
+
+# Machine B (offline): assemble the runtime image, provision SystemConfig
+# (repositories + built-in systemadmin/guest/builder persons), start the
+# instance, and wait for health
+./deploy/novice-install.sh --bundle ./bundle --instance mcpgit-demo \
+  --port 8001
+```
+
+The same installer adapts to updates: when the instance container and data
+volume already exist it runs in update mode, preserving the volume and
+SystemConfig, rebuilding only the offline runtime image (Docker layer cache
+means only the changed program layer is re-copied when the program version
+changed), replacing the container, and waiting for health. In the common case
+only the `mcpgit` program layer changed between releases, so a re-fetch is
+incremental (unchanged layers are cached by SHA-256) and the update is a
+fast image rebuild plus container swap.
+
+The seven template repositories (`works`, `rootskills`, `mcpgitsystem`,
+`safegit`, `systemconfig`, `tablegit`, `binarygit`) live in
+`deploy/instance-templates` and carry only READMEs plus standard skeleton
+files (works validation entry, rootskills skillsgit layout, mcpgitsystem
+docs/release policy). `rootskills` ships the standard governance skill
+(`mst-context-reset-checkpoint`, commit implies push with continuity trailers)
+and `.agents/git-policy.yaml` so agents get the skillsgit v2 contract
+out of the box. `safegit` is initialized by SafeGit at first start; SystemConfig
+tables are provisioned by the installer.
+
+SafeGit initializes in novice mode on first start: a random recovery password,
+a default Shamir 3-of-5 bundle, and an Agent Key are persisted (0600) next to
+the safegit repository, and the installer prints the paths plus the
+`docker cp` command for backing up the shares file externally. First login is
+`systemadmin` / `change-me`; change it after login. The instance stays
+health-first: remote repo sync uses the netrc when `--netrc` is supplied and
+is simply inactive otherwise.
+
+## Fast verification loop
+
+`scripts/verify-client-onboarding.sh` is the bounded closed loop for both
+modes:
+
+```sh
+# Mode 1 against an existing instance
+scripts/verify-client-onboarding.sh --existing ws://127.0.0.1:18991/__mcpgit/service-ws
+
+# Mode 2: create a throwaway instance, connect, then clean up
+scripts/verify-client-onboarding.sh --new --image mcpgit-offline-runtime:git-e7e056d...
+```
+
+The script reuses locally assembled images (no re-download), seeds a fresh
+throwaway volume, waits for health with a hard timeout, runs the same example
+client, and removes the throwaway container and volume unless `--keep` is
+given. Total time is bounded; first run pays one workspace client build, later
+runs reuse the Cargo cache.
+
+## Automated credential lifecycle (shell + curl only)
+
+No client-host Python is required. Issuing, exporting, rotating, and revoking
+a scoped managed key are plain HTTP calls:
+
+```sh
+# issue (response carries pv_<id>_<secret> once; store it in a 0600 secret file)
 curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies" \
-  -H "Authorization: Basic $AUTH" \
-  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $AUTH" -H "Content-Type: application/json" \
   -d "{\"name\":\"client/default\",\"person_id\":\"$PERSON_ID\"}"
-```
 
-The response contains the raw `pv_<credential-id>_<secret>` once; save it to a
-mode-0600 secret file or secret store immediately. The raw value remains
-recoverable on demand for authorized callers:
-
-```sh
+# recover the raw key later (authorized owner or mcp.admin)
 curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID/export" \
   -H "Authorization: Basic $AUTH"
-```
 
-Rotate (old key stops working immediately, response returns the new key) and
-revoke (key dies on the next call):
-
-```sh
+# rotate (old key dies immediately; response returns the new key)
 curl -fsS -X POST "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID/rotate" \
   -H "Authorization: Basic $AUTH"
+
+# revoke (key dies on the next call)
 curl -fsS -X DELETE "$BASE/__mcpgit/auth/person-verifies/$CREDENTIAL_ID" \
   -H "Authorization: Basic $AUTH"
 ```
 
-Scoped identity and grants are provisioned in the instance's SystemConfig
-repository (Person, membership, role, repository-scoped grant) and activated
-by the instance restart; provision scripts run inside the instance image.
-The client then connects with:
+`$BASE` is the instance base URL, `$AUTH` is `systemadmin:password` (or the
+`handle:pv_...` form) base64-encoded, and `$PERSON_ID` is the scoped client
+Person's UUID. Person/membership/role/repository grant rows are provisioned in
+the instance SystemConfig repository (the runtime image ships the Python used
+by the bootstrap/provision scripts); the client host itself needs only curl,
+cargo, and its secret store.
 
-```rust
-ServiceWebSocketConfig::new("ws://<host>:8001/__mcpgit/service-ws")
-    .with_authorization(format!("Bearer {key}"))
+## Trust boundary (choose consciously)
+
+```text
+internal integration (client + MCPGit in one trusted system)
+  -> MCPGit listens on the internal network only, never publishes a public
+     port; client connects without credentials (anonymous or Guest)
+
+public exposure
+  -> route through the Gateway (mcpgitgw): the Gateway requires caller
+     credentials; the node's own unauthenticated endpoint is never exposed
+
+fallback if a node endpoint is accidentally exposed
+  -> Guest-first: unauthenticated callers get only Guest read on granted
+     repositories, never full anonymous access
 ```
 
-## Bounded verification checks
+`MCPGIT_MCP_ANONYMOUS=1` (or an auth-disabled instance) enables full
+unauthenticated access and is intended only for trusted internal networks;
+do not expose that endpoint publicly.
 
-For Mode 1, verify in this order:
+## Client key source convention
 
-1. Cargo resolves `mcpgit-service-client 2.0.0` and `mcpgit-service-sdk
-   2.0.0` from the `mcpgit-sdk` registry;
-2. the client compiles with `--offline` after local registry setup;
-3. the client connects to the intended Service WebSocket endpoint and reads
-   `service.metadata`;
-4. authenticated instances derive Person identity from credentials rather
-   than a caller-supplied Person ID;
-5. structured and bulk channels use the same endpoint authority and
-   credential.
+The key source is the client application's choice (environment variable,
+secret store, or process injection). The SDK only receives an Authorization
+string and performs no key management. Hard rules: never hardcode a key into
+source code, never commit it to Git, never write it to logs. The examples
+read `MCPGIT_CLIENT_KEY` by convention.
 
-For Mode 2, additionally verify:
+## Built-in Persons
 
-1. the new data volume is fresh and exclusively attached;
-2. the new container is healthy with restart count zero;
-3. repository discovery on the new instance returns its own repositories;
-4. the instance's SystemConfig identity is distinct from every other
-   instance.
+Every bootstrapped instance provisions three built-in Persons:
+
+```text
+systemadmin  control plane + SafeGit (no business repository access by default)
+guest        read-only on granted repositories (default for missing credentials)
+builder      business read/write on the standard business repositories
+             (works, tablegit, binarygit by default)
+```
 
 ## Known constraints
 
-- The shipped SDK Release carries the complete transitive closure so
-  `--offline` builds need no crates.io access. Async clients must declare
-  tokio from the `mcpgit-sdk` registry as shown above.
-- An index-only SDK distribution (publish only the two-crate registry index
-  and resolve transitive dependencies from crates.io) is designed and
-  prototyped but not yet shipped; the published Release still requires the
-  full offline bundle.
-- Downloading or configuring the SDK never installs, upgrades, restarts,
-  promotes, or rolls back an MCPGit instance. Runtime channels and the SDK
-  Release are independent control planes.
+- The shipped SDK Release carries the complete transitive closure (offline
+  bundle). Async clients must route tokio (and any tokio-family direct
+  dependency) through the `mcpgit-sdk` registry, as shown above; mixing the
+  bundle registry with a crates.io tokio produces two tokio instances and a
+  `no reactor running` panic.
+- An index-only distribution (publish only the registry index for the two
+  crates and resolve transitive dependencies from crates.io) is designed and
+  prototyped but not yet shipped. The published index still requires the full
+  closure, so the offline bundle remains the current distribution.
+- If a future index-only release ships, its index entries must point
+  transitive dependencies at the classic crates.io index URL
+  (`https://github.com/rust-lang/crates.io-index`), not the sparse URL;
+  cargo treats the two crates.io source flavors as distinct crates.
