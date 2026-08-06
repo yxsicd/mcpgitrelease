@@ -144,6 +144,43 @@ and `.agents/git-policy.yaml` so agents get the skillsgit v2 contract
 out of the box. `safegit` is initialized by SafeGit at first start; SystemConfig
 tables are provisioned by the installer.
 
+### One-command install (copy-paste, defaults work as-is)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/novice-install.sh | sh -s --
+```
+
+This resolves the latest offline release via
+`offline-latest.json`, downloads the four layers (SHA-256 verified, cached
+across runs), assembles the runtime image, starts `mcpgit` on port 8001,
+initializes SafeGit in novice mode, and prints a real connection:
+`http://127.0.0.1:8001`, login `systemadmin`/`change-me`, and the SkillsTable
+`table.initialize` hint.
+
+Everything can be customized with environment variables set before the
+command; defaults work without any of them:
+
+| Variable | Default | Change |
+| --- | --- | --- |
+| `MCPGIT_INSTANCE` | `mcpgit` | 建议改：每个环境唯一，如 `mcpgit-demo` |
+| `MCPGIT_PORT` | `8001` | 可改：端口冲突时 |
+| `MCPGIT_DATA_VOLUME` | `<instance>_data` | 建议改：正式环境独立命名 |
+| `MCPGIT_ZONE` | `blue` | 可改：blue/green |
+| `MCPGIT_NETRC` | (none) | 可改：配 GitHub 后启用远端同步 |
+| `MCPGIT_BUNDLE_DIR` | `$HOME/.mcpgit/bundle` | 可改：缓存目录 |
+| `MCPGIT_RELEASE_TAG` | (latest) | 建议改：仅在回滚/固定版本时 |
+
+Example pinning a version and a unique instance:
+
+```sh
+MCPGIT_INSTANCE=mcpgit-demo MCPGIT_RELEASE_TAG=mcpgit-git-<sha> \
+  curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/novice-install.sh | sh -s --
+```
+
+After install, connect with the SDK (Mode 1) or run
+`deploy/novice-fetch.sh`/`deploy/novice-install.sh` on a separate offline
+machine for the fetch-on-A/install-on-B flow.
+
 SafeGit initializes in novice mode on first start: a random recovery password,
 a default Shamir 3-of-5 bundle, and an Agent Key are persisted (0600) next to
 the safegit repository, and the installer prints the paths plus the
