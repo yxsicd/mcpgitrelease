@@ -73,8 +73,29 @@ PY
       "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/Dockerfile.offline-runtime" \
       -o "$target/Dockerfile.offline-runtime"
   fi
+  for product_file in novice-install.sh mcpgit-install.sh mcpgitctl; do
+    curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+      "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/$product_file" \
+      -o "$target/$product_file"
+    chmod 0755 "$target/$product_file"
+  done
   python3 "$target/scripts/mcpgit-offline-release.py" verify \
     --manifest "$manifest" --asset-dir "$target"
+}
+
+platform_key() {
+  case "$(uname -m)" in
+    arm64|aarch64) echo linux-arm64 ;;
+    x86_64|amd64) echo linux-amd64 ;;
+    *) echo "unsupported MCPGit host architecture: $(uname -m)" >&2; return 1 ;;
+  esac
+}
+
+expected_program_target() {
+  case "$(platform_key)" in
+    linux-arm64) echo aarch64-unknown-linux-gnu ;;
+    linux-amd64) echo x86_64-unknown-linux-gnu ;;
+  esac
 }
 
 resolve_tag() {
@@ -82,8 +103,21 @@ resolve_tag() {
     echo "$MCPGIT_RELEASE_TAG"
     return 0
   fi
+  platform=$(platform_key)
   curl -fsSL --retry 5 --retry-delay 5 "$MCPGIT_CHANNEL_URL" \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag"])'
+    | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+platform = sys.argv[1]
+architectures = data.get("architectures")
+if architectures is None:
+    print(data["tag"])
+else:
+    entry = architectures.get(platform)
+    if entry is None:
+        raise SystemExit(f"offline channel has no release for {platform}")
+    print(entry["tag"] if isinstance(entry, dict) else entry)
+' "$platform"
 }
 
 usage() {
@@ -145,7 +179,7 @@ fi
 if [ "$download_only" = true ]; then
   echo "PASS: bundle ready at $bundle (no Docker required for downloading)"
   echo "Copy the directory to the install machine, then run:"
-  echo "  deploy/novice-install.sh --bundle $bundle --instance $instance"
+  echo "  ./mcpgit-install.sh --bundle $bundle --instance $instance"
   exit 0
 fi
 
@@ -176,12 +210,19 @@ tools_archive="$bundle/$(field layers.1.file)"
 tools_version=$(field layers.1.version)
 program_archive="$bundle/$(field layers.2.file)"
 program_version=$(field layers.2.version)
+program_target=$(field layers.2.target)
+expected_target=$(expected_program_target)
+[ "$program_target" = "$expected_target" ] || {
+  echo "offline bundle target $program_target is not compatible with $(platform_key) (expected $expected_target)" >&2
+  exit 1
+}
 templates_archive="$(field layers.3.file 2>/dev/null || true)"
 release_id=$(field release_id)
 source_sha=$(field source_sha)
 base_archive_sha=$(field layers.0.sha256)
 tools_archive_sha=$(field layers.1.sha256)
 program_archive_sha=$(field layers.2.sha256)
+manifest_sha=$(shasum -a 256 "$manifest" | awk '{print $1}')
 
 echo "==> loading base image ($base_image_tag)"
 if docker image inspect "$base_image_tag" >/dev/null 2>&1; then
@@ -232,6 +273,7 @@ if [ "$rebuild" = true ] \
     --build-arg "MCPGIT_BASE_IMAGE_ID=$base_image_id" \
     --build-arg "MCPGIT_TOOLS_VERSION=$tools_version" \
     --build-arg "MCPGIT_PROGRAM_VERSION=$program_version" \
+    --build-arg "MCPGIT_MANIFEST_SHA256=$manifest_sha" \
     --build-arg "MCPGIT_BASE_ARCHIVE_SHA256=$base_archive_sha" \
     --build-arg "MCPGIT_TOOLS_ARCHIVE_SHA256=$tools_archive_sha" \
     --build-arg "MCPGIT_PROGRAM_ARCHIVE_SHA256=$program_archive_sha" \
@@ -486,6 +528,15 @@ docker rm -f "$instance" >/dev/null 2>&1 || true
 docker run -d \
   --name "$instance" \
   --restart unless-stopped \
+  --label "org.opencontainers.image.version=git-$source_sha" \
+  --label "org.opencontainers.image.revision=$source_sha" \
+  --label "com.yxsicd.mcpgit.distribution=github-offline-v2" \
+  --label "com.yxsicd.mcpgit.release-id=$release_id" \
+  --label "com.yxsicd.mcpgit.program-version=$program_version" \
+  --label "com.yxsicd.mcpgit.manifest-sha256=$manifest_sha" \
+  --label "com.yxsicd.mcpgit.instance-id=$org_id" \
+  --label "com.yxsicd.mcpgit.instance-name=$instance" \
+  --label "com.yxsicd.mcpgit.data-volume=$data_volume" \
   -v "$data_volume":/data \
   -v "$config":/config/mcpgit.toml:ro \
   ${netrc:+-v "$netrc":/root/.netrc:ro} \

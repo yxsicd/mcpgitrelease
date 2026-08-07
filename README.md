@@ -1,8 +1,46 @@
-# MCPGit Release Channels
+# MCPGit
 
 This public repository is the release and deployment control plane for MCPGit.
 It deliberately separates the hot MCPGit binary from the cold development base
 image.
+
+## Install MCPGit
+
+For a normal single-node installation, use the product installer instead of
+the release-control scripts below:
+
+```sh
+curl -fsSL \
+  https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-install.sh \
+  | sh
+```
+
+The installer verifies the selected immutable offline Release, creates or
+reuses the instance data volume, initializes the instance, starts MCPGit, and
+installs `mcpgitctl` in `${HOME}/.local/bin` by default. After installation:
+
+```sh
+~/.local/bin/mcpgitctl status
+~/.local/bin/mcpgitctl doctor
+```
+
+Re-running the installer for the same instance preserves its data volume and
+organization identity. To prepare a self-contained bundle for an offline
+machine:
+
+```sh
+curl -fsSL \
+  https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-install.sh \
+  | sh -s -- --download-only --bundle ./mcpgit-offline
+
+# copy ./mcpgit-offline to the offline machine, then:
+./mcpgit-install.sh --bundle . --instance mcpgit
+```
+
+The current `offline-latest.json` product pointer publishes `linux-arm64`.
+Unsupported architectures fail closed before installation; the advanced
+release-channel procedure below remains available while additional offline-v1
+architectures are promoted.
 
 ## Agent quick start
 

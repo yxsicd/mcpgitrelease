@@ -66,6 +66,13 @@ mkdir -p "$bundle_dir/scripts"
 fetch_source_file "scripts/mcpgit-offline-release.py" "$parser"
 fetch_source_file "scripts/bootstrap-builtin-auth.py" "$bootstrap"
 fetch_source_file "Dockerfile.offline-runtime" "$dockerfile"
+fetch_source_file "novice-install.sh" "deploy/novice-install.sh"
+fetch_source_file "mcpgit-install.sh" "deploy/mcpgit-install.sh"
+fetch_source_file "mcpgitctl" "deploy/mcpgitctl"
+chmod 0755 \
+  "$bundle_dir/novice-install.sh" \
+  "$bundle_dir/mcpgit-install.sh" \
+  "$bundle_dir/mcpgitctl"
 
 echo "==> downloading release assets"
 python3 "$bundle_dir/$parser" verify \
@@ -112,12 +119,12 @@ cat > "$bundle_dir/FETCHED.md" <<EOF
   - scripts/mcpgit-offline-release.py $(shasum -a 256 "$bundle_dir/scripts/mcpgit-offline-release.py" | awk '{print $1}')
   - scripts/bootstrap-builtin-auth.py $(shasum -a 256 "$bundle_dir/scripts/bootstrap-builtin-auth.py" | awk '{print $1}')
 
-Copy this whole directory to the offline machine and run:
+Copy this whole directory to the offline machine and run the product installer:
 
-    ./novice-install.sh --bundle <this-dir> --instance <name>
+    ./mcpgit-install.sh --bundle <this-dir> --instance <name>
 EOF
 
 echo
 echo "PASS: bundle ready at $bundle_dir ($release_tag, source $source_sha)"
 echo "Copy the whole directory to the offline machine, then run"
-echo "  ./novice-install.sh --bundle $bundle_dir --instance <name>"
+echo "  ./mcpgit-install.sh --bundle $bundle_dir --instance <name>"

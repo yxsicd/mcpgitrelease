@@ -1,6 +1,11 @@
 {
-  "schema": "mcpgitrelease/offline-latest/v1",
-  "tag": "mcpgit-git-567766d988b9a5d3a89d6e368a3e47b0a969e058",
-  "source_revision": "567766d988b9a5d3a89d6e368a3e47b0a969e058",
-  "updated_at": "2026-08-06T13:58:19Z"
+  "schema": "mcpgit.offline-pointer.v1",
+  "architectures": {
+    "linux-arm64": {
+      "tag": "mcpgit-git-567766d988b9a5d3a89d6e368a3e47b0a969e058",
+      "source_sha": "567766d988b9a5d3a89d6e368a3e47b0a969e058",
+      "target": "aarch64-unknown-linux-gnu",
+      "manifest_sha256": "24ebf37c9c591923b0b696a399cd3533830b18b3337478e15f969d2f80b6e493"
+    }
+  }
 }
