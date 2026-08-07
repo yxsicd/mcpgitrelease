@@ -37,10 +37,10 @@ curl -fsSL \
 ./mcpgit-install.sh --bundle . --instance mcpgit
 ```
 
-The current `offline-latest.json` product pointer publishes `linux-arm64`.
-Unsupported architectures fail closed before installation; the advanced
-release-channel procedure below remains available while additional offline-v1
-architectures are promoted.
+The current `offline-latest.json` product pointer publishes both supported
+Linux architectures: `linux-amd64` and `linux-arm64`. The installer detects
+the host architecture and selects only the matching immutable release; other
+architectures fail closed before installation.
 
 ## Agent quick start
 

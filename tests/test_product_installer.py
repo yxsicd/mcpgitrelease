@@ -13,7 +13,8 @@ class ProductInstallerTests(unittest.TestCase):
         pointer = json.loads((ROOT / "offline-latest.json").read_text(encoding="utf-8"))
         self.assertEqual(pointer["schema"], "mcpgit.offline-pointer.v1")
         architectures = pointer["architectures"]
-        self.assertIn("linux-arm64", architectures)
+        self.assertEqual(set(architectures), {"linux-amd64", "linux-arm64"})
+        self.assertEqual(pointer["source_sha"], next(iter(architectures.values()))["source_sha"])
         expected_targets = {
             "linux-arm64": "aarch64-unknown-linux-gnu",
             "linux-amd64": "x86_64-unknown-linux-gnu",
@@ -22,6 +23,7 @@ class ProductInstallerTests(unittest.TestCase):
             self.assertIn(platform, expected_targets)
             self.assertEqual(entry["target"], expected_targets[platform])
             self.assertRegex(entry["source_sha"], r"^[0-9a-f]{40}$")
+            self.assertEqual(entry["source_sha"], pointer["source_sha"])
             self.assertRegex(entry["manifest_sha256"], r"^[0-9a-f]{64}$")
             self.assertTrue(entry["tag"].startswith("mcpgit-git-"))
 
