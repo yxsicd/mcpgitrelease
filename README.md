@@ -4,6 +4,12 @@ This public repository is the release and deployment control plane for MCPGit.
 It deliberately separates the hot MCPGit binary from the cold development base
 image.
 
+Linux Program binaries are compiled only by the target architecture's native
+Linux Cargo/rustc toolchain. The amd64 and arm64 release jobs run on matching
+native GitHub runners and call MCPGit's `build-linux-program-native.sh`.
+Docker/BuildKit is not a Program compiler; it remains a Base/Tools/runtime
+assembly mechanism only.
+
 ## Install MCPGit
 
 For a normal single-node installation, use the product installer instead of

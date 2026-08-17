@@ -34,15 +34,21 @@ jobs:
           repository: yxsicd/MCPGit
           ref: ${{ inputs.source_ref }}
           ssh-key: ${{ secrets.MCPGIT_DEPLOY_KEY }}
+      - name: Pin native Rust Program toolchain
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal
+          rustup default 1.96.0
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake clang libssl-dev pkg-config
       - name: Build stripped binary
-        run: docker buildx build --platform "linux/${{ matrix.arch }}" --target artifact --output type=local,dest=out -f Dockerfile.binary .
+        run: scripts/build-linux-program-native.sh "linux/${{ matrix.arch }}" "$PWD/out"
       - name: Package immutable asset
         env:
           ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           source_sha=$(git rev-parse HEAD)
-          chmod 755 out/mcpgit
+          test -x out/mcpgit
           tar -C out -czf "mcpgit-linux-$ARCH.tar.gz" mcpgit
           digest=$(sha256sum "mcpgit-linux-$ARCH.tar.gz" | awk '{print $1}')
           size=$(stat -c '%s' "mcpgit-linux-$ARCH.tar.gz")
