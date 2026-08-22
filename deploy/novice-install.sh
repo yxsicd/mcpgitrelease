@@ -91,10 +91,18 @@ platform_key() {
   esac
 }
 
-expected_program_target() {
+program_target_compatible() {
+  case "$(platform_key):$1" in
+    linux-arm64:aarch64-unknown-linux-gnu|linux-arm64:aarch64-unknown-linux-musl) return 0 ;;
+    linux-amd64:x86_64-unknown-linux-gnu|linux-amd64:x86_64-unknown-linux-musl) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+expected_program_targets() {
   case "$(platform_key)" in
-    linux-arm64) echo aarch64-unknown-linux-gnu ;;
-    linux-amd64) echo x86_64-unknown-linux-gnu ;;
+    linux-arm64) echo 'aarch64-unknown-linux-{gnu,musl}' ;;
+    linux-amd64) echo 'x86_64-unknown-linux-{gnu,musl}' ;;
   esac
 }
 
@@ -211,9 +219,8 @@ tools_version=$(field layers.1.version)
 program_archive="$bundle/$(field layers.2.file)"
 program_version=$(field layers.2.version)
 program_target=$(field layers.2.target)
-expected_target=$(expected_program_target)
-[ "$program_target" = "$expected_target" ] || {
-  echo "offline bundle target $program_target is not compatible with $(platform_key) (expected $expected_target)" >&2
+program_target_compatible "$program_target" || {
+  echo "offline bundle target $program_target is not compatible with $(platform_key) (expected $(expected_program_targets))" >&2
   exit 1
 }
 templates_archive="$(field layers.3.file 2>/dev/null || true)"

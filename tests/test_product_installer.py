@@ -16,8 +16,8 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertEqual(set(architectures), {"linux-amd64", "linux-arm64"})
         self.assertEqual(pointer["source_sha"], next(iter(architectures.values()))["source_sha"])
         expected_targets = {
-            "linux-arm64": "aarch64-unknown-linux-gnu",
-            "linux-amd64": "x86_64-unknown-linux-gnu",
+            "linux-arm64": "aarch64-unknown-linux-musl",
+            "linux-amd64": "x86_64-unknown-linux-musl",
         }
         for platform, entry in architectures.items():
             self.assertIn(platform, expected_targets)
@@ -43,6 +43,10 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("mcpgitrelease/main/deploy", installer)
         self.assertIn("offline channel has no release for {platform}", novice)
         self.assertIn("offline bundle target $program_target is not compatible", novice)
+        self.assertIn("aarch64-unknown-linux-gnu", novice)
+        self.assertIn("aarch64-unknown-linux-musl", novice)
+        self.assertIn("x86_64-unknown-linux-gnu", novice)
+        self.assertIn("x86_64-unknown-linux-musl", novice)
         self.assertIn("/data/.mcpgit-org-id", ctl)
         self.assertIn("Container identity does not match the persistent data volume", ctl)
 
