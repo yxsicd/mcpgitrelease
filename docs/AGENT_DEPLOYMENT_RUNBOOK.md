@@ -118,8 +118,16 @@ preserve all containers, volumes, releases, and state files while diagnosing.
 | Family | Authority | Purpose |
 |---|---|---|
 | Runtime channel | `dev/main/prod` `channel.json` | Deploy or upgrade servers |
-| Direct runtime Release | `mcpgit-git-<sha>` | Source-bound runtime evidence and controlled direct install |
+| Direct runtime Release | `mcpgit-git-<40-char-sha>-linux-<arch>` | Source-bound runtime evidence and controlled direct install |
 | Client SDK | `client-sdk.json` | Integrate Rust code with an existing server |
 
 Never use a Client SDK tag as a server runtime. Never infer a runtime channel
 from GitHub's “Latest” marker.
+
+Publish each direct runtime architecture by pushing its exact immutable tag
+from a public-control commit that contains `publish-offline-v1.yml`. The
+workflow parses and validates the full private-source SHA, checks out that
+revision with the repository deployment key, builds on the matching native
+Linux runner, verifies the offline manifest, and creates the five-asset public
+Release with GitHub's job-scoped token. A pre-existing Release is an error;
+never append rebuilt bytes to it.

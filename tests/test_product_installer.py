@@ -9,6 +9,17 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class ProductInstallerTests(unittest.TestCase):
+    def test_offline_release_workflow_is_tag_and_source_bound(self) -> None:
+        workflow = (ROOT / ".github/workflows/publish-offline-v1.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("mcpgit-git-([0-9a-f]{40})-linux-(amd64|arm64)", workflow)
+        self.assertIn("ref: ${{ needs.prepare.outputs.source_sha }}", workflow)
+        self.assertIn("runs-on: ${{ needs.prepare.outputs.runner }}", workflow)
+        self.assertIn("scripts/build-offline-release.sh", workflow)
+        self.assertIn("--verify-tag", workflow)
+        self.assertIn("--latest=false", workflow)
+
     def test_offline_pointer_is_architecture_qualified_and_digest_bound(self) -> None:
         pointer = json.loads((ROOT / "offline-latest.json").read_text(encoding="utf-8"))
         self.assertEqual(pointer["schema"], "mcpgit.offline-pointer.v1")

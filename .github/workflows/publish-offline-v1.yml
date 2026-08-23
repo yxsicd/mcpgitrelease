@@ -1,0 +1,106 @@
+name: publish-offline-v1
+
+on:
+  push:
+    tags:
+      - "mcpgit-git-*-linux-amd64"
+      - "mcpgit-git-*-linux-arm64"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-offline-v1-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      arch: ${{ steps.identity.outputs.arch }}
+      platform: ${{ steps.identity.outputs.platform }}
+      runner: ${{ steps.identity.outputs.runner }}
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+    steps:
+      - name: Validate immutable release identity
+        id: identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_TAG" =~ ^mcpgit-git-([0-9a-f]{40})-linux-(amd64|arm64)$ ]]; then
+            source_sha=${BASH_REMATCH[1]}
+            arch=${BASH_REMATCH[2]}
+          else
+            echo "invalid offline-v1 release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          case "$arch" in
+            amd64) runner=ubuntu-24.04 ;;
+            arm64) runner=ubuntu-24.04-arm ;;
+          esac
+          {
+            echo "source_sha=$source_sha"
+            echo "arch=$arch"
+            echo "platform=linux/$arch"
+            echo "runner=$runner"
+          } >> "$GITHUB_OUTPUT"
+
+  build-and-publish:
+    needs: prepare
+    runs-on: ${{ needs.prepare.outputs.runner }}
+    steps:
+      - name: Check out exact private source revision
+        uses: actions/checkout@v4
+        with:
+          repository: yxsicd/MCPGit
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          ssh-key: ${{ secrets.MCPGIT_DEPLOY_KEY }}
+          persist-credentials: false
+          path: source
+
+      - name: Install native release toolchain
+        env:
+          ARCH: ${{ needs.prepare.outputs.arch }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.96.0 --profile minimal
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake libssl-dev musl-tools pkg-config
+          if [[ "$ARCH" == arm64 ]] && ! command -v aarch64-linux-musl-gcc >/dev/null; then
+            sudo ln -s "$(command -v musl-gcc)" /usr/local/bin/aarch64-linux-musl-gcc
+          fi
+          if [[ "$ARCH" == amd64 ]] && ! command -v x86_64-linux-musl-gcc >/dev/null; then
+            sudo ln -s "$(command -v musl-gcc)" /usr/local/bin/x86_64-linux-musl-gcc
+          fi
+
+      - name: Build and verify offline-v1 assets natively
+        working-directory: source
+        env:
+          MCPGIT_NATIVE_PROGRAM_TARGET_DIR: ${{ runner.temp }}/mcpgit-native-program-target
+        run: |
+          set -euo pipefail
+          scripts/build-offline-release.sh \
+            --platform "${{ needs.prepare.outputs.platform }}" \
+            "$RUNNER_TEMP/offline-v1"
+
+      - name: Publish immutable architecture release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          PLATFORM: ${{ needs.prepare.outputs.platform }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "immutable release already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" \
+            "$RUNNER_TEMP"/offline-v1/* \
+            --verify-tag \
+            --latest=false \
+            --title "MCPGit offline-v1 ${SOURCE_SHA:0:12} $PLATFORM" \
+            --notes "Immutable MCPGit offline-v1 assets for $PLATFORM, built natively from yxsicd/MCPGit@$SOURCE_SHA."
