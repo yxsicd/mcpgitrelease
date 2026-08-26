@@ -26,6 +26,12 @@ class ReadmeContractTests(unittest.TestCase):
             "Mcp-Session-Id",
             '"name":"skill_list"',
             "result.structuredContent.result",
+            "configured\nGuest identity",
+            "error.authorization_upgrade",
+            "Basic User",
+            "Basic Verify",
+            "Person selection supplies identity",
+            "do not keep\nasking for credentials",
             "2026-07-28",
         ):
             self.assertIn(required, quickstart)

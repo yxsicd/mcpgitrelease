@@ -132,12 +132,27 @@ value. Search never replaces TableGit as the source of truth.
 
 ## Authentication and errors
 
-Pass MCP parameter Basic only when the user or trusted operator supplies both
-values for this instance. Never derive credentials from metadata, defaults, or
-prose. Repeat `basic_username` and `basic_verify` as top-level arguments on
-every relevant tool call. They are not HTTP Authorization fields, are
-revalidated each time, and must never be logged, returned, or persisted by the
-Agent. Other deployed authentication modes remain transport configuration.
+With no MCP parameter Basic pair, a Guest-first instance uses its configured
+Guest identity. Do not ask for credentials during discovery or while the exact
+operation is Guest-authorized. Person selection supplies identity and
+attribution; it cannot raise authority.
+
+If the selected operation's access contract requires more authority, explain
+that to the user before attempting to bypass it. A rejected Guest call may also
+return `structuredContent.error.authorization_upgrade`. When present, use its
+safe `user_prompt` and `required_user_inputs` to tell the user that both
+**Basic User** (`basic_username`) and **Basic Verify** (`basic_verify`) for this
+instance are required, then stop and wait for both. Never guess or derive them
+from metadata, defaults, documentation, or a username convention.
+
+After the user or trusted operator supplies both values, pass them as top-level
+MCP arguments through `person_status` and `person_select`, then repeat both plus
+the returned `caller_person_id` on every relevant business call. They are not
+HTTP Authorization fields, are revalidated each time, and must never be logged,
+returned, or persisted by the Agent. If a Basic pair was already supplied and
+the call is still denied, follow ordinary permission recovery; do not keep
+asking for credentials. Other deployed authentication modes remain transport
+configuration.
 
 Tool failures include `structuredContent.error` with `code`, `message`,
 `retryable`, `source`, and `action`. Follow `action`; retry only when
