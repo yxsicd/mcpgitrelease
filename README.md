@@ -50,19 +50,35 @@ architectures fail closed before installation.
 
 ## Agent quick start
 
-An Agent must first classify the task. Do not mix these two paths:
+An Agent must first classify the task. Do not mix these three paths:
 
 ```text
-Need Rust code to call an existing MCPGit server?
+Need to query or change an existing MCPGit instance as an Agent?
+  -> Mode 0: MCP Agent interface at /mcp
+
+Need Rust code to call the lower-level Service of an existing server?
   -> Mode 1: Client SDK integration
 
 Need your own brand-new MCPGit instance, then Rust code against it?
   -> Mode 2: deploy a new instance, then use Mode 1
 ```
 
-The complete two-mode runbook (download, offline installation, async client
-guidance, and bounded verification checks) is in
+The progressive MCP path is in
+[`docs/MCP_AGENT_QUICKSTART.md`](docs/MCP_AGENT_QUICKSTART.md). It starts from
+the eight-tool Agent Kernel and discloses only the selected Skill operation.
+The complete Service/deployment runbook (download, offline installation, async
+client guidance, and bounded verification checks) is in
 [`docs/CLIENT_INTEGRATION.md`](docs/CLIENT_INTEGRATION.md).
+
+### Mode 0 Agent side: use the MCP interface of an existing instance
+
+Connect an MCP client to `https://<host>/mcp` (or the instance's advertised
+`mcp_url`). Start with `service_metadata` and `skill_list`; defer
+`person_status` until the chosen operation or authorization requires caller
+identity.
+Select one operation, load only that operation with `skill_get`, then use its
+declared read, write, or publish runner. Do not call compiled operation names as
+top-level tools and do not infer instance-dependent availability.
 
 ### Mode 2 instance side: deploy or upgrade an MCPGit instance
 
@@ -143,36 +159,22 @@ server container. The machine-readable authority for the recommended SDK is:
 https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/client-sdk.json
 ```
 
-The current pointer selects:
-
-```text
-mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
-```
-
-Download and verify the SDK bundle:
-
-~~~sh
-sdk_tag=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
-sdk_bundle="$sdk_tag.tar.gz"
-
-curl -fLO \
-  "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$sdk_bundle"
-printf '%s  %s\n' \
-  4d4c8a5cc67fccd19d1864750463ba14a64e59def3d70bf2237761220992b450 \
-  "$sdk_bundle" | shasum -a 256 -c -
-~~~
+Read the tag, package versions, asset URLs, sizes, and SHA-256 digests from that
+pointer at integration time. Do not copy a tag, version, or digest from prose.
+Download the `offline_registry_bundle` URL and verify its exact `sha256` before
+extracting it.
 
 Configure the client repository and add the dependency:
 
 ~~~sh
-tar -xzf "$sdk_bundle"
-cd "$sdk_tag"
+tar -xzf <offline_registry_bundle-file>
+cd <client-sdk.json-tag>
 ./configure-project.sh /absolute/path/to/client-repository
 ~~~
 
 ```toml
 [dependencies]
-mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+mcpgit-service-client = { version = "=<packages.mcpgit-service-client>", registry = "mcpgit-sdk" }
 ```
 
 Then compile the client project:
@@ -184,8 +186,8 @@ cargo check --offline
 
 Integration is complete only when:
 
-1. Cargo resolves `mcpgit-service-client 2.0.0` and
-   `mcpgit-service-sdk 2.0.0` from `mcpgit-sdk`;
+1. Cargo resolves the exact Client and SDK versions declared by the same
+   `client-sdk.json` pointer from `mcpgit-sdk`;
 2. the client compiles with `--offline` after local registry setup;
 3. the client connects to the intended MCPGit Service WebSocket endpoint;
 4. authenticated instances derive Person identity from credentials rather than
@@ -229,44 +231,26 @@ selected by `dev`, `main`, or `prod`, and downloading or configuring it never
 installs, upgrades, restarts, promotes, or rolls back an MCPGit instance.
 
 `client-sdk.json` is the atomic recommendation pointer and is updated only after
-the immutable GitHub Release assets and manifest have been cross-checked. The
-current recommended release is:
-
-```text
-mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
-```
-
-It contains exactly four assets:
-
-- `mcpgit-client-sdk-release-v1.json` — source-bound asset manifest;
-- `mcpgit-service-sdk-2.0.0.crate` — standard Cargo package archive;
-- `mcpgit-service-client-2.0.0.crate` — standard Cargo package archive;
-- `mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz`
-  — complete offline local Cargo registry.
+the immutable GitHub Release assets and manifest have been cross-checked. Its
+`tag`, `packages`, and `assets` fields are authoritative; README examples are
+never a version pointer. The release contains the source-bound manifest, the
+two standard Cargo package archives, and the complete offline local Cargo
+registry bundle.
 
 The offline bundle contains the two MCPGit packages plus the exact transitive
-dependency closure, 129 `.crate` files in total. Every archive is bound by
-SHA-256. GitHub is only the immutable download location: the SDK is not
+dependency closure recorded by its manifest. Every archive is bound by SHA-256.
+GitHub is only the immutable download location: the SDK is not
 published to crates.io and does not use GitHub Packages as a live Cargo
 registry.
 
-Download and verify the recommended bundle:
-
-~~~sh
-sdk_tag=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38
-sdk_bundle=mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38.tar.gz
-
-curl -fLO \
-  "https://github.com/yxsicd/mcpgitrelease/releases/download/$sdk_tag/$sdk_bundle"
-shasum -a 256 "$sdk_bundle"
-# expected: 4d4c8a5cc67fccd19d1864750463ba14a64e59def3d70bf2237761220992b450
-~~~
+Download the asset whose role is `offline_registry_bundle` from its pointer URL
+and verify its exact size and SHA-256 before extraction.
 
 Configure a Rust client repository:
 
 ~~~sh
-tar -xzf "$sdk_bundle"
-cd "$sdk_tag"
+tar -xzf <offline_registry_bundle-file>
+cd <client-sdk.json-tag>
 ./configure-project.sh /absolute/path/to/client-repository
 ~~~
 
@@ -274,7 +258,7 @@ Then use an ordinary exact Cargo version dependency:
 
 ~~~toml
 [dependencies]
-mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+mcpgit-service-client = { version = "=<pointer package version>", registry = "mcpgit-sdk" }
 ~~~
 
 The configuration script verifies every bundled crate, installs a
@@ -286,9 +270,8 @@ registry initialization, the client repository builds without network access:
 cargo build --offline
 ~~~
 
-The earlier `mcpgit-client-sdk-git-dcde4121...` release is retained as an
-immutable audit record. New integrations should use the recommended release
-above.
+Older SDK releases remain immutable audit records. New integrations must use
+the release selected by the pointer.
 
 ## Publishing
 

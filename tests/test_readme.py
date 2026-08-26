@@ -7,8 +7,33 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 
 class ReadmeContractTests(unittest.TestCase):
+    def test_mcp_agent_quickstart_is_progressive_and_kernel_scoped(self) -> None:
+        quickstart = (ROOT / "docs" / "MCP_AGENT_QUICKSTART.md").read_text(encoding="utf-8")
+        for required in (
+            "eight stable Kernel tools",
+            "service_metadata",
+            "person_status",
+            "skill_list",
+            "skill_get",
+            "skill_run_read",
+            "skill_run_write",
+            "skill_run_publish",
+            "instance_dependent",
+            "availability_probe",
+            "structuredContent.error",
+            "read-only onboarding",
+            "exact instance is not independently confirmed",
+            "Mcp-Session-Id",
+            '"name":"skill_list"',
+            "result.structuredContent.result",
+            "2026-07-28",
+        ):
+            self.assertIn(required, quickstart)
+        self.assertLess(len(quickstart.encode("utf-8")), 12 * 1024)
+
     def test_agent_quick_start_separates_deployment_and_integration(self) -> None:
         self.assertIn("## Agent quick start", README)
+        self.assertIn("Mode 0: MCP Agent interface", README)
         self.assertIn("Mode 1: Client SDK integration", README)
         self.assertIn("Mode 2: deploy a new instance", README)
         self.assertIn(
@@ -17,6 +42,7 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertIn("### Mode 1 client side: integrate a Rust client", README)
         self.assertIn("docs/CLIENT_INTEGRATION.md", README)
+        self.assertIn("docs/MCP_AGENT_QUICKSTART.md", README)
         self.assertIn("Never change the deployment host", README)
         self.assertIn("Never delete the existing data volume", README)
         self.assertIn("mcpgit-fetch.sh", README)
@@ -33,13 +59,10 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("## Rust Client SDK", README)
         self.assertIn("client-sdk.json", README)
         self.assertIn("machine-readable authority", README)
-        self.assertIn(
-            "mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38",
-            README,
-        )
-        self.assertIn("mcpgit-client-sdk-release-v1.json", README)
-        self.assertIn("mcpgit-service-sdk-2.0.0.crate", README)
-        self.assertIn("mcpgit-service-client-2.0.0.crate", README)
+        self.assertIn("README examples are\nnever a version pointer", README)
+        self.assertIn("offline_registry_bundle", README)
+        self.assertNotIn("mcpgit-client-sdk-git-8730092557649f2b4c6661d73424add50407cf38", README)
+        self.assertNotIn("2.0.0", README)
         self.assertIn('registry = "mcpgit-sdk"', README)
         self.assertIn("cargo build --offline", README)
         self.assertIn("GitHub is only the immutable download location", README)

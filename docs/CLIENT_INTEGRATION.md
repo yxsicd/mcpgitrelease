@@ -4,6 +4,9 @@ This document is the authoritative integration runbook for a new Rust client.
 The public mirror in `yxsicd/mcpgitrelease/docs/CLIENT_INTEGRATION.md` is the
 Agent-facing copy; keep both in sync when this contract changes.
 
+This runbook does not apply to Mode 0 Agents using `/mcp`; use
+`docs/MCP_AGENT_QUICKSTART.md` for that path.
+
 An Agent must first classify the task:
 
 ```text
@@ -44,7 +47,7 @@ registry bundle) and verify every SHA-256 against the pointer before use.
 
    ```toml
    [dependencies]
-   mcpgit-service-client = { version = "=2.0.0", registry = "mcpgit-sdk" }
+   mcpgit-service-client = { version = "=<packages.mcpgit-service-client>", registry = "mcpgit-sdk" }
    # Required for async clients in offline-bundle mode: the runtime crate must
    # come from the same registry, otherwise cargo compiles two independent
    # tokio instances and the SDK reactor rejects the client runtime.
