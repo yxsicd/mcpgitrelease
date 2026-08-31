@@ -25,8 +25,8 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - {arch: amd64, runner: ubuntu-24.04}
-          - {arch: arm64, runner: ubuntu-24.04-arm}
+          - {arch: amd64, runner: ubuntu-24.04, musl_cc: x86_64-linux-musl-gcc}
+          - {arch: arm64, runner: ubuntu-24.04-arm, musl_cc: aarch64-linux-musl-gcc}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,9 @@ jobs:
           rustup toolchain install 1.96.0 --profile minimal
           rustup default 1.96.0
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cmake clang libssl-dev pkg-config
+          sudo apt-get install -y --no-install-recommends cmake clang libssl-dev musl-tools pkg-config
+          test -x "$(command -v musl-gcc)"
+          sudo ln -sf "$(command -v musl-gcc)" "/usr/local/bin/${{ matrix.musl_cc }}"
       - name: Build stripped binary
         run: scripts/build-linux-program-native.sh "linux/${{ matrix.arch }}" "$PWD/out"
       - name: Package immutable asset
