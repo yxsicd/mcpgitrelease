@@ -71,6 +71,19 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("/data/.mcpgit-org-id", ctl)
         self.assertIn("Container identity does not match the persistent data volume", ctl)
 
+    def test_template_install_creates_repositories_missing_from_archive(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        loop = "for r in works rootskills mcpgitsystem safegit systemconfig tablegit binarygit; do"
+        loop_start = novice.index(loop)
+        loop_end = novice.index("done", loop_start)
+        template_init = novice[loop_start:loop_end]
+        self.assertIn('mkdir -p "$dir"', template_init)
+        self.assertIn('printf "# %s\\n" "$r" > "$dir/README.md"', template_init)
+        self.assertLess(
+            template_init.index('mkdir -p "$dir"'),
+            template_init.index('git -C "$dir" init'),
+        )
+
     def test_public_bootstrap_helpers_and_quick_start_are_present(self) -> None:
         for relative in [
             "Dockerfile.offline-runtime",
