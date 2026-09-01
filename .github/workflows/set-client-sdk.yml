@@ -6,6 +6,13 @@ on:
       tag:
         description: Immutable mcpgit-client-sdk-git-<source-sha> Release tag
         required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: Immutable mcpgit-client-sdk-git-<source-sha> Release tag
+        required: true
+        type: string
 
 permissions:
   contents: write

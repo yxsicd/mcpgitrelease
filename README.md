@@ -295,6 +295,7 @@ The workflow files are:
 - promote-channel.yml
 - gc-releases.yml
 - set-client-sdk.yml
+- publish-client-sdk.yml
 - validate-client-sdk.yml
 
 Actions build artifacts are retained for one day and are only staging files.

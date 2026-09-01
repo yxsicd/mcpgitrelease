@@ -1,0 +1,77 @@
+name: publish-client-sdk
+
+on:
+  push:
+    tags:
+      - "mcpgit-client-sdk-git-*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-client-sdk-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+      tag: ${{ steps.identity.outputs.tag }}
+    steps:
+      - name: Validate immutable release identity
+        id: identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_TAG" =~ ^mcpgit-client-sdk-git-([0-9a-f]{40})$ ]]; then
+            source_sha=${BASH_REMATCH[1]}
+          else
+            echo "invalid Client SDK release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          {
+            echo "source_sha=$source_sha"
+            echo "tag=$RELEASE_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact private source revision
+        uses: actions/checkout@v4
+        with:
+          repository: yxsicd/MCPGit
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          ssh-key: ${{ secrets.MCPGIT_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Install and prime release toolchain
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.96.0 --profile minimal
+          cargo +1.96.0 fetch --locked
+
+      - name: Build and verify Client SDK assets
+        run: |
+          set -euo pipefail
+          python3 scripts/mcpgit-client-sdk-release.py build \
+            --output-dir "$RUNNER_TEMP/client-sdk"
+
+      - name: Publish immutable Client SDK Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          scripts/publish-client-sdk-release.sh \
+            "${{ needs.prepare.outputs.tag }}" \
+            "$RUNNER_TEMP/client-sdk"
+
+  select:
+    needs: [prepare, publish]
+    uses: ./.github/workflows/set-client-sdk.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+
