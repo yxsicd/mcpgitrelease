@@ -321,6 +321,10 @@ if [ "$update_mode" = false ]; then
         tar -xzf /provision/instance-templates.tar.gz -C /data/repos
         for r in works rootskills mcpgitsystem safegit systemconfig tablegit binarygit; do
           dir=/data/repos/$r
+          mkdir -p "$dir"
+          if [ -z "$(find "$dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            printf "# %s\n" "$r" > "$dir/README.md"
+          fi
           if [ ! -d "$dir/.git" ]; then
             git -C "$dir" init --initial-branch=main -q
             git -C "$dir" config user.name mcpgit
