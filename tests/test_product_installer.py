@@ -9,6 +9,16 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class ProductInstallerTests(unittest.TestCase):
+    def test_binary_workflow_provisions_native_musl_compilers(self) -> None:
+        workflow = (ROOT / ".github/workflows/publish-binary.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("musl-tools", workflow)
+        self.assertIn("x86_64-linux-musl-gcc", workflow)
+        self.assertIn("aarch64-linux-musl-gcc", workflow)
+        self.assertIn("command -v musl-gcc", workflow)
+        self.assertIn("scripts/build-linux-program-native.sh", workflow)
+
     def test_offline_release_workflow_is_tag_and_source_bound(self) -> None:
         workflow = (ROOT / ".github/workflows/publish-offline-v1.yml").read_text(
             encoding="utf-8"
