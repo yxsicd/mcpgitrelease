@@ -69,6 +69,11 @@ not a release pin, so a promoted product release is picked up automatically.
 Use an explicit existing `--bundle DIR` only when intentionally installing a
 pinned/offline bundle.
 
+The deployment release kit includes the read-only preflight checker and the
+pinned Node/Bun toolchain initializer used by `mcpgit-deploy.sh`; production
+operators should never have to fetch a mutable helper after selecting a deploy
+release.
+
 The default release chain is:
 
 ```text

@@ -46,6 +46,7 @@ class DeploymentBaselineTests(unittest.TestCase):
         preflight = (ROOT / "deploy" / "mcpgit-preflight.sh").read_text(encoding="utf-8")
 
         self.assertIn("mcpgit-preflight.sh", workflow)
+        self.assertIn("mcpgit-toolchain-init.sh", workflow)
         self.assertIn("mcpgit-preflight.sh", fetch)
         self.assertIn("mcpgitrelease/preflight/v1", preflight)
         self.assertIn('"blockers"', preflight)
