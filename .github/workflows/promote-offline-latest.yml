@@ -36,18 +36,15 @@ jobs:
             gh release view "$tag" --repo "$GH_REPO" >/dev/null
             mkdir -p "$tmp/$arch"
             gh release download "$tag" --repo "$GH_REPO" --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
-            base_file=$(python3 - "$tmp/$arch/mcpgit-offline-release-v1.json" <<'PY'
-          import json,sys
-          manifest=json.load(open(sys.argv[1]))
-          base=next(x for x in manifest["layers"] if x["kind"]=="base_image")
-          print(base["file"])
-          PY
-            )
-            gh release download "$tag" --repo "$GH_REPO" --pattern "$base_file" --dir "$tmp/$arch"
-            python3 scripts/mcpgit-offline-release.py verify-layer \
+            python3 scripts/mcpgit-offline-release.py assets \
               --manifest "$tmp/$arch/mcpgit-offline-release-v1.json" \
-              --kind base_image \
-              --asset "$tmp/$arch/$base_file"
+              | while IFS= read -r asset; do
+                  [ -n "$asset" ] || continue
+                  gh release download "$tag" --repo "$GH_REPO" --pattern "$asset" --dir "$tmp/$arch"
+                done
+            python3 scripts/mcpgit-offline-release.py verify \
+              --manifest "$tmp/$arch/mcpgit-offline-release-v1.json" \
+              --asset-dir "$tmp/$arch"
           done
           python3 - "$SOURCE_SHA" "$tmp" > offline-latest.json.new <<'PY'
           import hashlib, json, pathlib, sys

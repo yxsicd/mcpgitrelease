@@ -411,8 +411,11 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("linux-amd64", workflow)
         self.assertIn("linux-arm64", workflow)
         self.assertIn("offline-latest.json", workflow)
-        self.assertIn("verify-layer", workflow)
-        self.assertIn("--kind base_image", workflow)
+        self.assertIn("scripts/mcpgit-offline-release.py assets", workflow)
+        self.assertIn("scripts/mcpgit-offline-release.py verify", workflow)
+        self.assertIn("--asset-dir", workflow)
+        self.assertNotIn("verify-layer", workflow)
+        self.assertNotIn("--kind base_image", workflow)
 
     def test_template_install_creates_repositories_missing_from_archive(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")

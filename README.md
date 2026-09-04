@@ -83,6 +83,12 @@ Publishing binaries does not automatically make them the default. Promotion
 changes only `offline-latest.json`; rollback selects the previous complete
 dual-architecture pair and never rebuilds or mixes layers.
 
+The production promotion job is intentionally expensive enough to fail closed:
+it downloads every asset listed by each architecture's immutable manifest and
+runs the offline release verifier against the complete local asset directory.
+The default pointer is written only after both architecture bundles pass full
+layer digest, size, target, source SHA, and base image identity checks.
+
 ### Direct installer and offline bundle
 
 For a normal single-node installation, use the product installer instead of
