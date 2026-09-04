@@ -27,6 +27,22 @@ At the start of each online run, `install.sh` resolves the current public
 helpers, Dockerfile, and `offline-latest.json` used by that run are then fetched
 from that exact immutable Git revision. This prevents regional Raw/CDN cache
 lag from mixing files from different `main` revisions in one installation.
+Existing cached helper scripts and the runtime Dockerfile are refreshed from
+that same snapshot on every online run; only checksum-matching immutable
+release layers are reused from cache.
+
+Runtime assembly is also content-bound. A cached Base tag is accepted only
+when its Docker image ID exactly matches the selected release manifest, and the
+assembled runtime uses a source-bound image tag and is re-probed against the
+manifest and in-image executable hashes before activation.
+
+Instance replacement is transactional at the container boundary. For an
+existing instance, the installer refuses a different `/data` volume, preserves
+the current container under a fixed stopped rollback name, starts and health-
+checks the candidate, and automatically restores the previous container when
+candidate start or health fails. Only one bounded rollback container is kept.
+For a brand-new instance, an already occupied host port is rejected before a
+new data volume is created.
 
 Re-running the same one-line command always re-reads `offline-latest.json`.
 The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,

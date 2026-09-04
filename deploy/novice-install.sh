@@ -37,6 +37,30 @@ MCPGIT_BUNDLE_DIR="${MCPGIT_BUNDLE_DIR:-$HOME/.mcpgit/bundle}"
 MCPGIT_RELEASE_TAG="${MCPGIT_RELEASE_TAG:-}"
 # ===== do not edit below =====
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    echo "MCPGit installer requires sha256sum or shasum" >&2
+    return 1
+  fi
+}
+
+fetch_snapshot_file() {
+  source=$1
+  target=$2
+  temporary="${target}.tmp.$$"
+  rm -f "$temporary"
+  if ! curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+    "$source" -o "$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  mv "$temporary" "$target"
+}
+
 fetch_bundle() {
   tag=$1
   target=$2
@@ -57,7 +81,7 @@ PY
   while read -r file expected; do
     [ -n "$file" ] || continue
     if [ -f "$target/$file" ]; then
-      actual=$(shasum -a 256 "$target/$file" | awk '{print $1}')
+      actual=$(sha256_file "$target/$file")
       [ "$actual" = "$expected" ] && { echo "    unchanged: $file (cached)"; continue; }
       echo "    changed: $file"
     fi
@@ -65,23 +89,18 @@ PY
     curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
       "$base_url/$file" -o "$target/$file"
   done < "$layer_list"
+  rm -f "$layer_list"
   mkdir -p "$target/scripts"
   for helper in scripts/mcpgit-offline-release.py scripts/bootstrap-builtin-auth.py; do
-    if [ ! -f "$target/$helper" ]; then
-      curl -fsSL --retry 5 --retry-delay 5 \
-        "$MCPGIT_INSTALL_CONTENT_BASE/$helper" \
-        -o "$target/$helper"
-    fi
+    fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/$helper" "$target/$helper"
   done
-  if [ ! -f "$target/Dockerfile.offline-runtime" ]; then
-    curl -fsSL --retry 5 --retry-delay 5 \
-      "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" \
-      -o "$target/Dockerfile.offline-runtime"
-  fi
+  fetch_snapshot_file \
+    "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" \
+    "$target/Dockerfile.offline-runtime"
   for product_file in novice-install.sh mcpgit-install.sh mcpgitctl; do
-    curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+    fetch_snapshot_file \
       "$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file" \
-      -o "$target/$product_file"
+      "$target/$product_file"
     chmod 0755 "$target/$product_file"
   done
   python3 "$target/scripts/mcpgit-offline-release.py" verify \
@@ -249,30 +268,81 @@ source_sha=$(field source_sha)
 base_archive_sha=$(field layers.0.sha256)
 tools_archive_sha=$(field layers.1.sha256)
 program_archive_sha=$(field layers.2.sha256)
-manifest_sha=$(shasum -a 256 "$manifest" | awk '{print $1}')
+manifest_sha=$(sha256_file "$manifest")
 
-echo "==> loading base image ($base_image_tag)"
-if docker image inspect "$base_image_tag" >/dev/null 2>&1; then
-  echo "    already present"
-else
-  docker load < "$base_archive"
+[ -n "$data_volume" ] || data_volume="${instance}_data"
+
+case "$port" in
+  ''|*[!0-9]*) echo "invalid MCPGit port: $port" >&2; exit 1 ;;
+esac
+if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+  echo "invalid MCPGit port: $port" >&2
+  exit 1
 fi
 
-runtime_image="mcpgit-offline-runtime:offline"
-[ -n "$data_volume" ] || data_volume="${instance}_data"
+current_container=false
+current_program_version=
+current_host_port=
+current_was_running=false
+if docker container inspect "$instance" >/dev/null 2>&1; then
+  current_container=true
+  current_was_running=$(docker inspect "$instance" --format '{{.State.Running}}')
+  current_program_version=$(docker inspect "$instance" \
+    --format '{{index .Config.Labels "com.yxsicd.mcpgit.program-version"}}' 2>/dev/null || true)
+  current_data_volume=$(docker inspect "$instance" --format \
+    '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}')
+  if [ -z "$current_data_volume" ] || [ "$current_data_volume" != "$data_volume" ]; then
+    echo "refusing to change data volume for existing instance $instance: current=$current_data_volume requested=$data_volume" >&2
+    exit 1
+  fi
+  current_host_port=$(docker port "$instance" 8001/tcp 2>/dev/null \
+    | sed -n '1s/.*://p' | tr -d '[:space:]')
+fi
+
+if [ "$current_host_port" != "$port" ]; then
+  if ! python3 - "$port" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    sock.bind(("127.0.0.1", port))
+except OSError:
+    raise SystemExit(1)
+finally:
+    sock.close()
+PY
+  then
+    echo "refusing MCPGit install because host port $port is already in use" >&2
+    exit 1
+  fi
+fi
+
 update_mode=false
+created_data_volume=false
 if docker volume inspect "$data_volume" >/dev/null 2>&1; then
   update_mode=true
-fi
-deployed_program_version=
-if docker image inspect "$runtime_image" >/dev/null 2>&1; then
-  deployed_program_version=$(docker image inspect \
-    --format '{{index .Config.Labels "com.yxsicd.mcpgit.program-version"}}' \
-    "$runtime_image" 2>/dev/null || true)
 fi
 if [ "$update_mode" = true ]; then
   echo "==> existing instance detected: update mode (data volume preserved)"
 fi
+
+echo "==> loading exact base image ($base_image_tag)"
+actual_base_image_id=$(docker image inspect "$base_image_tag" \
+  --format '{{.Id}}' 2>/dev/null || true)
+if [ "$actual_base_image_id" != "$base_image_id" ]; then
+  docker load < "$base_archive" >/dev/null
+  actual_base_image_id=$(docker image inspect "$base_image_tag" \
+    --format '{{.Id}}' 2>/dev/null || true)
+fi
+if [ "$actual_base_image_id" != "$base_image_id" ]; then
+  echo "loaded base image identity does not match release manifest: expected=$base_image_id actual=$actual_base_image_id" >&2
+  exit 1
+fi
+echo "    exact image id: $actual_base_image_id"
+
+runtime_image="mcpgit-offline-runtime:$release_id"
 
 work_dir="${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit}"
 mkdir -p "$work_dir"
@@ -284,12 +354,63 @@ tar -xzf "$tools_archive" -C "$ctx"
 cp "$dockerfile" "$ctx/Dockerfile.offline-runtime"
 
 exec_sha() {
-  shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  sha256_file "$1"
 }
 
-if [ "$rebuild" = true ] \
-  || ! docker image inspect "$runtime_image" >/dev/null 2>&1 \
-  || [ "$deployed_program_version" != "$program_version" ]; then
+expected_mcpgit_sha=$(exec_sha "$ctx/program/bin/mcpgit")
+expected_mcpgitgw_sha=$(exec_sha "$ctx/program/bin/mcpgitgw")
+expected_safe_recover_sha=
+if [ -f "$ctx/program/bin/mcpgit-safe-recover" ]; then
+  expected_safe_recover_sha=$(exec_sha "$ctx/program/bin/mcpgit-safe-recover")
+fi
+expected_node_sha=$(exec_sha "$ctx/tools/bin/node")
+expected_bun_sha=$(exec_sha "$ctx/tools/bin/bun")
+expected_credential_sha=$(exec_sha "$ctx/tools/bin/git-credential-netrc")
+
+image_label() {
+  docker image inspect "$runtime_image" --format "{{index .Config.Labels \"$1\"}}" 2>/dev/null || true
+}
+
+runtime_image_exact() {
+  docker image inspect "$runtime_image" >/dev/null 2>&1 || return 1
+  [ "$(image_label org.opencontainers.image.revision)" = "$source_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.release-id)" = "$release_id" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.base-image-id)" = "$base_image_id" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.tools-version)" = "$tools_version" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.program-version)" = "$program_version" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.manifest-sha256)" = "$manifest_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.base-archive-sha256)" = "$base_archive_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.tools-archive-sha256)" = "$tools_archive_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.program-archive-sha256)" = "$program_archive_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.mcpgit-sha256)" = "$expected_mcpgit_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.mcpgitgw-sha256)" = "$expected_mcpgitgw_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.safe-recover-sha256)" = "$expected_safe_recover_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.node-sha256)" = "$expected_node_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.bun-sha256)" = "$expected_bun_sha" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.exec.credential-sha256)" = "$expected_credential_sha" ] || return 1
+
+  probe=$(docker run --rm --entrypoint sh "$runtime_image" -c '
+set -eu
+printf "mcpgit=%s\n" "$(sha256sum /opt/mcpgit/program/bin/mcpgit | awk "{print \$1}")"
+printf "mcpgitgw=%s\n" "$(sha256sum /opt/mcpgit/program/bin/mcpgitgw | awk "{print \$1}")"
+if [ -f /opt/mcpgit/program/bin/mcpgit-safe-recover ]; then
+  printf "safe=%s\n" "$(sha256sum /opt/mcpgit/program/bin/mcpgit-safe-recover | awk "{print \$1}")"
+else
+  printf "safe=\n"
+fi
+printf "node=%s\n" "$(sha256sum /opt/mcpgit/tools/bin/node | awk "{print \$1}")"
+printf "bun=%s\n" "$(sha256sum /opt/mcpgit/tools/bin/bun | awk "{print \$1}")"
+printf "credential=%s\n" "$(sha256sum /opt/mcpgit/tools/bin/git-credential-netrc | awk "{print \$1}")"
+' 2>/dev/null) || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^mcpgit=//p')" = "$expected_mcpgit_sha" ] || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^mcpgitgw=//p')" = "$expected_mcpgitgw_sha" ] || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^safe=//p')" = "$expected_safe_recover_sha" ] || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^node=//p')" = "$expected_node_sha" ] || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^bun=//p')" = "$expected_bun_sha" ] || return 1
+  [ "$(printf '%s\n' "$probe" | sed -n 's/^credential=//p')" = "$expected_credential_sha" ] || return 1
+}
+
+if [ "$rebuild" = true ] || ! runtime_image_exact; then
   echo "==> assembling offline runtime image ($runtime_image)"
   docker build \
     --file "$ctx/Dockerfile.offline-runtime" \
@@ -304,15 +425,20 @@ if [ "$rebuild" = true ] \
     --build-arg "MCPGIT_BASE_ARCHIVE_SHA256=$base_archive_sha" \
     --build-arg "MCPGIT_TOOLS_ARCHIVE_SHA256=$tools_archive_sha" \
     --build-arg "MCPGIT_PROGRAM_ARCHIVE_SHA256=$program_archive_sha" \
-    --build-arg "MCPGIT_EXEC_MCPGIT_SHA256=$(exec_sha "$ctx/program/bin/mcpgit")" \
-    --build-arg "MCPGIT_EXEC_MCPGITGW_SHA256=$(exec_sha "$ctx/program/bin/mcpgitgw")" \
-    --build-arg "MCPGIT_EXEC_NODE_SHA256=$(exec_sha "$ctx/tools/bin/node")" \
-    --build-arg "MCPGIT_EXEC_BUN_SHA256=$(exec_sha "$ctx/tools/bin/bun")" \
-    --build-arg "MCPGIT_EXEC_CREDENTIAL_SHA256=$(exec_sha "$ctx/tools/bin/git-credential-netrc")" \
+    --build-arg "MCPGIT_EXEC_MCPGIT_SHA256=$expected_mcpgit_sha" \
+    --build-arg "MCPGIT_EXEC_MCPGITGW_SHA256=$expected_mcpgitgw_sha" \
+    --build-arg "MCPGIT_EXEC_SAFE_RECOVER_SHA256=$expected_safe_recover_sha" \
+    --build-arg "MCPGIT_EXEC_NODE_SHA256=$expected_node_sha" \
+    --build-arg "MCPGIT_EXEC_BUN_SHA256=$expected_bun_sha" \
+    --build-arg "MCPGIT_EXEC_CREDENTIAL_SHA256=$expected_credential_sha" \
     --tag "$runtime_image" \
     "$ctx"
+  if ! runtime_image_exact; then
+    echo "assembled runtime image failed exact release verification" >&2
+    exit 1
+  fi
 else
-  echo "==> offline runtime image already present: $runtime_image"
+  echo "==> exact offline runtime image already present: $runtime_image"
 fi
 
 org_id=${MCPGIT_ORG_ID:-}
@@ -331,6 +457,7 @@ repos="works rootskills mcpgitsystem safegit systemconfig tablegit binarygit"
 if [ "$update_mode" = false ]; then
   echo "==> preparing data volume $data_volume"
   docker volume create "$data_volume" >/dev/null
+  created_data_volume=true
   if [ -n "$templates_archive" ] && [ -f "$bundle/$templates_archive" ]; then
     cp "$bundle/$templates_archive" "$ctx/instance-templates.tar.gz"
     docker run --rm -e ORG_ID="$org_id" \
@@ -377,6 +504,7 @@ fi
 config_dir="${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit/instances}"
 mkdir -p "$config_dir"
 config="$config_dir/$instance.toml"
+config_created=false
 if [ ! -f "$config" ] || ! grep -q "instance_id = \"$org_id\"" "$config" 2>/dev/null; then
   {
     echo "[system_config]"
@@ -384,6 +512,7 @@ if [ ! -f "$config" ] || ! grep -q "instance_id = \"$org_id\"" "$config" 2>/dev/
     echo "path = \"/data/repos/systemconfig\""
     echo "revision = \"refs/heads/main\""
   } > "$config"
+  config_created=true
 fi
 
 if [ "$update_mode" = false ]; then
@@ -554,9 +683,62 @@ docker run --rm \
     --apply
 fi
 
-echo "==> starting instance $instance (port $port)"
-docker rm -f "$instance" >/dev/null 2>&1 || true
-docker run -d \
+rollback_container="${instance}-rollback"
+previous_preserved=false
+previous_host_port="$current_host_port"
+
+restore_previous_instance() {
+  docker rm -f "$instance" >/dev/null 2>&1 || true
+  if [ "$previous_preserved" = true ] \
+    && docker container inspect "$rollback_container" >/dev/null 2>&1; then
+    if ! docker rename "$rollback_container" "$instance" >/dev/null; then
+      echo "automatic rollback could not restore previous container name: $rollback_container" >&2
+      return 1
+    fi
+    if [ "$current_was_running" = true ]; then
+      if ! docker start "$instance" >/dev/null; then
+        echo "automatic rollback could not restart previous container: $instance" >&2
+        return 1
+      fi
+      if [ -n "$previous_host_port" ]; then
+        rollback_deadline=$(( $(date +%s) + 60 ))
+        while [ "$(curl -s -o /dev/null -w '%{http_code}' \
+          "http://127.0.0.1:$previous_host_port/healthz" 2>/dev/null || true)" != "204" ]; do
+          if [ "$(date +%s)" -ge "$rollback_deadline" ]; then
+            echo "automatic rollback restarted the previous container but health did not recover" >&2
+            return 1
+          fi
+          sleep 1
+        done
+      fi
+    fi
+    echo "==> restored previous instance $instance after candidate failure" >&2
+    return 0
+  fi
+  if [ "$created_data_volume" = true ]; then
+    docker volume rm "$data_volume" >/dev/null 2>&1 || true
+  fi
+  if [ "$config_created" = true ]; then
+    rm -f "$config"
+  fi
+  return 0
+}
+
+echo "==> starting candidate instance $instance (port $port)"
+if [ "$current_container" = true ]; then
+  docker rm -f "$rollback_container" >/dev/null 2>&1 || true
+  if [ "$current_was_running" = true ]; then
+    docker stop "$instance" >/dev/null
+  fi
+  if ! docker rename "$instance" "$rollback_container" >/dev/null; then
+    [ "$current_was_running" = true ] && docker start "$instance" >/dev/null 2>&1 || true
+    echo "could not preserve current container for rollback" >&2
+    exit 1
+  fi
+  previous_preserved=true
+fi
+
+if ! docker run -d \
   --name "$instance" \
   --restart unless-stopped \
   --label "org.opencontainers.image.version=git-$source_sha" \
@@ -576,18 +758,37 @@ docker run -d \
   -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
   -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
   -p "$port":8001 \
-  "$runtime_image" >/dev/null
+  "$runtime_image" >/dev/null; then
+  echo "candidate container failed to start; restoring previous instance" >&2
+  restore_previous_instance || true
+  exit 1
+fi
 
 echo "==> waiting for health"
 deadline=$(( $(date +%s) + 120 ))
-until [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; do
-  [ "$(date +%s)" -lt "$deadline" ] || { echo "instance did not become healthy" >&2; docker logs "$instance" | tail -40 >&2; exit 1; }
+candidate_healthy=false
+while [ "$(date +%s)" -lt "$deadline" ]; do
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' \
+    "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
+    candidate_healthy=true
+    break
+  fi
+  if [ "$(docker inspect "$instance" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]; then
+    break
+  fi
   sleep 2
 done
 
+if [ "$candidate_healthy" != true ]; then
+  echo "candidate instance did not become healthy; restoring previous instance" >&2
+  docker logs "$instance" 2>&1 | tail -40 >&2 || true
+  restore_previous_instance || true
+  exit 1
+fi
+
 echo
 if [ "$update_mode" = true ]; then
-  echo "PASS: updated instance $instance (program $deployed_program_version -> $program_version)"
+  echo "PASS: updated instance $instance (program ${current_program_version:-unknown} -> $program_version)"
 else
   echo "PASS: offline instance $instance is healthy"
 fi
@@ -597,6 +798,9 @@ echo "  organization id (immutable identity): $org_id"
 echo "  instance name (renameable label): $instance"
 echo "  endpoint:  http://127.0.0.1:$port"
 echo "  data volume: $data_volume"
+if [ "$previous_preserved" = true ]; then
+  echo "  rollback container: $rollback_container (stopped)"
+fi
 if [ "$update_mode" = false ]; then
   echo "  first login: systemadmin / change-me (change it after login)"
   echo

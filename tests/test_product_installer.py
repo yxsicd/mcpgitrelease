@@ -92,6 +92,43 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/$helper', novice)
         self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime', novice)
         self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file', novice)
+        self.assertIn("fetch_snapshot_file", novice)
+        self.assertNotIn('if [ ! -f "$target/$helper" ]', novice)
+        self.assertNotIn('if [ ! -f "$target/Dockerfile.offline-runtime" ]', novice)
+
+    def test_installer_accepts_standard_linux_sha256sum(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn("command -v sha256sum", novice)
+        self.assertIn("command -v shasum", novice)
+
+    def test_runtime_dockerfile_records_safe_recover_digest(self) -> None:
+        dockerfile = (ROOT / "Dockerfile.offline-runtime").read_text(encoding="utf-8")
+        self.assertIn("MCPGIT_EXEC_SAFE_RECOVER_SHA256", dockerfile)
+        self.assertIn("com.yxsicd.mcpgit.exec.safe-recover-sha256", dockerfile)
+
+    def test_runtime_cache_is_source_bound_and_content_verified(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn('runtime_image="mcpgit-offline-runtime:$release_id"', novice)
+        self.assertIn('actual_base_image_id', novice)
+        self.assertIn('[ "$actual_base_image_id" != "$base_image_id" ]', novice)
+        self.assertIn('runtime_image_exact()', novice)
+        self.assertIn('com.yxsicd.mcpgit.manifest-sha256', novice)
+        self.assertIn('assembled runtime image failed exact release verification', novice)
+
+    def test_existing_instance_cannot_silently_switch_data_volume_or_conflict_port(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn('refusing to change data volume for existing instance', novice)
+        self.assertIn('refusing MCPGit install because host port $port is already in use', novice)
+
+    def test_instance_replacement_keeps_one_automatic_rollback(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn('rollback_container="${instance}-rollback"', novice)
+        self.assertIn('restore_previous_instance()', novice)
+        self.assertIn('docker rename "$instance" "$rollback_container"', novice)
+        self.assertIn('candidate container failed to start; restoring previous instance', novice)
+        self.assertIn('candidate instance did not become healthy; restoring previous instance', novice)
+        self.assertIn('restored previous instance $instance after candidate failure', novice)
+        self.assertNotIn('docker rm -f "$instance" >/dev/null 2>&1 || true\ndocker run -d', novice)
 
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -13,6 +13,7 @@ ARG MCPGIT_TOOLS_ARCHIVE_SHA256
 ARG MCPGIT_PROGRAM_ARCHIVE_SHA256
 ARG MCPGIT_EXEC_MCPGIT_SHA256
 ARG MCPGIT_EXEC_MCPGITGW_SHA256
+ARG MCPGIT_EXEC_SAFE_RECOVER_SHA256
 ARG MCPGIT_EXEC_NODE_SHA256
 ARG MCPGIT_EXEC_BUN_SHA256
 ARG MCPGIT_EXEC_CREDENTIAL_SHA256
@@ -34,6 +35,7 @@ LABEL org.opencontainers.image.version="git-${MCPGIT_SOURCE_SHA}" \
       com.yxsicd.mcpgit.program-archive-sha256="${MCPGIT_PROGRAM_ARCHIVE_SHA256}" \
       com.yxsicd.mcpgit.exec.mcpgit-sha256="${MCPGIT_EXEC_MCPGIT_SHA256}" \
       com.yxsicd.mcpgit.exec.mcpgitgw-sha256="${MCPGIT_EXEC_MCPGITGW_SHA256}" \
+      com.yxsicd.mcpgit.exec.safe-recover-sha256="${MCPGIT_EXEC_SAFE_RECOVER_SHA256}" \
       com.yxsicd.mcpgit.exec.node-sha256="${MCPGIT_EXEC_NODE_SHA256}" \
       com.yxsicd.mcpgit.exec.bun-sha256="${MCPGIT_EXEC_BUN_SHA256}" \
       com.yxsicd.mcpgit.exec.credential-sha256="${MCPGIT_EXEC_CREDENTIAL_SHA256}"
