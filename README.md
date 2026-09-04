@@ -43,6 +43,8 @@ checks the candidate, and automatically restores the previous container when
 candidate start or health fails. Only one bounded rollback container is kept.
 For a brand-new instance, an already occupied host port is rejected before a
 new data volume is created.
+An existing instance config with a different organization identity is also a
+hard blocker; the installer never rewrites it into a different identity.
 
 Re-running the same one-line command always re-reads `offline-latest.json`.
 The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,

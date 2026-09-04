@@ -505,7 +505,11 @@ config_dir="${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit/instances}"
 mkdir -p "$config_dir"
 config="$config_dir/$instance.toml"
 config_created=false
-if [ ! -f "$config" ] || ! grep -q "instance_id = \"$org_id\"" "$config" 2>/dev/null; then
+if [ -f "$config" ] && ! grep -q "instance_id = \"$org_id\"" "$config" 2>/dev/null; then
+  echo "refusing to replace existing instance config with a different organization identity: $config" >&2
+  exit 1
+fi
+if [ ! -f "$config" ]; then
   {
     echo "[system_config]"
     echo "instance_id = \"$org_id\""

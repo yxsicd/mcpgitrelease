@@ -120,6 +120,7 @@ class ProductInstallerTests(unittest.TestCase):
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
         self.assertIn('refusing to change data volume for existing instance', novice)
         self.assertIn('refusing MCPGit install because host port $port is already in use', novice)
+        self.assertIn('refusing to replace existing instance config with a different organization identity', novice)
 
     def test_instance_replacement_keeps_one_automatic_rollback(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
