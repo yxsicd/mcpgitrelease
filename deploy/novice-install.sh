@@ -990,10 +990,10 @@ if [ "$update_mode" = false ]; then
   echo "  load it with: . \"$admin_credential_file\""
   echo
   shares_path=/data/repos/safegit/.git/mcpgit/safegit-shamir-shares.v1.json
-  recovery_password_path=/data/repos/safegit/.git/mcpgit/safegit-recovery-password.v1.json
+  agent_key_path=/data/repos/safegit/.git/mcpgit/safegit-agent-key.v1.json
   if docker exec "$instance" sh -lc \
     'test -f "$1" && test "$(stat -c %a "$1")" = 600 && test -f "$2" && test "$(stat -c %a "$2")" = 600' \
-    sh "$shares_path" "$recovery_password_path"; then
+    sh "$shares_path" "$agent_key_path"; then
     echo "SafeGit novice recovery material is persisted mode 0600 in the data volume."
     echo "Copy the persisted Shamir shares file to an external location"
     echo "  docker cp $instance:$shares_path ./${instance}-shares.json"

@@ -110,8 +110,9 @@ mode-0600 host file under `$HOME/.mcpgit/credentials/` (or
 `MCPGIT_CREDENTIAL_DIR`) and the installer prints the file path, never the
 password itself. Authentication is accepted only after the generated credential
 can open an administrator-protected SafeGit page. SafeGit novice recovery files
-are checked directly in the data volume at mode 0600; recovery guidance does not
-depend on which bootstrap process happened to emit the first-start log line.
+(`safegit-shamir-shares.v1.json` and the Agent Key) are checked directly in the
+data volume at mode 0600; recovery guidance does not depend on which bootstrap
+process happened to emit the first-start log line.
 
 Re-running the installer for the same instance preserves its data volume and
 organization identity. To prepare a self-contained bundle for an offline

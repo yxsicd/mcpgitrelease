@@ -168,7 +168,7 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('generated systemadmin credential failed authentication probe', novice)
         self.assertIn('systemadmin credential file (0600)', novice)
         self.assertIn('safegit-shamir-shares.v1.json', novice)
-        self.assertIn('safegit-recovery-password.v1.json', novice)
+        self.assertIn('safegit-agent-key.v1.json', novice)
         self.assertNotIn('first login: systemadmin / change-me', novice)
 
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
