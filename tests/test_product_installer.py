@@ -97,6 +97,105 @@ class ProductInstallerTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip(), expected)
 
+    def test_docker_save_identity_resolves_nested_index_and_ignores_attestation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            archive = root / "base-nested.tar.gz"
+            tag = "mcpgit-offline-base:bookworm-v1-arm64"
+            config = b'{"architecture":"arm64","os":"linux"}'
+            config_sha = hashlib.sha256(config).hexdigest()
+            image_manifest = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "config": {"digest": f"sha256:{config_sha}", "size": len(config)},
+                    "layers": [],
+                },
+                separators=(",", ":"),
+            ).encode()
+            image_manifest_sha = hashlib.sha256(image_manifest).hexdigest()
+            nested_index = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.index.v1+json",
+                    "manifests": [
+                        {
+                            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                            "digest": f"sha256:{image_manifest_sha}",
+                            "size": len(image_manifest),
+                        }
+                    ],
+                },
+                separators=(",", ":"),
+            ).encode()
+            nested_index_sha = hashlib.sha256(nested_index).hexdigest()
+            attestation = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "config": {"digest": "sha256:" + "0" * 64, "size": 0},
+                    "layers": [],
+                },
+                separators=(",", ":"),
+            ).encode()
+            attestation_sha = hashlib.sha256(attestation).hexdigest()
+            docker_manifest = json.dumps(
+                [{"Config": f"blobs/sha256/{config_sha}", "RepoTags": [tag], "Layers": []}],
+                separators=(",", ":"),
+            ).encode()
+            index = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.index.v1+json",
+                    "manifests": [
+                        {
+                            "mediaType": "application/vnd.oci.image.index.v1+json",
+                            "digest": f"sha256:{nested_index_sha}",
+                            "size": len(nested_index),
+                        },
+                        {
+                            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                            "digest": f"sha256:{attestation_sha}",
+                            "size": len(attestation),
+                        },
+                    ],
+                },
+                separators=(",", ":"),
+            ).encode()
+            members = [
+                ("manifest.json", docker_manifest),
+                ("index.json", index),
+                (f"blobs/sha256/{config_sha}", config),
+                (f"blobs/sha256/{image_manifest_sha}", image_manifest),
+                (f"blobs/sha256/{nested_index_sha}", nested_index),
+                (f"blobs/sha256/{attestation_sha}", attestation),
+            ]
+            with tarfile.open(archive, "w:gz") as bundle:
+                for name, data in members:
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    bundle.addfile(info, io.BytesIO(data))
+
+            parser = ROOT / "scripts/mcpgit-offline-release.py"
+            result = subprocess.run(
+                [
+                    "python3",
+                    str(parser),
+                    "image-identity",
+                    "--archive",
+                    str(archive),
+                    "--image-tag",
+                    tag,
+                    "--field",
+                    "manifest_id",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), f"sha256:{nested_index_sha}")
+
     def test_binary_workflow_provisions_native_musl_compilers(self) -> None:
         workflow = (ROOT / ".github/workflows/publish-binary.yml").read_text(
             encoding="utf-8"

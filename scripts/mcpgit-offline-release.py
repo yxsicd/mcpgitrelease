@@ -71,6 +71,49 @@ def _json_bytes(data: bytes, label: str) -> object:
         fail(f"Docker image archive has invalid {label}: {error}")
 
 
+def _descriptor_reaches_config(
+    bundle: tarfile.TarFile,
+    descriptor: object,
+    config_id: str,
+    ancestors: set[str],
+) -> bool:
+    if not isinstance(descriptor, dict):
+        fail("Docker image archive OCI descriptor is invalid")
+    media_type = str(descriptor.get("mediaType", ""))
+    if media_type not in {
+        "application/vnd.oci.image.index.v1+json",
+        "application/vnd.oci.image.manifest.v1+json",
+    }:
+        return False
+    digest_value = str(descriptor.get("digest", ""))
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest_value):
+        fail("Docker image archive OCI descriptor digest is invalid")
+    if digest_value in ancestors:
+        fail("Docker image archive OCI descriptor graph contains a cycle")
+    digest_hex = digest_value.split(":", 1)[1]
+    blob = _tar_regular_bytes(bundle, f"blobs/sha256/{digest_hex}")
+    if hashlib.sha256(blob).hexdigest() != digest_hex:
+        fail("Docker image archive OCI descriptor blob digest mismatch")
+    size = descriptor.get("size")
+    if isinstance(size, int) and size != len(blob):
+        fail("Docker image archive OCI descriptor blob size mismatch")
+    value = _json_bytes(blob, "OCI descriptor blob")
+    if not isinstance(value, dict):
+        fail("Docker image archive OCI descriptor blob must be an object")
+    if media_type == "application/vnd.oci.image.manifest.v1+json":
+        config = value.get("config")
+        return isinstance(config, dict) and config.get("digest") == config_id
+    manifests = value.get("manifests")
+    if not isinstance(manifests, list) or not manifests:
+        fail("Docker image archive OCI index has no manifests")
+    next_ancestors = set(ancestors)
+    next_ancestors.add(digest_value)
+    return any(
+        _descriptor_reaches_config(bundle, child, config_id, next_ancestors)
+        for child in manifests
+    )
+
+
 def docker_image_archive_identities(
     archive_path: pathlib.Path, expected_tag: str
 ) -> dict[str, str]:
@@ -115,26 +158,20 @@ def docker_image_archive_identities(
             if not isinstance(index, dict) or index.get("schemaVersion") != 2:
                 fail("Docker image archive index.json is invalid")
             manifests = index.get("manifests")
-            if not isinstance(manifests, list) or len(manifests) != 1:
-                fail("Docker image archive index.json must select exactly one manifest")
-            descriptor = manifests[0]
-            if not isinstance(descriptor, dict):
-                fail("Docker image archive manifest descriptor is invalid")
-            digest_value = str(descriptor.get("digest", ""))
-            if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest_value):
-                fail("Docker image archive manifest descriptor digest is invalid")
-            manifest_digest = digest_value.split(":", 1)[1]
-            manifest_name = f"blobs/sha256/{manifest_digest}"
-            manifest_bytes = _tar_regular_bytes(bundle, manifest_name)
-            if hashlib.sha256(manifest_bytes).hexdigest() != manifest_digest:
-                fail("Docker image archive OCI manifest blob digest mismatch")
-            oci_manifest = _json_bytes(manifest_bytes, "OCI manifest")
-            if not isinstance(oci_manifest, dict):
-                fail("Docker image archive OCI manifest is invalid")
-            config = oci_manifest.get("config")
-            if not isinstance(config, dict) or config.get("digest") != config_id:
-                fail("Docker image archive OCI manifest/config identity mismatch")
-            manifest_id = digest_value
+            if not isinstance(manifests, list) or not manifests:
+                fail("Docker image archive index.json has no manifests")
+            matches = [
+                str(descriptor.get("digest", ""))
+                for descriptor in manifests
+                if isinstance(descriptor, dict)
+                and _descriptor_reaches_config(bundle, descriptor, config_id, set())
+            ]
+            if len(matches) != 1:
+                fail(
+                    "Docker image archive index.json must have exactly one top-level "
+                    "descriptor that resolves to the selected Config"
+                )
+            manifest_id = matches[0]
         return {"config_id": config_id, "manifest_id": manifest_id}
 
 
