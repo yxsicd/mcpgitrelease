@@ -52,6 +52,7 @@ tmp_root="${TMPDIR:-/tmp}"
 bundle="$tmp_root/${instance}-bundle"
 credentials="$tmp_root/${instance}-creds"
 installer="$tmp_root/${instance}-install.sh"
+instance_config="${HOME:?HOME is required}/.mcpgit/instances/${instance}.toml"
 evidence=${evidence:-"$tmp_root/${instance}-public-install-evidence.json"}
 mkdir -p "$(dirname "$evidence")"
 
@@ -59,11 +60,22 @@ cleanup_old() {
   docker rm -f "$instance" >/dev/null 2>&1 || true
   docker volume rm "${instance}_data" >/dev/null 2>&1 || true
   rm -rf -- "$bundle" "$credentials" "$installer"
+  rm -f -- "$instance_config"
 }
 
 cleanup_sensitive() {
   rm -rf -- "$credentials" "$installer"
+  rm -f -- "$instance_config"
 }
+
+cleanup_failed_sensitive() {
+  local status=$?
+  if [[ "$status" != 0 && "$cleanup_on_success" == true ]]; then
+    cleanup_sensitive
+  fi
+  return "$status"
+}
+trap cleanup_failed_sensitive EXIT
 
 redact_log() {
   sed -E 's/(MCPGIT_[A-Z0-9_]*(TOKEN|SECRET|PASSWORD|VERIFY|AUTHORIZATION|KEY)[A-Z0-9_]*=).*/\1<redacted>/g'
