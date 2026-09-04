@@ -93,6 +93,7 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime', novice)
         self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file', novice)
         self.assertIn("fetch_snapshot_file", novice)
+        self.assertIn("fetch_snapshot_file() (", novice)
         self.assertNotIn('if [ ! -f "$target/$helper" ]', novice)
         self.assertNotIn('if [ ! -f "$target/Dockerfile.offline-runtime" ]', novice)
 

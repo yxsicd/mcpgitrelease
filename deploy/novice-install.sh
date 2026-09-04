@@ -48,18 +48,18 @@ sha256_file() {
   fi
 }
 
-fetch_snapshot_file() {
-  source=$1
-  target=$2
-  temporary="${target}.tmp.$$"
-  rm -f "$temporary"
+fetch_snapshot_file() (
+  snapshot_source=$1
+  snapshot_target=$2
+  snapshot_temporary="${snapshot_target}.tmp.$$"
+  rm -f "$snapshot_temporary"
   if ! curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-    "$source" -o "$temporary"; then
-    rm -f "$temporary"
+    "$snapshot_source" -o "$snapshot_temporary"; then
+    rm -f "$snapshot_temporary"
     return 1
   fi
-  mv "$temporary" "$target"
-}
+  mv "$snapshot_temporary" "$snapshot_target"
+)
 
 fetch_bundle() {
   tag=$1
