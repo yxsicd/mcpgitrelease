@@ -61,6 +61,10 @@ cleanup_old() {
   rm -rf -- "$bundle" "$credentials" "$installer"
 }
 
+cleanup_sensitive() {
+  rm -rf -- "$credentials" "$installer"
+}
+
 redact_log() {
   sed -E 's/(MCPGIT_[A-Z0-9_]*(TOKEN|SECRET|PASSWORD|VERIFY|AUTHORIZATION|KEY)[A-Z0-9_]*=).*/\1<redacted>/g'
 }
@@ -123,9 +127,9 @@ PY
 
 write_evidence() {
   local install_sha=$1 healthz=$2
-  python3 - "$evidence" "$instance" "$port" "$install_sha" "$healthz" "$expected_source_sha" "$tmp_root/${instance}.mcp.json" <<'PY'
+  python3 - "$evidence" "$instance" "$port" "$install_sha" "$healthz" "$expected_source_sha" "$tmp_root/${instance}.mcp.json" "$credentials" <<'PY'
 import glob, json, os, pathlib, subprocess, sys
-out, instance, port, install_sha, healthz, expected, mcp_path = sys.argv[1:]
+out, instance, port, install_sha, healthz, expected, mcp_path, credentials_dir = sys.argv[1:]
 container = json.loads(subprocess.check_output(["docker", "inspect", instance], text=True))[0]
 labels = {key: value for key, value in (container.get("Config", {}).get("Labels") or {}).items() if key.startswith("com.yxsicd.mcpgit.")}
 image = container.get("Config", {}).get("Image") or ""
@@ -141,7 +145,7 @@ if expected:
         or expected in image
     )
 credential_files = []
-for path in sorted(glob.glob(f"/tmp/{instance}-creds/*")):
+for path in sorted(glob.glob(os.path.join(credentials_dir, "*"))):
     stat = os.stat(path)
     credential_files.append({"path": path, "mode": oct(stat.st_mode & 0o777), "size": stat.st_size})
 repo_list = subprocess.check_output([
@@ -224,7 +228,12 @@ healthz=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1
 "$HOME/.local/bin/mcpgitctl" --instance "$instance" --url "http://127.0.0.1:$port" status >"/tmp/${instance}.status.log"
 "$HOME/.local/bin/mcpgitctl" --instance "$instance" --url "http://127.0.0.1:$port" doctor >"/tmp/${instance}.doctor.log"
 mcp_probe
-write_evidence "$install_sha" "$healthz"
+if ! write_evidence "$install_sha" "$healthz"; then
+  if [[ "$cleanup_on_success" == true ]]; then
+    cleanup_sensitive
+  fi
+  exit 1
+fi
 if [[ "$cleanup_on_success" == true ]]; then
   cleanup_old
 fi
