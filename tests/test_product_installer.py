@@ -107,6 +107,17 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("MCPGIT_EXEC_SAFE_RECOVER_SHA256", dockerfile)
         self.assertIn("com.yxsicd.mcpgit.exec.safe-recover-sha256", dockerfile)
 
+    def test_runtime_assembly_template_is_digest_bound_and_health_checked(self) -> None:
+        dockerfile = (ROOT / "Dockerfile.offline-runtime").read_text(encoding="utf-8")
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn("MCPGIT_ASSEMBLY_SHA256", dockerfile)
+        self.assertIn("com.yxsicd.mcpgit.assembly-sha256", dockerfile)
+        self.assertIn("HEALTHCHECK", dockerfile)
+        self.assertIn("http://127.0.0.1:8001/healthz", dockerfile)
+        self.assertIn('assembly_sha=$(sha256_file "$dockerfile")', novice)
+        self.assertIn('com.yxsicd.mcpgit.assembly-sha256', novice)
+        self.assertIn('--build-arg "MCPGIT_ASSEMBLY_SHA256=$assembly_sha"', novice)
+
     def test_runtime_cache_is_source_bound_and_content_verified(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
         self.assertIn('runtime_image="mcpgit-offline-runtime:$release_id"', novice)

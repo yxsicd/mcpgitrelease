@@ -35,6 +35,11 @@ Runtime assembly is also content-bound. A cached Base tag is accepted only
 when its Docker image ID exactly matches the selected release manifest, and the
 assembled runtime uses a source-bound image tag and is re-probed against the
 manifest and in-image executable hashes before activation.
+The exact installer snapshot's `Dockerfile.offline-runtime` SHA-256 is recorded
+on the assembled image and participates in cache admission too, so a newer
+assembly contract cannot silently reuse an older image built from the same
+MCPGit binary Release. The runtime image exposes an HTTP `/healthz` Docker
+HEALTHCHECK in addition to the installer's external acceptance probe.
 
 Instance replacement is transactional at the container boundary. For an
 existing instance, the installer refuses a different `/data` volume, preserves

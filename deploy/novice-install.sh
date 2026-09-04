@@ -269,6 +269,7 @@ base_archive_sha=$(field layers.0.sha256)
 tools_archive_sha=$(field layers.1.sha256)
 program_archive_sha=$(field layers.2.sha256)
 manifest_sha=$(sha256_file "$manifest")
+assembly_sha=$(sha256_file "$dockerfile")
 
 [ -n "$data_volume" ] || data_volume="${instance}_data"
 
@@ -383,6 +384,7 @@ runtime_image_exact() {
   docker image inspect "$runtime_image" >/dev/null 2>&1 || return 1
   [ "$(image_label org.opencontainers.image.revision)" = "$source_sha" ] || return 1
   [ "$(image_label com.yxsicd.mcpgit.release-id)" = "$release_id" ] || return 1
+  [ "$(image_label com.yxsicd.mcpgit.assembly-sha256)" = "$assembly_sha" ] || return 1
   [ "$(image_label com.yxsicd.mcpgit.base-image-id)" = "$base_image_id" ] || return 1
   [ "$(image_label com.yxsicd.mcpgit.tools-version)" = "$tools_version" ] || return 1
   [ "$(image_label com.yxsicd.mcpgit.program-version)" = "$program_version" ] || return 1
@@ -425,6 +427,7 @@ if [ "$rebuild" = true ] || ! runtime_image_exact; then
     --build-arg "MCPGIT_BASE_IMAGE=$base_image_tag" \
     --build-arg "MCPGIT_SOURCE_SHA=$source_sha" \
     --build-arg "MCPGIT_RELEASE_ID=$release_id" \
+    --build-arg "MCPGIT_ASSEMBLY_SHA256=$assembly_sha" \
     --build-arg "MCPGIT_BASE_VERSION=$base_version" \
     --build-arg "MCPGIT_BASE_IMAGE_ID=$base_image_id" \
     --build-arg "MCPGIT_TOOLS_VERSION=$tools_version" \

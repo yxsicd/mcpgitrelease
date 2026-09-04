@@ -3,6 +3,7 @@ FROM ${MCPGIT_BASE_IMAGE}
 
 ARG MCPGIT_SOURCE_SHA
 ARG MCPGIT_RELEASE_ID
+ARG MCPGIT_ASSEMBLY_SHA256
 ARG MCPGIT_BASE_VERSION
 ARG MCPGIT_BASE_IMAGE_ID
 ARG MCPGIT_TOOLS_VERSION
@@ -25,6 +26,7 @@ LABEL org.opencontainers.image.version="git-${MCPGIT_SOURCE_SHA}" \
       org.opencontainers.image.revision="${MCPGIT_SOURCE_SHA}" \
       com.yxsicd.mcpgit.distribution="github-offline-v2" \
       com.yxsicd.mcpgit.release-id="${MCPGIT_RELEASE_ID}" \
+      com.yxsicd.mcpgit.assembly-sha256="${MCPGIT_ASSEMBLY_SHA256}" \
       com.yxsicd.mcpgit.base-version="${MCPGIT_BASE_VERSION}" \
       com.yxsicd.mcpgit.base-image-id="${MCPGIT_BASE_IMAGE_ID}" \
       com.yxsicd.mcpgit.tools-version="${MCPGIT_TOOLS_VERSION}" \
@@ -39,3 +41,6 @@ LABEL org.opencontainers.image.version="git-${MCPGIT_SOURCE_SHA}" \
       com.yxsicd.mcpgit.exec.node-sha256="${MCPGIT_EXEC_NODE_SHA256}" \
       com.yxsicd.mcpgit.exec.bun-sha256="${MCPGIT_EXEC_BUN_SHA256}" \
       com.yxsicd.mcpgit.exec.credential-sha256="${MCPGIT_EXEC_CREDENTIAL_SHA256}"
+
+HEALTHCHECK --interval=5s --timeout=2s --start-period=5s --retries=3 \
+  CMD curl -fsS -o /dev/null http://127.0.0.1:8001/healthz || exit 1
