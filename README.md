@@ -118,6 +118,13 @@ Re-running the installer for the same instance preserves its data volume and
 organization identity. To prepare a self-contained bundle for an offline
 machine:
 
+The standard instance enables executable source build authority on the logical
+`tablegit` repository by default. WAsmC compilation is fully local: the
+compiler is embedded in the MCPGit Program and does not require an external
+compiler service. Set `MCPGIT_EXECUTABLE_BUILD_REPOSITORY=` explicitly to keep
+executable build control disabled. A Rust compiler frontend remains optional
+and separately configured.
+
 ```sh
 curl -fsSL \
   https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/mcpgit-install.sh \

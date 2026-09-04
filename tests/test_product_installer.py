@@ -200,6 +200,22 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('tag=$(resolve_tag)', novice)
         self.assertIn('fetch_bundle "$tag" "$bundle"', novice)
 
+    def test_default_instance_enables_local_wasmc_build_without_forcing_router(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            'MCPGIT_EXECUTABLE_BUILD_REPOSITORY="${MCPGIT_EXECUTABLE_BUILD_REPOSITORY-tablegit}"',
+            novice,
+        )
+        self.assertIn(
+            '-e MCPGIT_EXECUTABLE_BUILD_REPOSITORY="$executable_build_repository"',
+            novice,
+        )
+        self.assertIn(
+            '[ "$current_executable_build_repository" = "$executable_build_repository" ]',
+            novice,
+        )
+        self.assertNotIn('MCPGIT_EXECUTABLE_ROUTE_REPOSITORY="${', novice)
+
     def test_offline_latest_promotion_verifies_dual_arch_releases(self) -> None:
         workflow = (ROOT / ".github/workflows/promote-offline-latest.yml").read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", workflow)

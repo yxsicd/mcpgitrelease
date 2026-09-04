@@ -37,6 +37,9 @@ MCPGIT_BUNDLE_DIR="${MCPGIT_BUNDLE_DIR:-$HOME/.mcpgit/bundle}"
 MCPGIT_RELEASE_TAG="${MCPGIT_RELEASE_TAG:-}"
 # 私有凭据目录：fresh install 会把随机 systemadmin Basic 凭据写到这里，0600。
 MCPGIT_CREDENTIAL_DIR="${MCPGIT_CREDENTIAL_DIR:-$HOME/.mcpgit/credentials}"
+# WAsmC executable build authority：默认挂到标准 tablegit 仓；显式空值可关闭。
+# WAsmC 编译器内嵌于 MCPGit Program，不需要外部 compiler URL。
+MCPGIT_EXECUTABLE_BUILD_REPOSITORY="${MCPGIT_EXECUTABLE_BUILD_REPOSITORY-tablegit}"
 # ===== do not edit below =====
 
 sha256_file() {
@@ -186,6 +189,7 @@ guest_repo=works
 builder_repos=works,tablegit,binarygit
 rebuild=false
 download_only=false
+executable_build_repository=$MCPGIT_EXECUTABLE_BUILD_REPOSITORY
 while [ $# -gt 0 ]; do
   case "$1" in
     --bundle) bundle=$2; bundle_explicit=true; shift 2 ;;
@@ -290,6 +294,7 @@ current_was_running=false
 current_image_id=
 current_config_source=
 current_netrc_source=
+current_executable_build_repository=
 if docker container inspect "$instance" >/dev/null 2>&1; then
   current_container=true
   current_was_running=$(docker inspect "$instance" --format '{{.State.Running}}')
@@ -308,6 +313,9 @@ if docker container inspect "$instance" >/dev/null 2>&1; then
     '{{range .Mounts}}{{if eq .Destination "/config/mcpgit.toml"}}{{.Source}}{{end}}{{end}}')
   current_netrc_source=$(docker inspect "$instance" --format \
     '{{range .Mounts}}{{if eq .Destination "/root/.netrc"}}{{.Source}}{{end}}{{end}}')
+  current_executable_build_repository=$(docker inspect "$instance" --format \
+    '{{range .Config.Env}}{{println .}}{{end}}' \
+    | sed -n 's/^MCPGIT_EXECUTABLE_BUILD_REPOSITORY=//p' | tail -n 1)
 fi
 
 if [ "$current_host_port" != "$port" ]; then
@@ -557,6 +565,7 @@ if [ "$current_container" = true ] \
   && [ "$current_host_port" = "$port" ] \
   && [ "$current_config_source" = "$requested_config_source" ] \
   && [ "$current_netrc_source" = "$requested_netrc_source" ] \
+  && [ "$current_executable_build_repository" = "$executable_build_repository" ] \
   && [ "$(curl -s -o /dev/null -w '%{http_code}' \
     "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
   docker update --restart unless-stopped "$instance" >/dev/null
@@ -917,6 +926,7 @@ if ! docker run -d \
   --label "com.yxsicd.mcpgit.instance-id=$org_id" \
   --label "com.yxsicd.mcpgit.instance-name=$instance" \
   --label "com.yxsicd.mcpgit.data-volume=$data_volume" \
+  --label "com.yxsicd.mcpgit.executable-build-repository=$executable_build_repository" \
   -v "$data_volume":/data \
   -v "$config":/config/mcpgit.toml:ro \
   ${netrc:+-v "$netrc":/root/.netrc:ro} \
@@ -924,6 +934,7 @@ if ! docker run -d \
   -e MCPGIT_BOOTSTRAP_REPO_SOURCES=none \
   -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
   -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
+  -e MCPGIT_EXECUTABLE_BUILD_REPOSITORY="$executable_build_repository" \
   -p "$port":8001 \
   "$runtime_image" >/dev/null; then
   echo "candidate container failed to start; restoring previous instance" >&2
