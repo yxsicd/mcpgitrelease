@@ -102,10 +102,10 @@ while IFS= read -r entry; do
   [[ -n "$entry" && "$entry" != /* && "$entry" != *".."* ]] || die "unsafe deployment archive path"
 done < <(tar -tzf "$target/$MCPGIT_DEPLOY_FILE")
 tar -xzf "$target/$MCPGIT_DEPLOY_FILE" -C "$target/deploy"
-for required in mcpgit-deploy.sh mcpgit-preflight.sh compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit.toml mcpgit-runtime.env.example; do
+for required in mcpgit-deploy.sh mcpgit-preflight.sh mcpgit-fetch.sh mcpgit-toolchain-init.sh compose.yaml docker-entrypoint.sh git-credential-netrc mcpgit.toml mcpgit-runtime.env.example; do
   [[ -r "$target/deploy/$required" ]] || die "deployment archive is missing $required"
 done
-chmod 0755 "$target/deploy/mcpgit-deploy.sh" "$target/deploy/mcpgit-preflight.sh" "$target/deploy/mcpgit-fetch.sh" "$target/deploy/docker-entrypoint.sh" "$target/deploy/git-credential-netrc"
+chmod 0755 "$target/deploy/mcpgit-deploy.sh" "$target/deploy/mcpgit-preflight.sh" "$target/deploy/mcpgit-fetch.sh" "$target/deploy/mcpgit-toolchain-init.sh" "$target/deploy/docker-entrypoint.sh" "$target/deploy/git-credential-netrc"
 mv -f "$manifest_part" "$manifest"
 trap - EXIT
 

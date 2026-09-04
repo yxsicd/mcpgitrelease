@@ -87,6 +87,26 @@ class GarbageCollectionTests(unittest.TestCase):
             )
             self.assertEqual(gc.referenced_tags([str(path)]), {tag})
 
+    def test_offline_latest_pointer_protects_both_architecture_tags(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / "offline-latest.json"
+            amd64 = "mcpgit-git-" + "a" * 40 + "-linux-amd64"
+            arm64 = "mcpgit-git-" + "a" * 40 + "-linux-arm64"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema": "mcpgit.offline-pointer.v1",
+                        "source_sha": "a" * 40,
+                        "architectures": {
+                            "linux-amd64": {"tag": amd64},
+                            "linux-arm64": {"tag": arm64},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(gc.referenced_tags([str(path)]), {amd64, arm64})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -49,6 +49,7 @@ jobs:
             --manifest channels/dev/channel.json
             --manifest channels/main/channel.json
             --manifest channels/prod/channel.json
+            --manifest tools/offline-latest.json
             --manifest tools/client-sdk.json
           )
           if [[ "$EXECUTE" == true ]]; then

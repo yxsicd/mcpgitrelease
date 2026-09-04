@@ -25,10 +25,26 @@ def referenced_tags(manifests: list[str]) -> set[str]:
             tags.add(manifest["tag"])
         elif schema == "mcpgitrelease/channel/v1":
             tags.add(manifest["release"]["tag"])
-        else:
+        elif schema == "mcpgitrelease/channel/v2":
             tags.add(manifest["binary"]["tag"])
             tags.add(manifest["devbase"]["tag"])
             tags.add(manifest["deployment"]["tag"])
+        elif schema == "mcpgit.offline-pointer.v1":
+            architectures = manifest.get("architectures")
+            if isinstance(architectures, dict):
+                for entry in architectures.values():
+                    if isinstance(entry, dict):
+                        tag = entry.get("tag")
+                    else:
+                        tag = entry
+                    if isinstance(tag, str) and tag:
+                        tags.add(tag)
+            else:
+                tag = manifest.get("tag")
+                if isinstance(tag, str) and tag:
+                    tags.add(tag)
+        else:
+            raise ValueError(f"unsupported manifest schema for retention protection: {schema}")
     return tags
 
 
