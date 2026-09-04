@@ -102,12 +102,16 @@ installs `mcpgitctl` in `${HOME}/.local/bin` by default. After installation:
 
 Fresh installs do not use a shared/default administrator password. The
 installer generates a per-instance strong random `systemadmin` credential,
-uses a short-lived bootstrap container to initialize its SafeGit verifier, then
+uses a short-lived two-start bootstrap container to initialize SafeGit and then
+persist its password verifier after SafeGit is unlocked, then
 removes that container so the final MCPGit container does not retain the
 plaintext password in its environment. The credential is stored only in a
 mode-0600 host file under `$HOME/.mcpgit/credentials/` (or
 `MCPGIT_CREDENTIAL_DIR`) and the installer prints the file path, never the
-password itself.
+password itself. Authentication is accepted only after the generated credential
+can open an administrator-protected SafeGit page. SafeGit novice recovery files
+are checked directly in the data volume at mode 0600; recovery guidance does not
+depend on which bootstrap process happened to emit the first-start log line.
 
 Re-running the installer for the same instance preserves its data volume and
 organization identity. To prepare a self-contained bundle for an offline

@@ -162,9 +162,13 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('chmod 0600 "$credential_tmp"', novice)
         self.assertIn('auth_bootstrap_container="${instance}-auth-bootstrap"', novice)
         self.assertIn('--env-file "$bootstrap_password_env"', novice)
+        self.assertIn('docker restart "$auth_bootstrap_container"', novice)
+        self.assertIn('/__mcpgit/system/safegit/', novice)
         self.assertIn('docker rm -f "$auth_bootstrap_container"', novice)
         self.assertIn('generated systemadmin credential failed authentication probe', novice)
         self.assertIn('systemadmin credential file (0600)', novice)
+        self.assertIn('safegit-shamir-shares.v1.json', novice)
+        self.assertIn('safegit-recovery-password.v1.json', novice)
         self.assertNotIn('first login: systemadmin / change-me', novice)
 
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:

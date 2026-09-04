@@ -803,11 +803,39 @@ if [ "$bootstrap_ready" != true ]; then
   echo "systemadmin credential bootstrap did not become healthy" >&2
   exit 1
 fi
+
+# SafeGit novice initialization happens during the first runtime start. SSO may
+# observe SafeGit before it is unlocked on that first pass, so restart the same
+# short-lived container (which still owns the random password env) once after
+# health. The second startup sees the initialized/unlocked SafeGit and persists
+# the random systemadmin verifier before we remove the bootstrap container.
+docker restart "$auth_bootstrap_container" >/dev/null
+bootstrap_deadline=$(( $(date +%s) + 60 ))
+bootstrap_ready=false
+while [ "$(date +%s)" -lt "$bootstrap_deadline" ]; do
+  if docker exec "$auth_bootstrap_container" \
+    curl -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
+    bootstrap_ready=true
+    break
+  fi
+  if [ "$(docker inspect "$auth_bootstrap_container" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]; then
+    break
+  fi
+  sleep 1
+done
+if [ "$bootstrap_ready" != true ]; then
+  docker logs "$auth_bootstrap_container" 2>&1 | tail -40 >&2 || true
+  docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
+  [ "$admin_credential_created" = true ] && rm -f "$admin_credential_file"
+  [ "$created_data_volume" = true ] && docker volume rm "$data_volume" >/dev/null 2>&1 || true
+  [ "$config_created" = true ] && rm -f "$config"
+  echo "systemadmin credential bootstrap restart did not become healthy" >&2
+  exit 1
+fi
 if ! docker exec "$auth_bootstrap_container" sh -lc '
-  code=$(curl -sS -o /dev/null -w "%{http_code}" \
+  curl -fsS -o /dev/null \
     -u "systemadmin:$MCPGIT_SYSTEMADMIN_PASSWORD" \
-    http://127.0.0.1:8001/__mcpgit/auth/session)
-  test "$code" = 200
+    http://127.0.0.1:8001/__mcpgit/system/safegit/
 '; then
   docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
   [ "$admin_credential_created" = true ] && rm -f "$admin_credential_file"
@@ -930,10 +958,9 @@ if [ "$update_mode" = false ]; then
     set -a
     . "$admin_credential_file"
     set +a
-    code=$(curl -sS -o /dev/null -w '%{http_code}' \
+    curl -fsS -o /dev/null \
       -u "$MCPGIT_BASIC_USERNAME:$MCPGIT_BASIC_VERIFY" \
-      "http://127.0.0.1:$port/__mcpgit/auth/session")
-    test "$code" = 200
+      "http://127.0.0.1:$port/__mcpgit/system/safegit/"
   ); then
     echo "final systemadmin credential authentication probe failed; removing candidate" >&2
     restore_previous_instance || true
@@ -962,14 +989,17 @@ if [ "$update_mode" = false ]; then
   echo "  systemadmin credential file (0600): $admin_credential_file"
   echo "  load it with: . \"$admin_credential_file\""
   echo
-  echo "SafeGit novice material (from container logs):"
-  docker logs "$instance" 2>&1 | grep 'novice mode' || true
-  echo
-  shares_path=$(docker logs "$instance" 2>&1 \
-    | sed -n 's/.*Shamir 3-of-5 shares persisted at //p' | tail -1)
-  if [ -n "$shares_path" ]; then
+  shares_path=/data/repos/safegit/.git/mcpgit/safegit-shamir-shares.v1.json
+  recovery_password_path=/data/repos/safegit/.git/mcpgit/safegit-recovery-password.v1.json
+  if docker exec "$instance" sh -lc \
+    'test -f "$1" && test "$(stat -c %a "$1")" = 600 && test -f "$2" && test "$(stat -c %a "$2")" = 600' \
+    sh "$shares_path" "$recovery_password_path"; then
+    echo "SafeGit novice recovery material is persisted mode 0600 in the data volume."
     echo "Copy the persisted Shamir shares file to an external location"
     echo "  docker cp $instance:$shares_path ./${instance}-shares.json"
     echo "It is the only recovery path if the whole volume is lost."
+  else
+    echo "SafeGit novice recovery material is missing or has an unsafe mode" >&2
+    exit 1
   fi
 fi
