@@ -1,0 +1,79 @@
+name: promote-offline-latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed MCPGit source SHA to make the default product release
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-offline-latest
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify immutable dual-architecture pair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          for arch in amd64 arm64; do
+            tag="mcpgit-git-${SOURCE_SHA}-linux-${arch}"
+            gh release view "$tag" --repo "$GH_REPO" >/dev/null
+            mkdir -p "$tmp/$arch"
+            gh release download "$tag" --repo "$GH_REPO" --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
+          done
+          python3 - "$SOURCE_SHA" "$tmp" > offline-latest.json.new <<'PY'
+          import hashlib, json, pathlib, sys
+          source, root = sys.argv[1], pathlib.Path(sys.argv[2])
+          expected = {
+              "amd64": ("linux-amd64", "x86_64-unknown-linux-musl"),
+              "arm64": ("linux-arm64", "aarch64-unknown-linux-musl"),
+          }
+          architectures = {}
+          for arch, (platform, target) in expected.items():
+              path = root / arch / "mcpgit-offline-release-v1.json"
+              raw = path.read_bytes()
+              manifest = json.loads(raw)
+              if manifest.get("schema") != "mcpgit.offline-release.v1": raise SystemExit(f"{arch}: bad schema")
+              if manifest.get("source_sha") != source: raise SystemExit(f"{arch}: source mismatch")
+              program = next((x for x in manifest.get("layers", []) if x.get("kind") == "program"), None)
+              if not program or program.get("target") != target: raise SystemExit(f"{arch}: target mismatch")
+              architectures[platform] = {
+                  "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+                  "source_sha": source,
+                  "tag": f"mcpgit-git-{source}-linux-{arch}",
+                  "target": target,
+              }
+          print(json.dumps({"architectures": architectures, "schema": "mcpgit.offline-pointer.v1", "source_sha": source}, indent=2, sort_keys=True))
+          PY
+          mv offline-latest.json.new offline-latest.json
+      - name: Validate install contract
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          sh -n install.sh deploy/mcpgit-install.sh deploy/novice-install.sh deploy/novice-fetch.sh
+      - name: Commit default product pointer
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add offline-latest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "release: promote offline ${SOURCE_SHA:0:8}"
+          git push origin HEAD:main

@@ -1,8 +1,6 @@
 # MCPGit
 
-This public repository is the release and deployment control plane for MCPGit.
-It deliberately separates the hot MCPGit binary from the cold development base
-image.
+This public repository is the install and release authority for MCPGit.
 
 Linux Program binaries are compiled only by the target architecture's native
 Linux Cargo/rustc toolchain. The amd64 and arm64 release jobs run on matching
@@ -10,7 +8,35 @@ native GitHub runners and call MCPGit's `build-linux-program-native.sh`.
 Docker/BuildKit is not a Program compiler; it remains a Base/Tools/runtime
 assembly mechanism only.
 
-## Install MCPGit
+## Install the latest MCPGit
+
+For a normal Linux amd64/arm64 installation, this is the only command you need:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/install.sh | sh
+```
+
+The root installer is deliberately versionless. It follows
+`offline-latest.json`, detects the host architecture, verifies the selected
+immutable Release and layer checksums, preserves the instance data volume on
+upgrade, starts MCPGit, and installs `mcpgitctl`. GitHub's UI "Latest" marker
+is not release authority.
+
+The default release chain is:
+
+```text
+reviewed MCPGit source SHA
+  -> immutable linux-amd64 + linux-arm64 Releases
+  -> production gates
+  -> offline-latest.json
+  -> install.sh
+```
+
+Publishing binaries does not automatically make them the default. Promotion
+changes only `offline-latest.json`; rollback selects the previous complete
+dual-architecture pair and never rebuilds or mixes layers.
+
+### Direct installer and offline bundle
 
 For a normal single-node installation, use the product installer instead of
 the release-control scripts below:
@@ -82,8 +108,12 @@ top-level tools and do not infer instance-dependent availability.
 
 ### Mode 2 instance side: deploy or upgrade an MCPGit instance
 
-Use the `dev`, `main`, or `prod` runtime channel. Do not use a
-`mcpgit-client-sdk-*` Release to deploy a server.
+For a normal new instance or upgrade, use the root `install.sh` path and its
+`offline-latest.json` selection. Do not use a `mcpgit-client-sdk-*` Release to
+deploy a server.
+
+The older `dev`/`main`/`prod` channel-v2 path remains for specialized fleet
+compatibility only; it is not the normal product install path.
 
 Before changing a running instance, the Agent must record and preserve:
 
@@ -204,7 +234,10 @@ For TLS or a routed public host, use `wss://` and the deployed public hostname.
 Supply `Authorization` only when required by that instance. Do not invent or
 forward `x-mcpgit-person-id` as identity.
 
-## Stable channels
+## Advanced: legacy channel-v2
+
+These branches remain for existing fleet workflows. New standalone installs
+should use `install.sh` and `offline-latest.json`.
 
 - dev: https://raw.githubusercontent.com/yxsicd/mcpgitrelease/dev/channel.json
 - main: https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/channel.json
@@ -274,6 +307,21 @@ Older SDK releases remain immutable audit records. New integrations must use
 the release selected by the pointer.
 
 ## Publishing
+
+### Default product release
+
+1. Select one reviewed full MCPGit source SHA.
+2. Publish both immutable offline Releases for `linux-amd64` and `linux-arm64`.
+3. Complete the required production gates for those exact bytes.
+4. Run `promote-offline-latest` with that source SHA. It independently reads
+   both GitHub Release manifests, verifies source/architecture identity and
+   manifest digests, and atomically commits the new `offline-latest.json`.
+5. Run a fresh installation through the root `install.sh` path.
+
+Never promote by moving GitHub's UI Latest marker, retagging, rebuilding, or
+embedding a version in `install.sh`.
+
+### Legacy channel-v2 publishing
 
 1. Run publish-devbase only when Python or base-system tools change. Node and
    Bun are composed through a separate versioned toolchain volume.

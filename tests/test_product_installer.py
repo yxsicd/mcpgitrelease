@@ -50,6 +50,7 @@ class ProductInstallerTests(unittest.TestCase):
 
     def test_product_entrypoints_are_executable_and_keep_the_fail_closed_contract(self) -> None:
         for relative in [
+            "install.sh",
             "deploy/mcpgit-install.sh",
             "deploy/mcpgitctl",
             "deploy/novice-install.sh",
@@ -70,6 +71,21 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("x86_64-unknown-linux-musl", novice)
         self.assertIn("/data/.mcpgit-org-id", ctl)
         self.assertIn("Container identity does not match the persistent data volume", ctl)
+
+    def test_root_installer_is_versionless_and_delegates(self) -> None:
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertIn("mcpgitrelease/main/deploy", installer)
+        self.assertIn("mcpgit-install.sh", installer)
+        self.assertNotRegex(installer, r"mcpgit-git-[0-9a-f]{40}")
+
+    def test_offline_latest_promotion_verifies_dual_arch_releases(self) -> None:
+        workflow = (ROOT / ".github/workflows/promote-offline-latest.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("gh release view", workflow)
+        self.assertIn("gh release download", workflow)
+        self.assertIn("linux-amd64", workflow)
+        self.assertIn("linux-arm64", workflow)
+        self.assertIn("offline-latest.json", workflow)
 
     def test_template_install_creates_repositories_missing_from_archive(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
@@ -92,7 +108,7 @@ class ProductInstallerTests(unittest.TestCase):
         ]:
             self.assertTrue((ROOT / relative).is_file(), relative)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertRegex(readme, re.compile(r"## Install MCPGit.*mcpgit-install\.sh", re.S))
+        self.assertRegex(readme, re.compile(r"## Install the latest MCPGit.*install\.sh", re.S))
         self.assertIn("mcpgitctl status", readme)
         self.assertIn("--download-only --bundle", readme)
 
