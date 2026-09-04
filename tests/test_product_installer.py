@@ -134,6 +134,14 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('docker update --restart unless-stopped "$instance"', novice)
         self.assertNotIn('docker rm -f "$instance" >/dev/null 2>&1 || true\ndocker run -d', novice)
 
+    def test_exact_current_instance_is_a_no_restart_install(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn('current_image_id=$(docker inspect "$instance" --format \'{{.Image}}\')', novice)
+        self.assertIn('current_config_source', novice)
+        self.assertIn('current_netrc_source', novice)
+        self.assertIn('desired_runtime_id=$(docker image inspect "$runtime_image" --format \'{{.Id}}\')', novice)
+        self.assertIn('already matches the selected release; no restart required', novice)
+
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)

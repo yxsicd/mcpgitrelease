@@ -284,9 +284,13 @@ current_container=false
 current_program_version=
 current_host_port=
 current_was_running=false
+current_image_id=
+current_config_source=
+current_netrc_source=
 if docker container inspect "$instance" >/dev/null 2>&1; then
   current_container=true
   current_was_running=$(docker inspect "$instance" --format '{{.State.Running}}')
+  current_image_id=$(docker inspect "$instance" --format '{{.Image}}')
   current_program_version=$(docker inspect "$instance" \
     --format '{{index .Config.Labels "com.yxsicd.mcpgit.program-version"}}' 2>/dev/null || true)
   current_data_volume=$(docker inspect "$instance" --format \
@@ -297,6 +301,10 @@ if docker container inspect "$instance" >/dev/null 2>&1; then
   fi
   current_host_port=$(docker port "$instance" 8001/tcp 2>/dev/null \
     | sed -n '1s/.*://p' | tr -d '[:space:]')
+  current_config_source=$(docker inspect "$instance" --format \
+    '{{range .Mounts}}{{if eq .Destination "/config/mcpgit.toml"}}{{.Source}}{{end}}{{end}}')
+  current_netrc_source=$(docker inspect "$instance" --format \
+    '{{range .Mounts}}{{if eq .Destination "/root/.netrc"}}{{.Source}}{{end}}{{end}}')
 fi
 
 if [ "$current_host_port" != "$port" ]; then
@@ -517,6 +525,40 @@ if [ ! -f "$config" ]; then
     echo "revision = \"refs/heads/main\""
   } > "$config"
   config_created=true
+fi
+
+desired_runtime_id=$(docker image inspect "$runtime_image" --format '{{.Id}}')
+requested_config_source=$(python3 - "$config" <<'PY'
+import os
+import sys
+print(os.path.abspath(sys.argv[1]))
+PY
+)
+requested_netrc_source=
+if [ -n "$netrc" ]; then
+  requested_netrc_source=$(python3 - "$netrc" <<'PY'
+import os
+import sys
+print(os.path.abspath(sys.argv[1]))
+PY
+)
+fi
+
+if [ "$current_container" = true ] \
+  && [ "$current_was_running" = true ] \
+  && [ "$current_image_id" = "$desired_runtime_id" ] \
+  && [ "$current_host_port" = "$port" ] \
+  && [ "$current_config_source" = "$requested_config_source" ] \
+  && [ "$current_netrc_source" = "$requested_netrc_source" ] \
+  && [ "$(curl -s -o /dev/null -w '%{http_code}' \
+    "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
+  docker update --restart unless-stopped "$instance" >/dev/null
+  echo
+  echo "PASS: instance $instance already matches the selected release; no restart required"
+  echo "  organization id (immutable identity): $org_id"
+  echo "  endpoint:  http://127.0.0.1:$port"
+  echo "  data volume: $data_volume"
+  exit 0
 fi
 
 if [ "$update_mode" = false ]; then

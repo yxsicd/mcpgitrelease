@@ -50,6 +50,11 @@ Candidates run with Docker restart disabled during the health gate; the normal
 candidate therefore fails fast instead of looping until the full health
 timeout while the previous container is waiting for rollback.
 
+Re-running the installer against an already healthy exact-current instance is
+a verification-only no-op when the runtime image ID, data volume, config mount,
+optional netrc mount, and host port all match. The container is not recreated,
+so checking for the latest release does not create avoidable service downtime.
+
 Re-running the same one-line command always re-reads `offline-latest.json`.
 The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,
 not a release pin, so a promoted product release is picked up automatically.
