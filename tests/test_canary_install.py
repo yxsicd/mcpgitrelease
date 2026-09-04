@@ -14,6 +14,8 @@ class CanaryInstallScriptTests(unittest.TestCase):
         self.assertIn('[[ "$created1" == "$created2" ]]', script)
         self.assertIn("Credentials are never", script)
         self.assertNotIn("cat $credential", script)
+        validate = (ROOT / "scripts" / "validate.sh").read_text(encoding="utf-8")
+        self.assertIn("bash -n scripts/canary_install.sh", validate)
 
 
 if __name__ == "__main__":
