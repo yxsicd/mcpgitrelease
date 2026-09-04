@@ -36,6 +36,108 @@ def digest(path: pathlib.Path) -> tuple[str, int]:
     return hasher.hexdigest(), size
 
 
+def _tar_regular_bytes(bundle: tarfile.TarFile, name: str) -> bytes:
+    matches = [member for member in bundle.getmembers() if member.name == name]
+    if len(matches) != 1:
+        fail(f"Docker image archive must contain exactly one {name}")
+    member = matches[0]
+    if not member.isfile() or member.issym() or member.islnk():
+        fail(f"Docker image archive member must be one regular file: {name}")
+    source = bundle.extractfile(member)
+    if source is None:
+        fail(f"cannot read Docker image archive member: {name}")
+    return source.read()
+
+
+def _tar_optional_regular_bytes(bundle: tarfile.TarFile, name: str) -> bytes | None:
+    matches = [member for member in bundle.getmembers() if member.name == name]
+    if not matches:
+        return None
+    if len(matches) != 1:
+        fail(f"Docker image archive must not duplicate {name}")
+    member = matches[0]
+    if not member.isfile() or member.issym() or member.islnk():
+        fail(f"Docker image archive member must be one regular file: {name}")
+    source = bundle.extractfile(member)
+    if source is None:
+        fail(f"cannot read Docker image archive member: {name}")
+    return source.read()
+
+
+def _json_bytes(data: bytes, label: str) -> object:
+    try:
+        return json.loads(data)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        fail(f"Docker image archive has invalid {label}: {error}")
+
+
+def docker_image_archive_identities(
+    archive_path: pathlib.Path, expected_tag: str
+) -> dict[str, str]:
+    """Return portable config and optional OCI-manifest identities from docker save."""
+    try:
+        bundle = tarfile.open(archive_path, "r:gz")
+    except (OSError, tarfile.TarError) as error:
+        fail(f"cannot open Docker image archive: {error}")
+    with bundle:
+        docker_manifest = _json_bytes(
+            _tar_regular_bytes(bundle, "manifest.json"), "manifest.json"
+        )
+        if not isinstance(docker_manifest, list) or len(docker_manifest) != 1:
+            fail("Docker image archive manifest.json must contain exactly one image")
+        entry = docker_manifest[0]
+        if not isinstance(entry, dict):
+            fail("Docker image archive manifest entry must be an object")
+        tags = entry.get("RepoTags")
+        if not isinstance(tags, list) or expected_tag not in tags:
+            fail(f"Docker image archive does not contain expected tag: {expected_tag}")
+        config_name = entry.get("Config")
+        if not isinstance(config_name, str) or not config_name:
+            fail("Docker image archive manifest has no Config")
+        config_path = pathlib.PurePosixPath(config_name)
+        if config_path.is_absolute() or ".." in config_path.parts:
+            fail("Docker image archive Config path is unsafe")
+        config_bytes = _tar_regular_bytes(bundle, config_name)
+        config_digest = hashlib.sha256(config_bytes).hexdigest()
+        config_id = f"sha256:{config_digest}"
+        if config_path.parts[:2] == ("blobs", "sha256"):
+            if len(config_path.parts) != 3 or config_path.parts[2] != config_digest:
+                fail("Docker image archive Config blob name/digest mismatch")
+        elif config_path.name.endswith(".json"):
+            stem = config_path.name[:-5]
+            if SHA256_RE.fullmatch(stem) and stem != config_digest:
+                fail("Docker image archive Config file name/digest mismatch")
+
+        manifest_id = ""
+        index_bytes = _tar_optional_regular_bytes(bundle, "index.json")
+        if index_bytes is not None:
+            index = _json_bytes(index_bytes, "index.json")
+            if not isinstance(index, dict) or index.get("schemaVersion") != 2:
+                fail("Docker image archive index.json is invalid")
+            manifests = index.get("manifests")
+            if not isinstance(manifests, list) or len(manifests) != 1:
+                fail("Docker image archive index.json must select exactly one manifest")
+            descriptor = manifests[0]
+            if not isinstance(descriptor, dict):
+                fail("Docker image archive manifest descriptor is invalid")
+            digest_value = str(descriptor.get("digest", ""))
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest_value):
+                fail("Docker image archive manifest descriptor digest is invalid")
+            manifest_digest = digest_value.split(":", 1)[1]
+            manifest_name = f"blobs/sha256/{manifest_digest}"
+            manifest_bytes = _tar_regular_bytes(bundle, manifest_name)
+            if hashlib.sha256(manifest_bytes).hexdigest() != manifest_digest:
+                fail("Docker image archive OCI manifest blob digest mismatch")
+            oci_manifest = _json_bytes(manifest_bytes, "OCI manifest")
+            if not isinstance(oci_manifest, dict):
+                fail("Docker image archive OCI manifest is invalid")
+            config = oci_manifest.get("config")
+            if not isinstance(config, dict) or config.get("digest") != config_id:
+                fail("Docker image archive OCI manifest/config identity mismatch")
+            manifest_id = digest_value
+        return {"config_id": config_id, "manifest_id": manifest_id}
+
+
 def artifact(kind: str, version: str, path: pathlib.Path, **extra: object) -> dict[str, object]:
     sha256, size = digest(path)
     return {
@@ -151,6 +253,15 @@ def command_verify(args: argparse.Namespace) -> None:
         sha256, size = digest(path)
         if sha256 != layer["sha256"] or size != layer["bytes"]:
             fail(f"release asset digest or size mismatch: {layer['file']}")
+    base = layer_by_kind(manifest, "base_image")
+    identities = docker_image_archive_identities(
+        asset_dir / str(base["file"]), str(base["image_tag"])
+    )
+    if identities["config_id"] != base["image_id"]:
+        fail(
+            "base image config identity does not match release manifest: "
+            f"expected={base['image_id']} archive={identities['config_id']}"
+        )
     print(json.dumps({"ok": True, "release_id": manifest["release_id"]}, sort_keys=True))
 
 
@@ -170,6 +281,13 @@ def command_verify_layer(args: argparse.Namespace) -> None:
     sha256, size = digest(asset)
     if sha256 != layer["sha256"] or size != layer["bytes"]:
         fail(f"release asset digest or size mismatch: {layer['file']}")
+    if args.kind == "base_image":
+        identities = docker_image_archive_identities(asset, str(layer["image_tag"]))
+        if identities["config_id"] != layer["image_id"]:
+            fail(
+                "base image config identity does not match release manifest: "
+                f"expected={layer['image_id']} archive={identities['config_id']}"
+            )
     print(
         json.dumps(
             {"kind": args.kind, "ok": True, "release_id": manifest["release_id"]},
@@ -226,6 +344,13 @@ def command_field(args: argparse.Namespace) -> None:
         print(json.dumps(value, sort_keys=True))
     else:
         print(value)
+
+
+def command_image_identity(args: argparse.Namespace) -> None:
+    identities = docker_image_archive_identities(
+        pathlib.Path(args.archive).resolve(), args.image_tag
+    )
+    print(identities[args.field])
 
 
 def command_extract(args: argparse.Namespace) -> None:
@@ -299,6 +424,13 @@ def parser() -> argparse.ArgumentParser:
     field.add_argument("--manifest", required=True)
     field.add_argument("--path", required=True)
     field.set_defaults(handler=command_field)
+    image_identity = commands.add_parser("image-identity")
+    image_identity.add_argument("--archive", required=True)
+    image_identity.add_argument("--image-tag", required=True)
+    image_identity.add_argument(
+        "--field", required=True, choices=["config_id", "manifest_id"]
+    )
+    image_identity.set_defaults(handler=command_image_identity)
     extract = commands.add_parser("extract")
     extract.add_argument("--archive", required=True)
     extract.add_argument("--destination", required=True)

@@ -350,18 +350,25 @@ if [ "$update_mode" = true ]; then
 fi
 
 echo "==> loading exact base image ($base_image_tag)"
+base_manifest_id=$(python3 "$parser" image-identity \
+  --archive "$base_archive" --image-tag "$base_image_tag" --field manifest_id)
+base_image_identity_matches() {
+  candidate=$1
+  [ "$candidate" = "$base_image_id" ] \
+    || { [ -n "$base_manifest_id" ] && [ "$candidate" = "$base_manifest_id" ]; }
+}
 actual_base_image_id=$(docker image inspect "$base_image_tag" \
   --format '{{.Id}}' 2>/dev/null || true)
-if [ "$actual_base_image_id" != "$base_image_id" ]; then
+if ! base_image_identity_matches "$actual_base_image_id"; then
   docker load < "$base_archive" >/dev/null
   actual_base_image_id=$(docker image inspect "$base_image_tag" \
     --format '{{.Id}}' 2>/dev/null || true)
 fi
-if [ "$actual_base_image_id" != "$base_image_id" ]; then
-  echo "loaded base image identity does not match release manifest: expected=$base_image_id actual=$actual_base_image_id" >&2
+if ! base_image_identity_matches "$actual_base_image_id"; then
+  echo "loaded base image identity does not match release archive: config=$base_image_id manifest=${base_manifest_id:-none} actual=$actual_base_image_id" >&2
   exit 1
 fi
-echo "    exact image id: $actual_base_image_id"
+echo "    exact image identity: $actual_base_image_id"
 
 runtime_image="mcpgit-offline-runtime:$release_id"
 

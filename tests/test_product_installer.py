@@ -1,10 +1,13 @@
 import json
+import hashlib
+import io
 import os
 import pathlib
 import re
 import shutil
 import stat
 import subprocess
+import tarfile
 import tempfile
 import unittest
 
@@ -13,6 +16,87 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class ProductInstallerTests(unittest.TestCase):
+    def test_docker_save_identity_accepts_config_and_oci_manifest_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            archive = root / "base.tar.gz"
+            tag = "mcpgit-offline-base:bookworm-v1-amd64"
+            config = b'{"architecture":"amd64","os":"linux"}'
+            config_sha = hashlib.sha256(config).hexdigest()
+            oci_manifest = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "config": {
+                        "mediaType": "application/vnd.oci.image.config.v1+json",
+                        "digest": f"sha256:{config_sha}",
+                        "size": len(config),
+                    },
+                    "layers": [],
+                },
+                separators=(",", ":"),
+            ).encode()
+            manifest_sha = hashlib.sha256(oci_manifest).hexdigest()
+            docker_manifest = json.dumps(
+                [
+                    {
+                        "Config": f"blobs/sha256/{config_sha}",
+                        "RepoTags": [tag],
+                        "Layers": [],
+                    }
+                ],
+                separators=(",", ":"),
+            ).encode()
+            index = json.dumps(
+                {
+                    "schemaVersion": 2,
+                    "mediaType": "application/vnd.oci.image.index.v1+json",
+                    "manifests": [
+                        {
+                            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                            "digest": f"sha256:{manifest_sha}",
+                            "size": len(oci_manifest),
+                        }
+                    ],
+                },
+                separators=(",", ":"),
+            ).encode()
+
+            with tarfile.open(archive, "w:gz") as bundle:
+                for name, data in [
+                    ("manifest.json", docker_manifest),
+                    ("index.json", index),
+                    (f"blobs/sha256/{config_sha}", config),
+                    (f"blobs/sha256/{manifest_sha}", oci_manifest),
+                ]:
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    bundle.addfile(info, io.BytesIO(data))
+
+            parser = ROOT / "scripts/mcpgit-offline-release.py"
+            for field, expected in [
+                ("config_id", f"sha256:{config_sha}"),
+                ("manifest_id", f"sha256:{manifest_sha}"),
+            ]:
+                result = subprocess.run(
+                    [
+                        "python3",
+                        str(parser),
+                        "image-identity",
+                        "--archive",
+                        str(archive),
+                        "--image-tag",
+                        tag,
+                        "--field",
+                        field,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
+
     def test_binary_workflow_provisions_native_musl_compilers(self) -> None:
         workflow = (ROOT / ".github/workflows/publish-binary.yml").read_text(
             encoding="utf-8"
@@ -122,7 +206,9 @@ class ProductInstallerTests(unittest.TestCase):
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
         self.assertIn('runtime_image="mcpgit-offline-runtime:$release_id"', novice)
         self.assertIn('actual_base_image_id', novice)
-        self.assertIn('[ "$actual_base_image_id" != "$base_image_id" ]', novice)
+        self.assertIn('base_manifest_id=$(python3 "$parser" image-identity', novice)
+        self.assertIn('base_image_identity_matches()', novice)
+        self.assertIn('if ! base_image_identity_matches "$actual_base_image_id"; then', novice)
         self.assertIn('runtime_image_exact()', novice)
         self.assertIn('com.yxsicd.mcpgit.manifest-sha256', novice)
         self.assertIn('assembled runtime image failed exact release verification', novice)
@@ -152,6 +238,8 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('current_netrc_source', novice)
         self.assertIn('desired_runtime_id=$(docker image inspect "$runtime_image" --format \'{{.Id}}\')', novice)
         self.assertIn('already matches the selected release; no restart required', novice)
+        self.assertIn('base_image_identity_matches', novice)
+        self.assertIn('--field manifest_id', novice)
 
     def test_fresh_install_uses_random_ephemeral_admin_bootstrap(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
@@ -224,6 +312,8 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("linux-amd64", workflow)
         self.assertIn("linux-arm64", workflow)
         self.assertIn("offline-latest.json", workflow)
+        self.assertIn("verify-layer", workflow)
+        self.assertIn("--kind base_image", workflow)
 
     def test_template_install_creates_repositories_missing_from_archive(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")

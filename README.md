@@ -32,7 +32,10 @@ that same snapshot on every online run; only checksum-matching immutable
 release layers are reused from cache.
 
 Runtime assembly is also content-bound. A cached Base tag is accepted only
-when its Docker image ID exactly matches the selected release manifest, and the
+when its Docker image identity matches the selected release archive. MCPGit
+records the portable config digest and also admits the exact OCI manifest
+digest exported by the same `docker save`, covering both classic and
+containerd-backed Docker image stores without weakening content identity. The
 assembled runtime uses a source-bound image tag and is re-probed against the
 manifest and in-image executable hashes before activation.
 The exact installer snapshot's `Dockerfile.offline-runtime` SHA-256 is recorded
