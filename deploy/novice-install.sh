@@ -132,8 +132,8 @@ usage() {
   cat <<'EOF'
 Usage: novice-install.sh [options]
 
-  --bundle DIR        offline bundle directory (default: $MCPGIT_BUNDLE_DIR,
-                      auto-downloaded from the latest release when absent)
+  --bundle DIR        install from an explicit offline bundle directory;
+                      with --download-only, write the latest bundle there
   --instance NAME     instance name (default: $MCPGIT_INSTANCE)
   --data-volume VOL   named data volume (default: <instance>_data)
   --netrc FILE        GitHub netrc for remote repo sync (optional, offline-first)
@@ -150,6 +150,7 @@ EOF
 }
 
 bundle=${MCPGIT_BUNDLE_DIR}
+bundle_explicit=false
 instance=${MCPGIT_INSTANCE}
 data_volume=${MCPGIT_DATA_VOLUME}
 netrc=${MCPGIT_NETRC}
@@ -161,7 +162,7 @@ rebuild=false
 download_only=false
 while [ $# -gt 0 ]; do
   case "$1" in
-    --bundle) bundle=$2; shift 2 ;;
+    --bundle) bundle=$2; bundle_explicit=true; shift 2 ;;
     --instance) instance=$2; shift 2 ;;
     --data-volume) data_volume=$2; shift 2 ;;
     --netrc) netrc=$2; shift 2 ;;
@@ -176,7 +177,21 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$instance" ] || usage
 
-if [ -z "$bundle" ] \
+# The default bundle directory is a verified download cache, not a version
+# pin. Every normal online install must re-read offline-latest.json (or the
+# explicit MCPGIT_RELEASE_TAG) so re-running the one-command installer really
+# upgrades to the current product release. An explicitly supplied, already
+# complete --bundle remains the offline/pinned install path. --download-only
+# always refreshes the requested output directory from the selected release.
+refresh_bundle=false
+if [ "$bundle_explicit" = false ] \
+  || [ "$download_only" = true ] \
+  || [ -n "$MCPGIT_RELEASE_TAG" ]; then
+  refresh_bundle=true
+fi
+
+if [ "$refresh_bundle" = true ] \
+  || [ -z "$bundle" ] \
   || [ ! -f "$bundle/mcpgit-offline-release-v1.json" ] \
   || [ ! -f "$bundle/scripts/mcpgit-offline-release.py" ]; then
   tag=$(resolve_tag)

@@ -22,6 +22,12 @@ immutable Release and layer checksums, preserves the instance data volume on
 upgrade, starts MCPGit, and installs `mcpgitctl`. GitHub's UI "Latest" marker
 is not release authority.
 
+Re-running the same one-line command always re-reads `offline-latest.json`.
+The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,
+not a release pin, so a promoted product release is picked up automatically.
+Use an explicit existing `--bundle DIR` only when intentionally installing a
+pinned/offline bundle.
+
 The default release chain is:
 
 ```text

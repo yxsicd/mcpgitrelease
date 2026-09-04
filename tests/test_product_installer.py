@@ -78,6 +78,17 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("mcpgit-install.sh", installer)
         self.assertNotRegex(installer, r"mcpgit-git-[0-9a-f]{40}")
 
+    def test_default_install_refreshes_latest_but_explicit_bundle_can_stay_offline(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn("bundle_explicit=false", novice)
+        self.assertIn("--bundle) bundle=$2; bundle_explicit=true", novice)
+        self.assertIn('[ "$bundle_explicit" = false ]', novice)
+        self.assertIn('[ "$download_only" = true ]', novice)
+        self.assertIn('[ -n "$MCPGIT_RELEASE_TAG" ]', novice)
+        self.assertIn('refresh_bundle=true', novice)
+        self.assertIn('tag=$(resolve_tag)', novice)
+        self.assertIn('fetch_bundle "$tag" "$bundle"', novice)
+
     def test_offline_latest_promotion_verifies_dual_arch_releases(self) -> None:
         workflow = (ROOT / ".github/workflows/promote-offline-latest.yml").read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", workflow)
