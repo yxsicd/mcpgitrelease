@@ -744,7 +744,7 @@ fi
 
 if ! docker run -d \
   --name "$instance" \
-  --restart unless-stopped \
+  --restart no \
   --label "org.opencontainers.image.version=git-$source_sha" \
   --label "org.opencontainers.image.revision=$source_sha" \
   --label "com.yxsicd.mcpgit.distribution=github-offline-v2" \
@@ -789,6 +789,8 @@ if [ "$candidate_healthy" != true ]; then
   restore_previous_instance || true
   exit 1
 fi
+
+docker update --restart unless-stopped "$instance" >/dev/null
 
 echo
 if [ "$update_mode" = true ]; then

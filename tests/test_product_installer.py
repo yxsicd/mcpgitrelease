@@ -130,6 +130,8 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('candidate container failed to start; restoring previous instance', novice)
         self.assertIn('candidate instance did not become healthy; restoring previous instance', novice)
         self.assertIn('restored previous instance $instance after candidate failure', novice)
+        self.assertIn('--restart no', novice)
+        self.assertIn('docker update --restart unless-stopped "$instance"', novice)
         self.assertNotIn('docker rm -f "$instance" >/dev/null 2>&1 || true\ndocker run -d', novice)
 
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:

@@ -45,6 +45,10 @@ For a brand-new instance, an already occupied host port is rejected before a
 new data volume is created.
 An existing instance config with a different organization identity is also a
 hard blocker; the installer never rewrites it into a different identity.
+Candidates run with Docker restart disabled during the health gate; the normal
+`unless-stopped` restart policy is enabled only after acceptance. A crashing
+candidate therefore fails fast instead of looping until the full health
+timeout while the previous container is waiting for rollback.
 
 Re-running the same one-line command always re-reads `offline-latest.json`.
 The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,
