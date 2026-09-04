@@ -78,9 +78,20 @@ class ProductInstallerTests(unittest.TestCase):
 
     def test_root_installer_is_versionless_and_delegates(self) -> None:
         installer = (ROOT / "install.sh").read_text(encoding="utf-8")
-        self.assertIn("mcpgitrelease/main/deploy", installer)
+        self.assertIn("api.github.com/repos/$REPOSITORY/commits/main", installer)
+        self.assertIn("MCPGIT_INSTALL_REVISION", installer)
+        self.assertIn('CONTENT_BASE="https://raw.githubusercontent.com/$REPOSITORY/$REVISION"', installer)
+        self.assertIn('MCPGIT_CHANNEL_URL="$CONTENT_BASE/offline-latest.json"', installer)
         self.assertIn("mcpgit-install.sh", installer)
         self.assertNotRegex(installer, r"mcpgit-git-[0-9a-f]{40}")
+        self.assertNotIn('exec "$TMP_DIR/mcpgit-install.sh"', installer)
+
+    def test_online_bundle_helpers_follow_the_pinned_install_snapshot(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn("MCPGIT_INSTALL_CONTENT_BASE", novice)
+        self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/$helper', novice)
+        self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime', novice)
+        self.assertIn('$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file', novice)
 
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

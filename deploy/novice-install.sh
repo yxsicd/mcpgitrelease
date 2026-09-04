@@ -11,8 +11,13 @@ set -eu
 # variables (recommended ones are marked 建议改).
 
 # ===== environment configuration (defaults work as-is) =====
-# 发布指针：公开库 offline-latest.json 指向最新离线 release（可改：自定义版本指针）
-MCPGIT_CHANNEL_URL="${MCPGIT_CHANNEL_URL:-https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/offline-latest.json}"
+# 安装内容快照：根 install.sh 会把它固定到一次解析出的 main Git SHA，
+# 避免同一轮安装从区域 CDN 混到不同代的 helper / Dockerfile / wrapper。
+MCPGIT_INSTALL_CONTENT_BASE="${MCPGIT_INSTALL_CONTENT_BASE:-https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main}"
+MCPGIT_INSTALL_CONTENT_BASE="${MCPGIT_INSTALL_CONTENT_BASE%/}"
+# 发布指针：根 install.sh 默认把它固定到同一个安装快照中的
+# offline-latest.json；直接运行本脚本时保留 main 兼容路径。
+MCPGIT_CHANNEL_URL="${MCPGIT_CHANNEL_URL:-$MCPGIT_INSTALL_CONTENT_BASE/offline-latest.json}"
 # 实例名：容器/数据卷/配置名（建议改：每个环境唯一，例如 mcpgit-demo）
 MCPGIT_INSTANCE="${MCPGIT_INSTANCE:-mcpgit}"
 # 不可变组织 id（UUID）：实例核心身份，persons/grants/SafeGit 都绑定它；
@@ -64,18 +69,18 @@ PY
   for helper in scripts/mcpgit-offline-release.py scripts/bootstrap-builtin-auth.py; do
     if [ ! -f "$target/$helper" ]; then
       curl -fsSL --retry 5 --retry-delay 5 \
-        "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/$helper" \
+        "$MCPGIT_INSTALL_CONTENT_BASE/$helper" \
         -o "$target/$helper"
     fi
   done
   if [ ! -f "$target/Dockerfile.offline-runtime" ]; then
     curl -fsSL --retry 5 --retry-delay 5 \
-      "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/Dockerfile.offline-runtime" \
+      "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" \
       -o "$target/Dockerfile.offline-runtime"
   fi
   for product_file in novice-install.sh mcpgit-install.sh mcpgitctl; do
     curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-      "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/$product_file" \
+      "$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file" \
       -o "$target/$product_file"
     chmod 0755 "$target/$product_file"
   done

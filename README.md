@@ -22,6 +22,12 @@ immutable Release and layer checksums, preserves the instance data volume on
 upgrade, starts MCPGit, and installs `mcpgitctl`. GitHub's UI "Latest" marker
 is not release authority.
 
+At the start of each online run, `install.sh` resolves the current public
+`main` Git SHA once through the GitHub API. The deployment wrapper, backend,
+helpers, Dockerfile, and `offline-latest.json` used by that run are then fetched
+from that exact immutable Git revision. This prevents regional Raw/CDN cache
+lag from mixing files from different `main` revisions in one installation.
+
 Re-running the same one-line command always re-reads `offline-latest.json`.
 The default `$HOME/.mcpgit/bundle` is only a checksum-verified download cache,
 not a release pin, so a promoted product release is picked up automatically.
