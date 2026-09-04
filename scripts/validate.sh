@@ -7,6 +7,7 @@ cd "$repo_root"
 bash -n deploy/mcpgit-deploy.sh
 bash -n deploy/mcpgit-preflight.sh
 bash -n scripts/canary_install.sh
+bash -n scripts/new_agent_public_install_smoke.sh
 sh -n deploy/mcpgit-install.sh
 sh -n deploy/mcpgitctl
 sh -n deploy/novice-install.sh
