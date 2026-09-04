@@ -1,7 +1,11 @@
 import json
+import os
 import pathlib
 import re
+import shutil
 import stat
+import subprocess
+import tempfile
 import unittest
 
 
@@ -77,6 +81,24 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("mcpgitrelease/main/deploy", installer)
         self.assertIn("mcpgit-install.sh", installer)
         self.assertNotRegex(installer, r"mcpgit-git-[0-9a-f]{40}")
+
+    def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            shutil.copy2(ROOT / "deploy/mcpgit-install.sh", root / "mcpgit-install.sh")
+            (root / "novice-install.sh").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            (root / "mcpgitctl").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            for name in ["mcpgit-install.sh", "novice-install.sh", "mcpgitctl"]:
+                (root / name).chmod(0o755)
+            result = subprocess.run(
+                ["sh", str(root / "mcpgit-install.sh"), "--download-only"],
+                cwd=root,
+                env={**os.environ, "HOME": str(root / "home")},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_default_install_refreshes_latest_but_explicit_bundle_can_stay_offline(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")

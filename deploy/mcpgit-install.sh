@@ -46,7 +46,10 @@ for arg in "$@"; do
 done
 
 cleanup() {
-  [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
+  if [ -n "$TEMP_DIR" ]; then
+    rm -rf "$TEMP_DIR"
+  fi
+  return 0
 }
 trap cleanup EXIT INT TERM
 
