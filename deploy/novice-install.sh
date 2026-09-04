@@ -35,6 +35,8 @@ MCPGIT_NETRC="${MCPGIT_NETRC:-}"
 MCPGIT_BUNDLE_DIR="${MCPGIT_BUNDLE_DIR:-$HOME/.mcpgit/bundle}"
 # 固定 release tag：显式指定时跳过 channel 解析，用于回滚/固定版本（建议改：仅在回滚时）
 MCPGIT_RELEASE_TAG="${MCPGIT_RELEASE_TAG:-}"
+# 私有凭据目录：fresh install 会把随机 systemadmin Basic 凭据写到这里，0600。
+MCPGIT_CREDENTIAL_DIR="${MCPGIT_CREDENTIAL_DIR:-$HOME/.mcpgit/credentials}"
 # ===== do not edit below =====
 
 sha256_file() {
@@ -330,6 +332,8 @@ fi
 
 update_mode=false
 created_data_volume=false
+admin_credential_file=
+admin_credential_created=false
 if docker volume inspect "$data_volume" >/dev/null 2>&1; then
   update_mode=true
 fi
@@ -730,6 +734,89 @@ docker run --rm \
     --guest-repository "$guest_repo" \
     --builder-repositories "$builder_repos" \
     --apply
+
+echo "==> initializing random systemadmin credential"
+credential_dir="$MCPGIT_CREDENTIAL_DIR"
+mkdir -p "$credential_dir"
+chmod 0700 "$credential_dir"
+admin_credential_file="$credential_dir/${instance}-systemadmin.env"
+if [ -L "$admin_credential_file" ]; then
+  echo "refusing symlink credential file: $admin_credential_file" >&2
+  exit 1
+fi
+initial_admin_password=$(python3 -c 'import secrets; print("Aa9!" + secrets.token_urlsafe(24))')
+credential_tmp="${admin_credential_file}.tmp.$$"
+bootstrap_password_env="${credential_dir}/.${instance}-bootstrap-password.$$"
+umask 077
+printf 'MCPGIT_BASIC_USERNAME=systemadmin\nMCPGIT_BASIC_VERIFY=%s\n' \
+  "$initial_admin_password" > "$credential_tmp"
+chmod 0600 "$credential_tmp"
+mv "$credential_tmp" "$admin_credential_file"
+admin_credential_created=true
+printf 'MCPGIT_SYSTEMADMIN_PASSWORD=%s\n' "$initial_admin_password" > "$bootstrap_password_env"
+chmod 0600 "$bootstrap_password_env"
+initial_admin_password=
+
+auth_bootstrap_container="${instance}-auth-bootstrap"
+docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
+if ! docker run -d \
+  --name "$auth_bootstrap_container" \
+  --restart no \
+  --env-file "$bootstrap_password_env" \
+  -v "$data_volume":/data \
+  -v "$config":/config/mcpgit.toml:ro \
+  ${netrc:+-v "$netrc":/root/.netrc:ro} \
+  -e MCPGIT_BOOTSTRAP_REMOTE_REPOS= \
+  -e MCPGIT_BOOTSTRAP_REPO_SOURCES=none \
+  -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
+  -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
+  "$runtime_image" >/dev/null; then
+  rm -f "$bootstrap_password_env"
+  docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
+  [ "$admin_credential_created" = true ] && rm -f "$admin_credential_file"
+  [ "$created_data_volume" = true ] && docker volume rm "$data_volume" >/dev/null 2>&1 || true
+  [ "$config_created" = true ] && rm -f "$config"
+  echo "systemadmin credential bootstrap container failed to start" >&2
+  exit 1
+fi
+rm -f "$bootstrap_password_env"
+
+bootstrap_deadline=$(( $(date +%s) + 60 ))
+bootstrap_ready=false
+while [ "$(date +%s)" -lt "$bootstrap_deadline" ]; do
+  if docker exec "$auth_bootstrap_container" \
+    curl -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
+    bootstrap_ready=true
+    break
+  fi
+  if [ "$(docker inspect "$auth_bootstrap_container" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]; then
+    break
+  fi
+  sleep 1
+done
+if [ "$bootstrap_ready" != true ]; then
+  docker logs "$auth_bootstrap_container" 2>&1 | tail -40 >&2 || true
+  docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
+  [ "$admin_credential_created" = true ] && rm -f "$admin_credential_file"
+  [ "$created_data_volume" = true ] && docker volume rm "$data_volume" >/dev/null 2>&1 || true
+  [ "$config_created" = true ] && rm -f "$config"
+  echo "systemadmin credential bootstrap did not become healthy" >&2
+  exit 1
+fi
+if ! docker exec "$auth_bootstrap_container" sh -lc '
+  code=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -u "systemadmin:$MCPGIT_SYSTEMADMIN_PASSWORD" \
+    http://127.0.0.1:8001/__mcpgit/auth/session)
+  test "$code" = 200
+'; then
+  docker rm -f "$auth_bootstrap_container" >/dev/null 2>&1 || true
+  [ "$admin_credential_created" = true ] && rm -f "$admin_credential_file"
+  [ "$created_data_volume" = true ] && docker volume rm "$data_volume" >/dev/null 2>&1 || true
+  [ "$config_created" = true ] && rm -f "$config"
+  echo "generated systemadmin credential failed authentication probe" >&2
+  exit 1
+fi
+docker rm -f "$auth_bootstrap_container" >/dev/null
 fi
 
 rollback_container="${instance}-rollback"
@@ -769,6 +856,9 @@ restore_previous_instance() {
   fi
   if [ "$config_created" = true ]; then
     rm -f "$config"
+  fi
+  if [ "$admin_credential_created" = true ]; then
+    rm -f "$admin_credential_file"
   fi
   return 0
 }
@@ -835,6 +925,22 @@ if [ "$candidate_healthy" != true ]; then
   exit 1
 fi
 
+if [ "$update_mode" = false ]; then
+  if ! (
+    set -a
+    . "$admin_credential_file"
+    set +a
+    code=$(curl -sS -o /dev/null -w '%{http_code}' \
+      -u "$MCPGIT_BASIC_USERNAME:$MCPGIT_BASIC_VERIFY" \
+      "http://127.0.0.1:$port/__mcpgit/auth/session")
+    test "$code" = 200
+  ); then
+    echo "final systemadmin credential authentication probe failed; removing candidate" >&2
+    restore_previous_instance || true
+    exit 1
+  fi
+fi
+
 docker update --restart unless-stopped "$instance" >/dev/null
 
 echo
@@ -853,7 +959,8 @@ if [ "$previous_preserved" = true ]; then
   echo "  rollback container: $rollback_container (stopped)"
 fi
 if [ "$update_mode" = false ]; then
-  echo "  first login: systemadmin / change-me (change it after login)"
+  echo "  systemadmin credential file (0600): $admin_credential_file"
+  echo "  load it with: . \"$admin_credential_file\""
   echo
   echo "SafeGit novice material (from container logs):"
   docker logs "$instance" 2>&1 | grep 'novice mode' || true

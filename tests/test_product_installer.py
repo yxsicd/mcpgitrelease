@@ -153,6 +153,20 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('desired_runtime_id=$(docker image inspect "$runtime_image" --format \'{{.Id}}\')', novice)
         self.assertIn('already matches the selected release; no restart required', novice)
 
+    def test_fresh_install_uses_random_ephemeral_admin_bootstrap(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        self.assertIn("MCPGIT_CREDENTIAL_DIR", novice)
+        self.assertIn('secrets.token_urlsafe(24)', novice)
+        self.assertIn('MCPGIT_BASIC_USERNAME=systemadmin', novice)
+        self.assertIn('MCPGIT_BASIC_VERIFY=%s', novice)
+        self.assertIn('chmod 0600 "$credential_tmp"', novice)
+        self.assertIn('auth_bootstrap_container="${instance}-auth-bootstrap"', novice)
+        self.assertIn('--env-file "$bootstrap_password_env"', novice)
+        self.assertIn('docker rm -f "$auth_bootstrap_container"', novice)
+        self.assertIn('generated systemadmin credential failed authentication probe', novice)
+        self.assertIn('systemadmin credential file (0600)', novice)
+        self.assertNotIn('first login: systemadmin / change-me', novice)
+
     def test_local_product_wrapper_preserves_success_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
