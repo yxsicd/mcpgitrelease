@@ -3,8 +3,9 @@
 This public repository is the install and release authority for MCPGit.
 
 Linux Program binaries are compiled only by the target architecture's native
-Linux Cargo/rustc toolchain. The amd64 and arm64 release jobs run on matching
-native GitHub runners and call MCPGit's `build-linux-program-native.sh`.
+Linux Cargo/rustc toolchain. Build and validate on explicitly allocated local
+native hosts, then upload immutable artifacts to GitHub Releases. GitHub Actions
+is not a prerequisite or fallback; GitHub stores Git and Release bytes only.
 Docker/BuildKit is not a Program compiler; it remains a Base/Tools/runtime
 assembly mechanism only.
 
@@ -21,6 +22,21 @@ The root installer is deliberately versionless. It follows
 immutable Release and layer checksums, preserves the instance data volume on
 upgrade, starts MCPGit, and installs `mcpgitctl`. GitHub's UI "Latest" marker
 is not release authority.
+
+For a named instance alongside other installations, select its name and port:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/install.sh \
+  | sh -s -- --instance ddtry --port 18003
+~/.local/bin/mcpgitctl --instance ddtry status
+~/.local/bin/mcpgitctl --instance ddtry doctor
+```
+
+The instance is `ddtry`, its default data volume is `ddtry_data`, and its local
+MCP endpoint is `http://127.0.0.1:18003/mcp`. Always retain `--instance ddtry`
+when managing it; an unqualified `mcpgitctl` command targets `mcpgit`, not the
+most recently installed instance. Check Docker's published address before
+exposing a WSL host: selecting a port is not selecting a loopback-only binding.
 
 At the start of each online run, `install.sh` resolves the current public
 `main` Git SHA once through the GitHub API. The deployment wrapper, backend,
@@ -88,7 +104,7 @@ Publishing binaries does not automatically make them the default. Promotion
 changes only `offline-latest.json`; rollback selects the previous complete
 dual-architecture pair and never rebuilds or mixes layers.
 
-The production promotion job is intentionally expensive enough to fail closed:
+The locally executed production promotion gate fails closed:
 it downloads every asset listed by each architecture's immutable manifest and
 runs the offline release verifier against the complete local asset directory.
 The default pointer is written only after both architecture bundles pass full
@@ -127,6 +143,36 @@ can open an administrator-protected SafeGit page. SafeGit novice recovery files
 (`safegit-shamir-shares.v1.json` and the Agent Key) are checked directly in the
 data volume at mode 0600; recovery guidance does not depend on which bootstrap
 process happened to emit the first-start log line.
+
+**These generated credentials authenticate via HTTP Basic Authorization.**
+The file's `MCPGIT_BASIC_USERNAME` / `MCPGIT_BASIC_VERIFY` names do not mean that
+its values belong in MCP `basic_username` / `basic_verify` tool arguments; those
+arguments select a different entrance-profile mechanism. See the
+[fresh-installer MCP guide](docs/MCP_AGENT_QUICKSTART.md#fresh-installer-credentials).
+Fresh `systemadmin` is a scoped control-plane identity, not an unrestricted
+business user: a denied instance-wide `repo_list` does not invalidate the login.
+
+For a real Agent check beyond Docker health, download this public probe. It
+uses Python's standard library and needs neither Node, an SDK install nor private
+MCPGit source. Obtain the expected organization UUID from the install output:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/scripts/agent_onboarding_probe.py \
+  -o agent_onboarding_probe.py
+python3 agent_onboarding_probe.py --url http://127.0.0.1:18003 \
+  --credential-file "$HOME/.mcpgit/credentials/ddtry-systemadmin.env" \
+  --expected-instance-id '<organization UUID printed by the installer>'
+```
+
+The default is read-only. Add `--write-probe` explicitly to commit and read back
+one uniquely named test file in the administrator's already-authorized
+`rootskills` repository. It leaves that file and its Git history as evidence;
+it does not grant permissions or claim business-repository write authority.
+Use the credential path printed by the installer when a custom directory is set.
+
+The bounded WSL installation/replay evidence and its tested release identity are
+recorded in [new-user qualification](docs/evidence/new-user-wsl-20260905.json).
+This is historical acceptance, not a replacement for the current product pointer.
 
 Re-running the installer for the same instance preserves its data volume and
 organization identity. To prepare a self-contained bundle for an offline

@@ -1005,6 +1005,8 @@ if [ "$previous_preserved" = true ]; then
 fi
 if [ "$update_mode" = false ]; then
   echo "  systemadmin credential file (0600): $admin_credential_file"
+  echo "  MCP login: HTTP Basic Authorization using this generated credential."
+  echo "  Do not copy it into MCP basic_username/basic_verify tool arguments."
   echo "  load it with: . \"$admin_credential_file\""
   echo
   shares_path=/data/repos/safegit/.git/mcpgit/safegit-shamir-shares.v1.json

@@ -78,6 +78,12 @@ If the repository id or path is unknown, first scope and run
 `repo.read/repo_list` or `repo.read/list_files`; do not guess a template repo id
 or assume `README.md` exists.
 
+`repo_list` requires instance-wide `mcp.read`. A fresh installer administrator
+may authenticate successfully but lack that permission. Do not widen its grants
+or switch credential mechanisms to force inventory success. For a repository
+explicitly identified by the installer/operator, use its scoped `repo_status`
+or `list_files` contract instead; otherwise request the intended repository.
+
 Retain the returned `skill_version`, strict `input_schema`, `access_lane`, and
 recovery guidance. Request `include_output_schema: true` only with one exact
 operation and only when code needs to compose the returned value.
@@ -131,6 +137,38 @@ selected candidate or use an authoritative content reference for the full
 value. Search never replaces TableGit as the source of truth.
 
 ## Authentication and errors
+
+### Fresh installer credentials
+
+The random `systemadmin` credential produced by the root installer is an
+**HTTP Basic Authorization** credential. Read the existing mode-0600 file through
+the client's protected configuration and send the header on each MCP request.
+Never print the password or put it in a URL. Despite the environment-variable
+names in that file, do not copy it into MCP `basic_username` / `basic_verify`
+arguments: those are a separate entrance-profile mechanism and reject this
+generated login. HTTP `person_status` must report the authenticated Person,
+not Guest. No extra Person selection is needed when it says `retain_context`.
+
+The fresh `systemadmin` has control-plane permissions and a scoped `rootskills`
+grant; it is not implicitly granted instance-wide `mcp.read` or business-repo
+access. Its scoped `rootskills` read/write can succeed while `repo_list` fails.
+That is a permission boundary, not a wrong password. Test the exact intended
+operation; do not treat a healthy container or eight-tool discovery as proof
+that the credential can perform every operation.
+
+`scripts/agent_onboarding_probe.py` is a public, standard-library check for this
+path. It verifies the expected instance UUID, eight Kernel tools, generated
+HTTP credential, scoped repository read and offline WAsmC discovery. Its default
+is read-only; `--write-probe` explicitly adds one committed rootskills test file
+and exact readback. It neither changes grants nor modifies business repositories.
+
+### Explicitly configured entrance profiles
+
+The following parameter-pair guidance applies to deployments whose operator
+explicitly supplies entrance-profile credentials. It is not a recipe for using
+the fresh installer's random password. An `authorization_upgrade` hint for
+these profiles does not authorize switching a working HTTP login to another
+mechanism or inventing profile credentials.
 
 With no MCP parameter Basic pair, a Guest-first instance uses its configured
 Guest identity. Do not ask for credentials during discovery or while the exact

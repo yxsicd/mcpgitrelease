@@ -1,0 +1,22 @@
+{
+  "schema": "mst-workstream/v1",
+  "task_id": "WS-20260905-ddtry-new-user",
+  "target_branch": "main",
+  "workstream_branch": "work/ws-20260905-ddtry-new-user",
+  "remote": "origin",
+  "original_base": "1d39b09e2b05765f0ccf896d026ee3ed1d7ab067",
+  "objective": "Close the public new-user authentication guidance gap found by a real isolated WSL installation, and add a credential-safe Agent acceptance probe.",
+  "boundaries": "No runtime binary, access grant, public release pointer or existing production instance changes. Use local tests, not Actions. Keep host paths and credential material out of public evidence.",
+  "execution_state": "complete",
+  "integration_state": "merged",
+  "claims": [
+    {"kind":"file","mode":"exclusive","value":"public onboarding guide, installer messages, bounded probe, corresponding tests, CI trigger and this workstream"},
+    {"kind":"semantic","mode":"exclusive","value":"distinguish generated HTTP Basic credentials from MCP entrance profiles; prove scoped authority without granting new access"},
+    {"kind":"resource","mode":"exclusive","value":"local unit fixtures and explicitly allocated disposable ddtry instance"},
+    {"kind":"strategy","mode":"shared","value":"local validation; no Actions dependency or runtime release"},
+    {"kind":"knowledge","mode":"exclusive","value":"public-facing onboarding lessons only"}
+  ],
+  "frozen_paths": {"offline-latest.json":"568ee2f50be773f7381292b0d1c4ad1343fefce4237fc1bbafd90820c6af8579","Dockerfile.offline-runtime":"553cf2e2a296dc24317fb09daca9a2e4b5fb141d185d1839a07a764f6b8a6e5d"},
+  "validation": ["scripts/validate.sh", "public-entry WSL replay and container reconstruction", "new Agent authentication read/write probe"],
+  "resume_point": "All seven WSL install/replay/reconstruction cases and real candidate Agent probe passed. Local gate passes 68 tests. Bind source, integrate locally, then rerun downloaded public installer and probe without changing runtime pointers."
+}

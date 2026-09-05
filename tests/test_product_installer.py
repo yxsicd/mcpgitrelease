@@ -354,6 +354,8 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('docker rm -f "$auth_bootstrap_container"', novice)
         self.assertIn('generated systemadmin credential failed authentication probe', novice)
         self.assertIn('systemadmin credential file (0600)', novice)
+        self.assertIn('MCP login: HTTP Basic Authorization', novice)
+        self.assertIn('Do not copy it into MCP basic_username/basic_verify', novice)
         self.assertIn('safegit-shamir-shares.v1.json', novice)
         self.assertIn('safegit-agent-key.v1.json', novice)
         self.assertNotIn('first login: systemadmin / change-me', novice)

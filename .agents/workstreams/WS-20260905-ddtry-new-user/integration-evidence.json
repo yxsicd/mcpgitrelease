@@ -1,0 +1,14 @@
+{
+  "schema": "mst-integration-evidence/v1",
+  "status": "merged",
+  "target_commit": "1d39b09e2b05765f0ccf896d026ee3ed1d7ab067",
+  "validated_source_commit": "db080407a59ec137c884028c49740c903ccaa830",
+  "validation_command": "scripts/validate.sh",
+  "checks": {"public_tests_passed":68,"public_tests_failed":0,"real_wsl_install_scenarios":7,"real_agent_probe_paths":3,"all_program_hashes_match":3,"preexisting_container_ids_unchanged":true},
+  "validation_log_sha256": "5c2cc0ea04f2d40724b13c9856a587c61ff01e52ea3ceb8361d760c5c614ea9c",
+  "qualification_report_sha256": "5844e098f616b15fbf195ac5cb383087bfa7cf9178da25a82e8ac633e5b59c59",
+  "probe_sha256": "f1e52b72761baeffe8ff38a9753712c96ea8b76538e25d661dfe3379420d7d67",
+  "scope": {"actions_used":false,"runtime_pointer_changed":false,"permissions_changed":false,"runtime_binary_changed":false,"hosted_tls_tested":false,"cross_version_tested":false},
+  "integration_source_commit": "87c3ae43ce09218f1678e2892975a8dc799c17ee",
+  "pending": "Final merge-tree gate must pass before commit; public snapshot replay after integration remains due."
+}
