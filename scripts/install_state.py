@@ -158,8 +158,12 @@ def compatible(saved, candidate, assembly):
 def supported_configuration(current, image):
     """The simple facade must refuse overrides it cannot faithfully replay."""
     config, original = current['Config'], image['Config']
-    for field in ('Cmd', 'Entrypoint', 'User', 'WorkingDir'):
+    for field in ('Cmd', 'Entrypoint'):
         require(config.get(field) == original.get(field), 'custom process configuration requires its deployment owner')
+    # Docker normalizes omitted image string fields to empty container strings.
+    for field in ('User', 'WorkingDir'):
+        require((config.get(field) or '') == (original.get(field) or ''),
+                'custom process configuration requires its deployment owner')
     original_env = dict(item.split('=', 1) for item in original.get('Env') or [])
     actual = dict(item.split('=', 1) for item in config.get('Env') or [])
     allowed = {'MCPGIT_BOOTSTRAP_REMOTE_REPOS', 'MCPGIT_BOOTSTRAP_REPO_SOURCES',

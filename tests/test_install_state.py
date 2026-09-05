@@ -215,6 +215,9 @@ class InstallStateTests(unittest.TestCase):
         current['Config']['Env'] += ['MCPGIT_BOOTSTRAP_REMOTE_REPOS=', 'MCPGIT_BOOTSTRAP_REPO_SOURCES=none',
                                     'MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1']
         state.supported_configuration(current, image)
+        image['Config']['User'] = None
+        image['Config']['WorkingDir'] = None
+        state.supported_configuration(current, image)
         for change in ('environment','user','memory','security'):
             bad = copy.deepcopy(current)
             if change == 'environment': bad['Config']['Env'].append('MY_CUSTOM_SETTING=preserve-me')

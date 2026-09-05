@@ -48,3 +48,9 @@ The latest local 86-test gate adds refusal of unreplayable custom process/env/
 resource/security overrides, preserves disabled build capability, validates the
 existing credential before stopping its writer, and bounds network health probes.
 Final-source fresh-install and repeated qualification remain required before merge.
+
+Final 6dfe986 replay refused the unchanged ddtry before mutation because Docker
+reported null image User/WorkingDir versus empty container strings. The narrow
+default-string normalization now accepts only this equivalence, with regression
+coverage; custom users, directories, process argv and resource overrides remain
+rejected. All original ddtry identity/data/credential/sentinel checks stayed true.
