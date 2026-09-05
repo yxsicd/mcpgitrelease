@@ -1,6 +1,6 @@
 # Fresh install and long-lived Program-only upgrades
 
-State: complete / merged; final merged-tree gate and push are the commit boundary.
+State: complete / merged / public-main replay verified.
 
 The user prioritizes first installation and subsequent application-only updates.
 Keep Base/Tools and data/config/credentials stable. A strict Program-only request
@@ -78,3 +78,23 @@ against e495fd78519dd0ce6f79088a1868dc3690a7a3f8. Implementation files remain
 the exact real-tested 32e0507 controller. Public readback and CLI replay are the
 last acceptance step after this merge is validated and pushed; no runtime
 binary, channel pointer or unrelated worktree is part of that publication.
+
+Public implementation 6cd8064c6b95ec2fc725c657c76178b6d6c657b2 passed the
+merged-tree 86-test gate and was pushed. The installed CLI then fetched public
+main with no revision, credential-directory, bundle or config-path override.
+Both `upgrade --check` (8.728s) and `upgrade` (12.608s) passed exact-mode replay
+without runtime layer download, archive unpack or container recreation. Evidence:
+docs/evidence/program-upgrade-public-replay-20260905.json. These are single-run
+observations, not latency guarantees. The final helper bytes still match the
+ten-case qualification. Only this evidence/knowledge checkpoint changes afterward.
+
+The fresh disposable container, its volume and generated credentials were removed
+by exact recorded identity. Five owned stopped test containers and six fixture
+image tags were reclaimed; one known public rollback, ddtry_data and the fixed
+foundation remain. No general Docker prune ran. ddtry retains original public
+Program bytes, configuration, credentials, organization, exposure and sentinel.
+
+Next release qualification must reuse verified Base/Tools artifacts for genuine
+Program-only releases and test the newly compiled native versions. Container
+recovery still does not establish data-format rollback. Long-term old-image/
+rollback retention remains explicit rather than deleting unrelated recovery input.

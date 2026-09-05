@@ -1,0 +1,31 @@
+{
+  "schema": "mcpgitrelease.program-upgrade-public-replay.v1",
+  "ok": true,
+  "installer_snapshot": "6cd8064c6b95ec2fc725c657c76178b6d6c657b2",
+  "runtime_source": "daec20e98ec9cd1aa1af7948ef369bec4c5c8b38",
+  "no_installer_version_or_path_override": true,
+  "cases": [
+    {
+      "case": "public-cli-check",
+      "ok": true,
+      "seconds": 8.728,
+      "container_and_state_preserved": true,
+      "runtime_layer_download": false,
+      "archive_unpack": false
+    },
+    {
+      "case": "public-cli-upgrade",
+      "ok": true,
+      "seconds": 12.608,
+      "container_and_state_preserved": true,
+      "runtime_layer_download": false,
+      "archive_unpack": false
+    }
+  ],
+  "actions_used": false,
+  "hwlinux_used": false,
+  "data_volume_deleted": false,
+  "final_docker_healthy": true,
+  "final_restart_count": 0,
+  "helper_sha256": "ede098b3ff1553b87ffdc738f2bd81c5a58d0ed3a101fed60d70361da3ddabc4"
+}

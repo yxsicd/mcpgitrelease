@@ -15,6 +15,6 @@
     {"kind":"resource","mode":"exclusive","value":"ddtry on hwbluebwsl; isolated public-repo test worktree on m4mac"}
   ],
   "validation":["scripts/validate.sh: 86 tests passed","ten final-source real WSL cases","exact controller file hashes and target/source evidence"],
-  "resume_point":"The fetched ready workstream is merged with unchanged controller bytes. Require final merged-tree gate and push, then public-main CLI check/upgrade replay without version overrides. Runtime pointer remains unchanged.",
+  "resume_point":"Merged public implementation and installed CLI check/upgrade both pass. Continue genuine new-version qualification using reused verified Base/Tools artifacts, without changing hwlinux ownership or relying on Actions; container recovery is not data migration rollback.",
   "retention":"Retain remote workstream and sanitized evidence, reclaim only owned development worktrees and disposable WSL fixtures after verified integration. Keep ddtry and its verified foundation."
 }
