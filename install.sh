@@ -9,7 +9,7 @@ command -v python3 >/dev/null 2>&1 || { echo "MCPGit installer requires python3"
 
 if [ -z "${MCPGIT_INSTALL_BASE_URL:-}" ]; then
   if [ -z "$REVISION" ]; then
-    REVISION=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+    REVISION=$(curl -fsSL --connect-timeout 10 --max-time 90 --retry 2 --retry-delay 2 \
       -H 'Accept: application/vnd.github+json' \
       "https://api.github.com/repos/$REPOSITORY/commits/main" \
       | python3 -c 'import json,sys; print(json.load(sys.stdin)["sha"])')
@@ -37,7 +37,7 @@ cleanup() {
   return 0
 }
 trap cleanup EXIT INT TERM
-curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+curl -fsSL --connect-timeout 10 --max-time 90 --retry 2 --retry-delay 2 \
   "$BASE_URL/mcpgit-install.sh" -o "$TMP_DIR/mcpgit-install.sh"
 chmod 0755 "$TMP_DIR/mcpgit-install.sh"
 set +e

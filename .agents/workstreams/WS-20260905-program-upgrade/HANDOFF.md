@@ -37,4 +37,14 @@ credential, configuration, binding and committed-sentinel checks passed.
 The original archives were restored. These are single-run observations, not
 performance benchmarks or cross-version qualification. Transaction cleanup now
 uses a candidate nonce/exact old ID and retains private failed-attempt evidence;
-real replacement and fresh-install tests are still pending on that final code.
+the next exact-code qualification must retain this distinction.
+
+The ec9c49e controller passed actual Docker Program rejection/restoration, two
+successive Program-only replacements and a return to the original public image.
+Both successive images had eight RootFS layers and the deliberately removed
+Program file did not survive. These were controlled archive changes using the
+existing valid native binaries, not a new compiled release or schema migration.
+The latest local 86-test gate adds refusal of unreplayable custom process/env/
+resource/security overrides, preserves disabled build capability, validates the
+existing credential before stopping its writer, and bounds network health probes.
+Final-source fresh-install and repeated qualification remain required before merge.

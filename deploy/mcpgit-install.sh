@@ -61,7 +61,7 @@ fetch_file() {
   name=$1
   target=$2
   command -v curl >/dev/null 2>&1 || { echo "curl is required to bootstrap MCPGit" >&2; exit 1; }
-  curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "$PUBLIC_DEPLOY_BASE/$name" -o "$target"
+  curl -fsSL --connect-timeout 10 --max-time 90 --retry 2 --retry-delay 2 "$PUBLIC_DEPLOY_BASE/$name" -o "$target"
 }
 
 backend="$SCRIPT_DIR/novice-install.sh"

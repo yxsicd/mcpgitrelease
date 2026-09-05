@@ -389,6 +389,7 @@ current_netrc_source=
 current_executable_build_repository=
 if docker container inspect "$instance" >/dev/null 2>&1; then
   current_container=true
+  python3 "$install_tool" preserve --instance "$instance"
   current_container_id=$(docker inspect "$instance" --format '{{.Id}}')
   current_was_running=$(docker inspect "$instance" --format '{{.State.Running}}')
   current_image_id=$(docker inspect "$instance" --format '{{.Image}}')
@@ -468,6 +469,11 @@ if docker volume inspect "$data_volume" >/dev/null 2>&1; then
 fi
 if [ "$update_mode" = true ]; then
   echo "==> existing instance detected: update mode (data volume preserved)"
+  python3 - "$bundle/scripts/agent_onboarding_probe.py" "$MCPGIT_CREDENTIAL_DIR/$instance-systemadmin.env" <<'PY'
+import importlib.util,sys
+s=importlib.util.spec_from_file_location('probe',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+m.credentials(sys.argv[2])
+PY
 fi
 
 if [ "$install_mode" = full ]; then
@@ -743,7 +749,7 @@ if [ "$current_container" = true ] \
   && [ "$current_netrc_source" = "$requested_netrc_source" ] \
   && [ "$current_executable_build_repository" = "$executable_build_repository" ] \
   && [ -z "${MCPGIT_BIND_ADDRESS:-}" ] \
-  && [ "$(curl -s -o /dev/null -w '%{http_code}' \
+  && [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
     "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
   record_installation || { echo 'existing instance Agent acceptance failed' >&2; exit 1; }
   installation_accepted=true
@@ -973,7 +979,7 @@ bootstrap_deadline=$(( $(date +%s) + 60 ))
 bootstrap_ready=false
 while [ "$(date +%s)" -lt "$bootstrap_deadline" ]; do
   if docker exec "$auth_bootstrap_container" \
-    curl -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
+    curl --max-time 3 -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
     bootstrap_ready=true
     break
   fi
@@ -1074,7 +1080,7 @@ restore_previous_instance() {
       fi
       if [ -n "$previous_host_port" ]; then
         rollback_deadline=$(( $(date +%s) + 60 ))
-        while [ "$(curl -s -o /dev/null -w '%{http_code}' \
+        while [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
           "http://127.0.0.1:$previous_host_port/healthz" 2>/dev/null || true)" != "204" ]; do
           if [ "$(date +%s)" -ge "$rollback_deadline" ]; then
             echo "automatic rollback restarted the previous container but health did not recover" >&2
@@ -1158,7 +1164,7 @@ echo "==> waiting for health"
 deadline=$(( $(date +%s) + 120 ))
 candidate_healthy=false
 while [ "$(date +%s)" -lt "$deadline" ]; do
-  if [ "$(curl -s -o /dev/null -w '%{http_code}' \
+  if [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
     "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
     candidate_healthy=true
     break

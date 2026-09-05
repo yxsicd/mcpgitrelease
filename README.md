@@ -42,8 +42,10 @@ curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/install.s
 The instance is `ddtry`, its default data volume is `ddtry_data`, and its local
 MCP endpoint is `http://127.0.0.1:18003/mcp`. Always retain `--instance ddtry`
 when managing it; an unqualified `mcpgitctl` command targets `mcpgit`, not the
-most recently installed instance. Check Docker's published address before
-exposing a WSL host: selecting a port is not selecting a loopback-only binding.
+most recently installed instance. Fresh installs now use a loopback-only binding
+by default. Existing instances retain their previous binding; check Docker's
+published address before exposing a WSL host. Explicit `MCPGIT_BIND_ADDRESS=0.0.0.0`
+opts into all-interface listening; it does not configure TLS or a firewall.
 
 At the start of each online run, `install.sh` resolves the current public
 `main` Git SHA once through the GitHub API. The deployment wrapper, backend,

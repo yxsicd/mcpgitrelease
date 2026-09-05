@@ -155,6 +155,32 @@ def compatible(saved, candidate, assembly):
             saved["manifest"]["layers"][2]["target"] == candidate["layers"][2]["target"])
 
 
+def supported_configuration(current, image):
+    """The simple facade must refuse overrides it cannot faithfully replay."""
+    config, original = current['Config'], image['Config']
+    for field in ('Cmd', 'Entrypoint', 'User', 'WorkingDir'):
+        require(config.get(field) == original.get(field), 'custom process configuration requires its deployment owner')
+    original_env = dict(item.split('=', 1) for item in original.get('Env') or [])
+    actual = dict(item.split('=', 1) for item in config.get('Env') or [])
+    allowed = {'MCPGIT_BOOTSTRAP_REMOTE_REPOS', 'MCPGIT_BOOTSTRAP_REPO_SOURCES',
+               'MCPGIT_ALLOWED_HOSTS', 'MCPGIT_PUBLIC_BASE_URL', 'MCPGIT_EXECUTABLE_BUILD_REPOSITORY'}
+    require(all(k in allowed or actual.get(k) == original_env.get(k) for k in actual.keys() | original_env.keys()),
+            'custom environment requires its deployment owner; no silent deletion')
+    expected = {'MCPGIT_BOOTSTRAP_REMOTE_REPOS': '', 'MCPGIT_BOOTSTRAP_REPO_SOURCES': 'none',
+                'MCPGIT_ALLOWED_HOSTS': 'localhost,127.0.0.1,::1'}
+    require(all(actual.get(k) == v for k, v in expected.items()), 'custom bootstrap or host policy cannot be replayed')
+    host = current['HostConfig']
+    for key in ('Memory','MemorySwap','NanoCpus','CpuQuota','CpuPeriod','CpuShares','CpusetCpus','CpusetMems',
+                'PidsLimit','Privileged','ReadonlyRootfs','CapAdd','CapDrop','Devices','DeviceRequests',
+                'SecurityOpt','Ulimits','ExtraHosts','Dns','DnsSearch','VolumesFrom'):
+        require(host.get(key) in (None, 0, False, '', []), 'custom resource/security configuration requires its deployment owner')
+
+
+def preserve(instance):
+    current = inspect('container', instance)
+    supported_configuration(current, inspect('image', current['Image']))
+
+
 def plan(path, instance, assembly, strict=False, full=False):
     value = manifest(path)
     answer = {"mode": "full", "foundation_image_id": "", "hashes": {}}
@@ -228,6 +254,7 @@ def record(args):
              "data_volume": args.volume, "config": str(Path(args.config).resolve()),
              "credential_file": str(Path(args.credential).resolve()), "bin_dir": args.bin_dir,
              "netrc": mounts.get("/root/.netrc", {}).get("Source", ""),
+             "executable_build_repository": dict(x.split('=',1) for x in current['Config'].get('Env') or []).get('MCPGIT_EXECUTABLE_BUILD_REPOSITORY', ''),
              "program_chain_depth": 0 if current["Image"] == (previous_plan["foundation_image_id"] or current["Image"]) else 1}
     atomic(state_path(args.instance), state)
     print(json.dumps({"ok": True, "instance": args.instance, "mode": previous_plan["mode"], "state_recorded": True}))
@@ -240,6 +267,11 @@ def upgrade(args):
     env.update(MCPGIT_BUNDLE_DIR=state["bundle"], MCPGIT_INSTANCE_CONFIG_DIR=str(Path(state["config"]).parent),
                MCPGIT_CREDENTIAL_DIR=str(Path(state["credential_file"]).parent), MCPGIT_BIN_DIR=state["bin_dir"],
                MCPGIT_NETRC=state.get("netrc", ""))
+    if 'executable_build_repository' in state:
+        env['MCPGIT_EXECUTABLE_BUILD_REPOSITORY'] = state['executable_build_repository']
+    else:
+        current = inspect('container', args.instance)
+        env['MCPGIT_EXECUTABLE_BUILD_REPOSITORY'] = dict(x.split('=',1) for x in current['Config'].get('Env') or []).get('MCPGIT_EXECUTABLE_BUILD_REPOSITORY', '')
     with tempfile.TemporaryDirectory(prefix="mcpgit-upgrade-") as directory:
         file = Path(directory) / "install.sh"
         run(["curl", "-fsSL", "--connect-timeout", "10", "--max-time", "60",
@@ -272,6 +304,8 @@ def main():
     upgraded = commands.add_parser("upgrade")
     upgraded.add_argument("--instance", required=True)
     upgraded.add_argument("--check", action="store_true")
+    preserved = commands.add_parser('preserve')
+    preserved.add_argument('--instance', required=True)
     args = parser.parse_args()
     try:
         if args.command == "select":
@@ -289,6 +323,8 @@ def main():
             record(args)
         elif args.command == "upgrade":
             return upgrade(args)
+        elif args.command == 'preserve':
+            preserve(args.instance)
         return 0
     except (InstallError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         print("install-state: " + (str(error) if isinstance(error, InstallError) else type(error).__name__), file=sys.stderr)

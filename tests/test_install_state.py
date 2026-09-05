@@ -209,6 +209,21 @@ class InstallStateTests(unittest.TestCase):
         self.assertIn('replacement.json', shell)
         self.assertIn('evidence_root=', shell)
 
+    def test_custom_environment_and_resources_cannot_be_silently_dropped(self):
+        image = {'Config': {'Env': ['PATH=/usr/bin'], 'Cmd':['run'],'Entrypoint':['init'],'User':'','WorkingDir':''}}
+        current = {'Config': copy.deepcopy(image['Config']), 'HostConfig': {}}
+        current['Config']['Env'] += ['MCPGIT_BOOTSTRAP_REMOTE_REPOS=', 'MCPGIT_BOOTSTRAP_REPO_SOURCES=none',
+                                    'MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1']
+        state.supported_configuration(current, image)
+        for change in ('environment','user','memory','security'):
+            bad = copy.deepcopy(current)
+            if change == 'environment': bad['Config']['Env'].append('MY_CUSTOM_SETTING=preserve-me')
+            elif change == 'user': bad['Config']['User']='1000'
+            elif change == 'memory': bad['HostConfig']['Memory']=512*1024*1024
+            else: bad['HostConfig']['SecurityOpt']=['no-new-privileges']
+            with self.subTest(change=change), self.assertRaises(state.InstallError):
+                state.supported_configuration(bad,image)
+
 
 if __name__ == '__main__':
     unittest.main()

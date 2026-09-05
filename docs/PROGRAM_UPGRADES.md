@@ -5,7 +5,8 @@ installer snapshot and verifies the selected pointer's exact manifest SHA-256,
 source and native target before using any asset filename. A new instance gets
 Base, Tools, Program, repository templates and a unique administrator credential.
 New installations bind the selected port to 127.0.0.1 by default. The explicit
-`MCPGIT_BIND_ADDRESS` environment setting opts into another address. Existing
+`MCPGIT_BIND_ADDRESS=0.0.0.0` environment setting opts into all IPv4 interfaces;
+`127.0.0.1` explicitly selects loopback. Existing
 instances retain their current host binding when that setting is absent.
 
 After successful Docker health, authenticated MCP discovery/scoped read and
@@ -13,6 +14,10 @@ actual program-byte checks, the installer writes a private receipt under
 `$HOME/.mcpgit/install-state/<instance>.json`. `MCPGIT_STATE_DIR` can relocate it.
 It contains credential file references, never credential values. Keep it with
 the instance's host configuration; it is not a data backup or signed attestation.
+The installed receipt also preserves an explicitly disabled executable-build
+repository. A routine upgrade must not enable capabilities by applying defaults.
+This simple facade refuses custom process, environment, resource and security
+overrides it cannot faithfully reproduce; those remain with their deployment owner.
 
 ## Upgrade commands
 
