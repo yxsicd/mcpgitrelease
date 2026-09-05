@@ -1,6 +1,6 @@
 # Fresh install and long-lived Program-only upgrades
 
-State: implementation-complete / not-ready for integration; real WSL gates pending.
+State: complete / ready for serialized integration.
 
 The user prioritizes first installation and subsequent application-only updates.
 Keep Base/Tools and data/config/credentials stable. A strict Program-only request
@@ -54,3 +54,21 @@ reported null image User/WorkingDir versus empty container strings. The narrow
 default-string normalization now accepts only this equivalence, with regression
 coverage; custom users, directories, process argv and resource overrides remain
 rejected. All original ddtry identity/data/credential/sentinel checks stayed true.
+
+Final implementation 32e0507588a512d9166fb4d4afe7339ca9a0f5c6 passes 86
+local public-repository tests and ten real WSL cases. Exact warm replay passes
+without unpack/download; a broken Program restores the exact previous container;
+two successive Program-only archive replacements keep one fixed foundation and
+eight image layers, remove an obsolete Program file, then return to the original
+public image. Wrong manifest pin, missing baseline, changed cold layer and missing
+credential fail before changing the retained writer. Fresh install from a new
+download directory uses loopback binding, random private credentials, automatic
+read-only MCP acceptance and a valid installation receipt. Explicit post-install
+write/readback and doctor pass. The host already had Docker image cache.
+
+Exact script hashes and cases are in docs/evidence/program-upgrade-wsl-20260905.json.
+All nine pre-existing other container IDs remain unchanged. No runtime release
+or pointer, private Rust source, authorization policy, or hwlinux resource changed.
+These Program fixtures change package contents, not compiled product versions;
+real cross-version/data-format migration and rollback remain unqualified.
+After integration, re-download public main and exercise mcpgitctl upgrade/check.

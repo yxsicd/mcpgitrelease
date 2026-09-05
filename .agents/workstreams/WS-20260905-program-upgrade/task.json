@@ -1,1 +1,20 @@
-{"schema":"mst-workstream/v1","task_id":"WS-20260905-program-upgrade","parent_task":"task-brainstem-mcpgit-release-runtime","target_branch":"main","workstream_branch":"work/ws-20260905-program-upgrade","remote":"origin","original_base":"e495fd78519dd0ce6f79088a1868dc3690a7a3f8","objective":"Separate verified fresh installation from repeatable Program-only upgrades, preserve instance state and close public installer integrity gaps.","execution_state":"started","integration_state":"not-ready","boundaries":"Public deployment scripts and tests only. No private Rust changes, hwlinux use, Actions, runtime Release upload or pointer movement. Docker mutations restricted to user-authorized ddtry and explicitly owned disposable fixtures on hwbluebwsl. Preserve ddtry data, credentials, configuration and exposure.","claims":[{"kind":"file","mode":"exclusive","value":"public install plan/helper, novice installer, product CLI, scoped smoke guards and related tests/docs"},{"kind":"resource","mode":"exclusive","value":"ddtry on hwbluebwsl; local public-repo test worktree on m4mac"}],"validation":["local public scripts/validate.sh","real ddtry warm replay and program-only upgrade/rollback qualification","exact evidence source binding"],"resume_point":"Implement pointer-to-manifest binding, private immutable-image installation state, no-op and fixed-foundation Program-only paths; test failures before promotion.","retention":"Keep remote workstream and sanitized evidence; reclaim only this worktree after integration."}
+{
+  "schema":"mst-workstream/v1",
+  "task_id":"WS-20260905-program-upgrade",
+  "parent_task":"task-brainstem-mcpgit-release-runtime",
+  "target_branch":"main",
+  "workstream_branch":"work/ws-20260905-program-upgrade",
+  "remote":"origin",
+  "original_base":"e495fd78519dd0ce6f79088a1868dc3690a7a3f8",
+  "objective":"Separate verified fresh installation from repeatable Program-only upgrades, preserving instance state and closing public installer integrity gaps.",
+  "execution_state":"complete",
+  "integration_state":"ready",
+  "boundaries":"Public deployment scripts/tests only. No private Rust changes, hwlinux use, Actions, runtime Release upload or pointer movement. Docker mutations restricted to ddtry and explicitly owned disposable fixtures on hwbluebwsl. Preserve ddtry data, credentials, configuration and exposure.",
+  "claims":[
+    {"kind":"file","mode":"exclusive","value":"public install plan/helper, novice installer, product CLI, scoped smoke guards and related tests/docs"},
+    {"kind":"resource","mode":"exclusive","value":"ddtry on hwbluebwsl; isolated public-repo test worktree on m4mac"}
+  ],
+  "validation":["scripts/validate.sh: 86 tests passed","ten final-source real WSL cases","exact controller file hashes and target/source evidence"],
+  "resume_point":"Integrate fetched ready workstream after verifying unchanged main target; revalidate merged tree, push, and perform fresh public-main CLI check/upgrade replay without version overrides.",
+  "retention":"Retain remote workstream and sanitized evidence, reclaim only owned development worktrees and disposable WSL fixtures after verified integration. Keep ddtry and its verified foundation."
+}

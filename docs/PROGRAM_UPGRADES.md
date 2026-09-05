@@ -86,3 +86,11 @@ It is not a fresh-install or disaster-recovery bundle.
 that a backup exists. The disposable new-user smoke refuses pre-existing paths,
 containers and volumes, including when `--keep` is supplied. Use the non-destructive
 Agent onboarding probe to inspect a retained instance instead.
+
+## Qualification evidence
+
+The exact controller revision and ten real WSL acceptance cases are recorded in
+`docs/evidence/program-upgrade-wsl-20260905.json`: fresh install, no-op, Program
+replacement/recovery, obsolete-file removal, constant image ancestry and refused
+incompatible/unauthorized inputs. Valid Program fixture binaries were unchanged;
+this evidence does not approve a newly compiled runtime or a data-format migration.
