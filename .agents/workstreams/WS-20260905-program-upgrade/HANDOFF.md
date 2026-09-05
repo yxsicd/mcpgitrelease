@@ -1,6 +1,6 @@
 # Fresh install and long-lived Program-only upgrades
 
-State: started / not-ready.
+State: implementation-complete / not-ready for integration; real WSL gates pending.
 
 The user prioritizes first installation and subsequent application-only updates.
 Keep Base/Tools and data/config/credentials stable. A strict Program-only request
@@ -13,3 +13,19 @@ The retained ddtry instance is the authorized real WSL test target. Preserve its
 committed sentinel, volume, identity, credential and existing network exposure.
 Read current remote state before integration; a source push does not move any
 runtime release pointer. Container rollback does not imply data-format rollback.
+
+Local validation passes 85 tests. scripts/install_state.py now supplies strict
+pointer/manifest selection, private image-bound receipts and full/exact/program
+planning. The public installer downloads only Program in the compatible path,
+uses one fixed parent and streamed Docker build context, performs authenticated
+MCP acceptance before recording success, and retains old containers on failure.
+CLI upgrade now delegates to the public root with preserved installation paths;
+backup exits 2. New smoke preflight rejects existing resources without cleanup.
+Default first-install bind is loopback; existing exposure is retained.
+Two former static string checks were updated to the new selector/helper paths;
+the actual pointer, archive, runtime and auth tests are not relaxed.
+
+Next validate ddtry baseline adoption, warm replay without cold archives, a
+controlled Program replacement/negative recovery, and a fresh isolated install.
+No actual cross-version compatibility evidence is claimed yet. Keep all current
+published binary tags, channels and the hwlinux optimization work unchanged.

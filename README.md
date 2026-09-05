@@ -11,6 +11,13 @@ assembly mechanism only.
 
 ## Install the latest MCPGit
 
+For repeat installations and application-only maintenance, see
+[`docs/PROGRAM_UPGRADES.md`](docs/PROGRAM_UPGRADES.md). `mcpgitctl --instance NAME
+upgrade` uses strict Program-only updates; `upgrade --check` checks the candidate
+without activation. A first complete installation establishes the verified
+image-bound baseline. Base/Tools incompatibility never silently becomes a full
+environment reinstall under `--program-only`.
+
 For a normal Linux amd64/arm64 installation, this is the only command you need:
 
 ```sh
