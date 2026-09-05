@@ -1,0 +1,1 @@
+{"schema":"mst-knowledge-proposals/v1","proposals":["Fresh-install credentials use HTTP Basic Authorization; the generic MCP Basic parameters are not interchangeable. Scoped repository denial is not an invalid credential and must not be repaired by increasing permissions."]}

@@ -1,0 +1,1 @@
+{"schema":"mst-integration-evidence/v1","status":"not-ready","target_commit":"1d39b09e2b05765f0ccf896d026ee3ed1d7ab067","validated_source_commit":null,"pending":"Public regression tests, real Agent probe and source-bound integration."}
