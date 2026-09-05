@@ -260,11 +260,18 @@ instance_lock=
 cleanup_install() {
   code=$?
   trap - EXIT INT TERM
-  if [ "${previous_preserved:-false}" = true ] && [ "${installation_accepted:-false}" = false ]; then
+  if [ "${replacement_started:-false}" = true ] && [ "${installation_accepted:-false}" = false ]; then
     restore_previous_instance || code=1
   fi
   [ -z "$ctx" ] || rm -rf "$ctx"
-  rm -rf "$control_dir" "$lock"
+  if [ "$code" != 0 ] && [ -d "$control_dir" ]; then
+    evidence_root="${MCPGIT_STATE_DIR:-$HOME/.mcpgit/install-state}/attempts"
+    mkdir -p "$evidence_root"
+    mv "$control_dir" "$evidence_root/$instance-$(date +%s)-$$"
+  else
+    rm -rf "$control_dir"
+  fi
+  rm -rf "$lock"
   [ -z "$instance_lock" ] || rm -rf "$instance_lock"
   exit "$code"
 }
@@ -424,6 +431,8 @@ if exists == 'true':
     host=bindings['8001/tcp'][0]['HostIp']
 if requested:
     ipaddress.ip_address(requested)
+    if requested not in {'127.0.0.1','0.0.0.0'}:
+        raise SystemExit('this facade supports explicit IPv4 loopback/all-interface binding only')
     host=requested
 if ':' in host: host='['+host+']'
 print((host+':' if host else '')+port+':8001')
@@ -705,6 +714,7 @@ record_installation() {
   while [ "$(docker inspect "$instance" --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" != healthy ]; do
     n=$((n+1)); [ "$n" -lt 30 ] || return 1; sleep 1
   done
+  docker exec "$instance" sh -ec 'test "$(stat -c %a /data/repos/safegit/.git/mcpgit/safegit-agent-key.v1.json)" = 600' || return 1
   python3 "$install_tool" record --manifest "$manifest" --instance "$instance" \
     --assembly "$assembly_sha" --plan "$control_dir/plan.json" --bundle "$bundle" \
     --config "$config" --credential "$credential" --volume "$data_volume" --port "$port" \
@@ -1028,19 +1038,31 @@ fi
 rollback_container="${instance}-rollback"
 previous_preserved=false
 candidate_container_id=
+transaction_id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+replacement_started=false
 previous_host_port="$current_host_port"
 
 restore_previous_instance() {
   if docker container inspect "$instance" >/dev/null 2>&1; then
     restore_id=$(docker inspect "$instance" --format '{{.Id}}')
+    if [ "$restore_id" = "${current_container_id:-}" ]; then
+      if [ "$current_was_running" = true ]; then docker start "$restore_id" >/dev/null || return 1; fi
+      replacement_started=false
+      return 0
+    fi
+    candidate_transaction=$(docker inspect "$instance" --format '{{index .Config.Labels "com.yxsicd.mcpgit.install-transaction"}}')
+    if [ "$candidate_transaction" = "$transaction_id" ] && [ -z "$candidate_container_id" ]; then
+      candidate_container_id=$restore_id
+    fi
     if [ -n "$candidate_container_id" ] && [ "$restore_id" = "$candidate_container_id" ]; then
       docker rm -f "$candidate_container_id" >/dev/null || return 1
     else
       echo 'refusing to delete an unowned container during rollback' >&2; return 1
     fi
   fi
-  if [ "$previous_preserved" = true ] \
+  if [ "$current_container" = true ] \
     && docker container inspect "$rollback_container" >/dev/null 2>&1; then
+    [ "$(docker inspect "$rollback_container" --format '{{.Id}}')" = "$current_container_id" ] || return 1
     if ! docker rename "$rollback_container" "$instance" >/dev/null; then
       echo "automatic rollback could not restore previous container name: $rollback_container" >&2
       return 1
@@ -1063,6 +1085,7 @@ restore_previous_instance() {
       fi
     fi
     previous_preserved=false
+    replacement_started=false
     echo "==> restored previous instance $instance after candidate failure" >&2
     return 0
   fi
@@ -1084,6 +1107,12 @@ if [ "$current_container" = true ]; then
   if docker container inspect "$rollback_container" >/dev/null 2>&1; then
     rollback_container="${instance}-rollback-$(date +%s)-$$"
   fi
+  replacement_started=true
+  python3 - "$control_dir/replacement.json" "$current_container_id" "$rollback_container" "$transaction_id" <<'PY'
+import json,sys
+out,old,name,transaction=sys.argv[1:]
+open(out,'w').write(json.dumps({'old_container_id':old,'rollback_name':name,'transaction_id':transaction,'phase':'before_stop'}))
+PY
   if [ "$current_was_running" = true ]; then
     docker stop "$instance" >/dev/null
   fi
@@ -1098,6 +1127,7 @@ fi
 if ! docker run -d \
   --name "$instance" \
   --restart no \
+  --label "com.yxsicd.mcpgit.install-transaction=$transaction_id" \
   --label "org.opencontainers.image.version=git-$source_sha" \
   --label "org.opencontainers.image.revision=$source_sha" \
   --label "com.yxsicd.mcpgit.distribution=github-offline-v2" \
@@ -1161,13 +1191,13 @@ if [ "$update_mode" = false ]; then
   fi
 fi
 
+docker update --restart unless-stopped "$instance" >/dev/null
 if ! record_installation; then
   echo 'candidate Agent or byte acceptance failed; restoring previous instance' >&2
   restore_previous_instance || true
   exit 1
 fi
 installation_accepted=true
-docker update --restart unless-stopped "$instance" >/dev/null
 
 echo
 if [ "$update_mode" = true ]; then

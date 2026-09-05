@@ -204,6 +204,10 @@ class InstallStateTests(unittest.TestCase):
         self.assertIn('if ! record_installation;', shell)
         self.assertNotIn('docker rm -f "$rollback_container" >/dev/null 2>&1 || true', shell)
         self.assertIn('refusing to delete an unowned container', shell)
+        self.assertIn('install-transaction=$transaction_id', shell)
+        self.assertIn('replacement_started=true', shell)
+        self.assertIn('replacement.json', shell)
+        self.assertIn('evidence_root=', shell)
 
 
 if __name__ == '__main__':

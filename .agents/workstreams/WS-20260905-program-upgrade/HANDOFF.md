@@ -29,3 +29,12 @@ Next validate ddtry baseline adoption, warm replay without cold archives, a
 controlled Program replacement/negative recovery, and a fresh isolated install.
 No actual cross-version compatibility evidence is claimed yet. Keep all current
 published binary tags, channels and the hwlinux optimization work unchanged.
+
+Real WSL baseline adoption passed without recreating ddtry. Online exact replay
+passed in 11.961 seconds; an offline replay with every local layer archive moved
+aside passed in 6.667 seconds without download/unpack. All original identity,
+credential, configuration, binding and committed-sentinel checks passed.
+The original archives were restored. These are single-run observations, not
+performance benchmarks or cross-version qualification. Transaction cleanup now
+uses a candidate nonce/exact old ID and retains private failed-attempt evidence;
+real replacement and fresh-install tests are still pending on that final code.
