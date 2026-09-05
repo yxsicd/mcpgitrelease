@@ -1,0 +1,201 @@
+{
+  "agent_probe": {
+    "explicit_write_readback_passed": true,
+    "read_only_passed": true,
+    "wrong_instance_refused": true
+  },
+  "architecture": "linux-amd64",
+  "cases": [
+    {
+      "case": "fresh-public-install",
+      "elapsed_seconds": 61,
+      "installer_exit_code": 0,
+      "passed": true
+    },
+    {
+      "case": "online-replay",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": true,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 47.508,
+      "installer_exit_code": 0,
+      "passed": true
+    },
+    {
+      "case": "offline-replay",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": true,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 11.043,
+      "installer_exit_code": 0,
+      "passed": true
+    },
+    {
+      "case": "wrong-volume",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": true,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 5.128,
+      "installer_exit_code": 1,
+      "passed": true
+    },
+    {
+      "case": "port-conflict",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": true,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 4.888,
+      "installer_exit_code": 1,
+      "passed": true
+    },
+    {
+      "case": "wrong-organization",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": true,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 11.794,
+      "installer_exit_code": 1,
+      "passed": true
+    },
+    {
+      "case": "container-reinstall",
+      "checks": {
+        "config_preserved": true,
+        "credential_preserved": true,
+        "data_volume_preserved": true,
+        "expected_container_identity": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_preserved": true,
+        "same_container": false,
+        "sentinel_readback": true
+      },
+      "elapsed_seconds": 20.443,
+      "installer_exit_code": 0,
+      "passed": true
+    }
+  ],
+  "environment": "Ubuntu 24.04 WSL2",
+  "final": {
+    "bootstrap_container_removed": true,
+    "credential_mode_0600": true,
+    "healthy": true,
+    "instance_retained": true,
+    "no_plaintext_bootstrap_password_env": true,
+    "preexisting_container_count": 9,
+    "preexisting_container_ids_unchanged": true,
+    "restart_count": 0,
+    "sentinel_preserved": true,
+    "unrequested_volume_not_created": true
+  },
+  "findings": [
+    "Generated random administrator credentials work as HTTP Basic; MCP parameter profiles are a different contract.",
+    "Authenticated fresh systemadmin can read/write its scoped rootskills but does not have instance-wide repo_list permission.",
+    "Named instance management must pass --instance; mcpgitctl does not remember the last installation.",
+    "Published host port uses Docker all-interface defaults; selecting a port is not a loopback-only binding."
+  ],
+  "installer_qualification_passed": true,
+  "installer_revision": "1d39b09e2b05765f0ccf896d026ee3ed1d7ab067",
+  "instance": "ddtry",
+  "manifest_sha256": "b848f978236a7f495827c60bf9c02dcc5cdda976fbb8f433e9f50bee9e7ffc97",
+  "observed_date": "2026-09-05",
+  "onboarding_gaps_identified": true,
+  "privacy": {
+    "credentials_in_report": false,
+    "organization_and_container_ids_in_report": false,
+    "raw_operator_paths_in_report": false
+  },
+  "probe_sha256": "f1e52b72761baeffe8ff38a9753712c96ea8b76538e25d661dfe3379420d7d67",
+  "programs": {
+    "mcpgit": {
+      "matches_verified_archive": true,
+      "sha256": "5fb08d3796c1160036dc6eb7eca4b7f05876508fff813d88385e9a4d0c3f1087"
+    },
+    "mcpgit-safe-recover": {
+      "matches_verified_archive": true,
+      "sha256": "93f5f66ebcb76a9444f29a15b2b497d774f83670837fddbb8f838d183da79c26"
+    },
+    "mcpgitgw": {
+      "matches_verified_archive": true,
+      "sha256": "afcabd34d7ed5eee011cefa8ef14f41f6e3302a641a36155ee8bc2b1eca0861a"
+    }
+  },
+  "runtime_source": "daec20e98ec9cd1aa1af7948ef369bec4c5c8b38",
+  "schema": "mcpgitrelease.new-user-wsl-qualification.v1",
+  "scope": {
+    "actions_used": false,
+    "cross_version_migration": false,
+    "data_volume_deleted": false,
+    "external_gateway_or_tls": false,
+    "host_gh_available": false,
+    "host_node_available": false,
+    "hwlinux_accessed": false,
+    "new_runtime_build": false,
+    "public_downloads": true,
+    "real_mcp_requests": true,
+    "sdk_library_conformance": false,
+    "wasmc_compile_executed": false
+  },
+  "verified_assets": [
+    {
+      "bytes": 78125537,
+      "kind": "base_image",
+      "sha256_matches": true
+    },
+    {
+      "bytes": 119158120,
+      "kind": "tools_volume",
+      "sha256_matches": true
+    },
+    {
+      "bytes": 33480656,
+      "kind": "program",
+      "sha256_matches": true
+    },
+    {
+      "bytes": 24286,
+      "kind": "instance_templates",
+      "sha256_matches": true
+    }
+  ]
+}

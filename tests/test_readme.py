@@ -7,6 +7,20 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 
 class ReadmeContractTests(unittest.TestCase):
+    def test_fresh_installer_auth_and_named_instance_guidance(self) -> None:
+        quickstart = (ROOT / "docs/MCP_AGENT_QUICKSTART.md").read_text()
+        self.assertIn("### Fresh installer credentials", quickstart)
+        self.assertIn("HTTP Basic Authorization", quickstart)
+        self.assertIn("do not copy it into MCP", quickstart)
+        self.assertIn("repo_list` requires instance-wide", quickstart)
+        self.assertIn("--instance ddtry --port 18003", README)
+        self.assertIn("agent_onboarding_probe.py", README)
+        self.assertIn("GitHub Actions\nis not a prerequisite or fallback", README)
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("  push:", workflow)
+        self.assertNotIn("  pull_request:", workflow)
+
     def test_mcp_agent_quickstart_is_progressive_and_kernel_scoped(self) -> None:
         quickstart = (ROOT / "docs" / "MCP_AGENT_QUICKSTART.md").read_text(encoding="utf-8")
         for required in (
