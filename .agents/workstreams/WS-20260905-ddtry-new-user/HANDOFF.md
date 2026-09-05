@@ -37,7 +37,16 @@ Actions. Release pointers, runtime image assembly and access grants are unchange
 Do not claim this raw-HTTP probe proves SDK conformance or WAsmC compilation.
 
 Source-bound evidence is retained in integration-evidence.json. The exact fetched
-workstream is integrated with the public guide and locally validated probe.
-The final merge tree must pass scripts/validate.sh before this state is committed.
-Fetch the updated public main installer/probe on the same WSL instance next;
-that post-integration public replay remains unclaimed at this checkpoint.
+workstream was integrated and passed the local 68-test public gate. Then the WSL
+Agent downloaded both root installer and probe from public main. Installation
+resolved snapshot 29ce7ba0fa6e9115577c0fcf4e9bff3b68cb69b2 and completed as a
+20.054-second no-op, preserving container, volume, organization, configuration,
+generated credential and sentinel. The public downloaded probe passed both
+read-only and explicit write/readback modes; doctor remained healthy.
+docs/evidence/new-user-public-replay-20260905.json records this final replay.
+This closing checkpoint changes only evidence and handoff, not tested code.
+
+The original onboarding gap is closed by correct client guidance, not by making
+MCP parameter profiles accept random HTTP credentials or expanding administrator
+permissions. Keep the retained test instance for future operator-approved
+upgrades. Cross-version/data-format rollback and external TLS remain untested.

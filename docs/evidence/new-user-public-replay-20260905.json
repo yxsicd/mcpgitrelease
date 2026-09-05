@@ -1,0 +1,30 @@
+{
+  "actions_used": false,
+  "agent_probe_downloaded_from_public_main": true,
+  "checks": {
+    "config_preserved": true,
+    "credential_preserved": true,
+    "data_volume_preserved": true,
+    "expected_container_identity": true,
+    "expected_exit": true,
+    "healthy": true,
+    "organization_preserved": true,
+    "private_paths_or_credentials_in_report": false,
+    "published_probe_read_only": true,
+    "published_probe_write_readback": true,
+    "same_container": true,
+    "sentinel_readback": true
+  },
+  "cross_version_tested": false,
+  "installer_elapsed_seconds": 20.054,
+  "installer_exit_code": 0,
+  "installer_snapshot": "29ce7ba0fa6e9115577c0fcf4e9bff3b68cb69b2",
+  "instance_retained": true,
+  "observed_date": "2026-09-05",
+  "permissions_changed": false,
+  "probe_sha256": "f1e52b72761baeffe8ff38a9753712c96ea8b76538e25d661dfe3379420d7d67",
+  "root_installer_downloaded_from_public_main": true,
+  "runtime_pointer_changed": false,
+  "runtime_source": "daec20e98ec9cd1aa1af7948ef369bec4c5c8b38",
+  "schema": "mcpgitrelease.public-onboarding-replay.v1"
+}

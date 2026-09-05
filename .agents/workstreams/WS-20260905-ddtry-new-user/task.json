@@ -18,5 +18,5 @@
   ],
   "frozen_paths": {"offline-latest.json":"568ee2f50be773f7381292b0d1c4ad1343fefce4237fc1bbafd90820c6af8579","Dockerfile.offline-runtime":"553cf2e2a296dc24317fb09daca9a2e4b5fb141d185d1839a07a764f6b8a6e5d"},
   "validation": ["scripts/validate.sh", "public-entry WSL replay and container reconstruction", "new Agent authentication read/write probe"],
-  "resume_point": "All seven WSL install/replay/reconstruction cases and real candidate Agent probe passed. Local gate passes 68 tests. Bind source, integrate locally, then rerun downloaded public installer and probe without changing runtime pointers."
+  "resume_point": "New-user qualification is closed: seven baseline WSL cases plus public-main post-fix replay, authenticated scoped read/write and doctor passed. Retain the instance and generated credential for operator-approved future upgrade tests; no cross-version or external TLS qualification is claimed."
 }

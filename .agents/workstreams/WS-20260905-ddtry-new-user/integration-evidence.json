@@ -10,5 +10,6 @@
   "probe_sha256": "f1e52b72761baeffe8ff38a9753712c96ea8b76538e25d661dfe3379420d7d67",
   "scope": {"actions_used":false,"runtime_pointer_changed":false,"permissions_changed":false,"runtime_binary_changed":false,"hosted_tls_tested":false,"cross_version_tested":false},
   "integration_source_commit": "87c3ae43ce09218f1678e2892975a8dc799c17ee",
-  "pending": "Final merge-tree gate must pass before commit; public snapshot replay after integration remains due."
+  "public_replay": {"tested_installer_snapshot":"29ce7ba0fa6e9115577c0fcf4e9bff3b68cb69b2","report_sha256":"7b40c3927828bdf2793fa92007ab532dc2619be6670f29962088fa7cc3692226","installer_noop_passed":true,"generated_credential_probe_passed":true,"explicit_write_readback_passed":true,"doctor_healthy":true},
+  "pending": "This bounded new-user/reinstall qualification is closed. Cross-version upgrade and external gateway/TLS are separate future qualifications, not proved here."
 }
