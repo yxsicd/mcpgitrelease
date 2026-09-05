@@ -1,6 +1,7 @@
 # Public new-user qualification
 
-State: implementation validated / not-ready for integration until source is bound.
+State: complete / ready. Validated implementation:
+`db080407a59ec137c884028c49740c903ccaa830`.
 
 A real fresh installation reaches Docker health and the eight-tool MCP kernel.
 The generated random systemadmin credential authenticates through HTTP Basic,
@@ -35,6 +36,6 @@ Public CI is manual-only so integrating these public docs does not dispatch
 Actions. Release pointers, runtime image assembly and access grants are unchanged.
 Do not claim this raw-HTTP probe proves SDK conformance or WAsmC compilation.
 
-Next bind the validated implementation commit, integrate after another local
-public gate, then fetch the updated public main installer/probe on the same WSL
+Source-bound evidence is retained in integration-evidence.json. Integrate after
+another local public gate, then fetch the updated public main installer/probe on the same WSL
 instance. That public post-integration replay remains unclaimed here.

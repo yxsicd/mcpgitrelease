@@ -7,8 +7,8 @@
   "original_base": "1d39b09e2b05765f0ccf896d026ee3ed1d7ab067",
   "objective": "Close the public new-user authentication guidance gap found by a real isolated WSL installation, and add a credential-safe Agent acceptance probe.",
   "boundaries": "No runtime binary, access grant, public release pointer or existing production instance changes. Use local tests, not Actions. Keep host paths and credential material out of public evidence.",
-  "execution_state": "in-progress",
-  "integration_state": "not-ready",
+  "execution_state": "complete",
+  "integration_state": "ready",
   "claims": [
     {"kind":"file","mode":"exclusive","value":"public onboarding guide, installer messages, bounded probe, corresponding tests, CI trigger and this workstream"},
     {"kind":"semantic","mode":"exclusive","value":"distinguish generated HTTP Basic credentials from MCP entrance profiles; prove scoped authority without granting new access"},
