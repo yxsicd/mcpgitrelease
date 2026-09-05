@@ -1,0 +1,289 @@
+{
+  "cases": [
+    {
+      "case": "final-warm-fixed",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 0,
+      "mode": "exact",
+      "ok": true,
+      "seconds": 12.828,
+      "unpacked": false
+    },
+    {
+      "case": "final-bad-program",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 1,
+      "mode": "program",
+      "ok": true,
+      "seconds": 8.929,
+      "unpacked": true
+    },
+    {
+      "case": "final-program-a",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 0,
+      "mode": "program",
+      "ok": true,
+      "seconds": 18.812,
+      "unpacked": true
+    },
+    {
+      "case": "final-program-b",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 0,
+      "mode": "program",
+      "ok": true,
+      "seconds": 18.938,
+      "unpacked": true
+    },
+    {
+      "case": "final-restore-public-program",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 0,
+      "mode": "program",
+      "ok": true,
+      "seconds": 13.3,
+      "unpacked": true
+    },
+    {
+      "case": "wrong-manifest-pin",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 1,
+      "mode": null,
+      "ok": true,
+      "seconds": 3.622,
+      "unpacked": false
+    },
+    {
+      "case": "missing-baseline",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 1,
+      "mode": null,
+      "ok": true,
+      "seconds": 0.114,
+      "unpacked": false
+    },
+    {
+      "case": "cold-change-refused",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 1,
+      "mode": null,
+      "ok": true,
+      "seconds": 0.166,
+      "unpacked": false
+    },
+    {
+      "case": "missing-credential-refused",
+      "checks": {
+        "config_sha256_preserved": true,
+        "container_identity_expected": true,
+        "credential_sha256_preserved": true,
+        "data_volume_preserved": true,
+        "expected_exit": true,
+        "healthy": true,
+        "organization_id_preserved": true,
+        "published_addresses_preserved": true,
+        "sentinel": true
+      },
+      "cold_download": false,
+      "exit_code": 1,
+      "mode": "exact",
+      "ok": true,
+      "seconds": 2.802,
+      "unpacked": false
+    },
+    {
+      "case": "fresh-final-controller",
+      "checks": {
+        "authenticated_mcp_write_readback": true,
+        "cli_upgrade_helper_installed": true,
+        "docker_healthy_zero_restarts": true,
+        "doctor": true,
+        "fresh_download_and_install": true,
+        "full_install_receipt": true,
+        "loopback_only_by_default": true,
+        "no_bootstrap_password_in_runtime_env": true,
+        "unique_private_credential": true
+      },
+      "cold_http_downloads": true,
+      "fixture_only": true,
+      "host_docker_image_cache_existed": true,
+      "installer_source": "32e0507588a512d9166fb4d4afe7339ca9a0f5c6",
+      "new_runtime_compiled": false,
+      "ok": true,
+      "seconds": 52.177
+    }
+  ],
+  "controller_sha256": {
+    "deploy/mcpgit-install.sh": "cf04ddfb762c13be6296240265485bd81257a5b169a9e5646b0e770e7b6bea03",
+    "deploy/mcpgitctl": "02c80303fd76fb600dd14c51725cd311e32044798a17f331f98fdcfafeb96f1e",
+    "deploy/novice-install.sh": "0b482796c4f29cc1342328460cd9be64bcb4378f2d573b56acc9d6a1f13d7df7",
+    "install.sh": "de23d36fdf8fc444eb74a64ec0bb89ee00120b9accae6232e639168ec4a27c0f",
+    "scripts/agent_onboarding_probe.py": "f1e52b72761baeffe8ff38a9753712c96ea8b76538e25d661dfe3379420d7d67",
+    "scripts/install_state.py": "ede098b3ff1553b87ffdc738f2bd81c5a58d0ed3a101fed60d70361da3ddabc4"
+  },
+  "controller_source": "32e0507588a512d9166fb4d4afe7339ca9a0f5c6",
+  "date": "2026-09-05",
+  "environment": "Ubuntu 24.04 WSL2 amd64",
+  "final": {
+    "data_identity_config_credential_binding_preserved": true,
+    "fixed_foundation_preserved": true,
+    "original_program_image_restored": true,
+    "preexisting_other_containers_unchanged": 9,
+    "private_state_recorded": true,
+    "sentinel_readback": true,
+    "zero_restarts": true
+  },
+  "negative_cases": {
+    "backup_exit_code": 2,
+    "cases": [
+      "wrong-manifest-pin",
+      "missing-baseline",
+      "cold-change-refused",
+      "missing-credential-refused"
+    ],
+    "existing_instance_preserved": true,
+    "ok": true
+  },
+  "ok": true,
+  "previous_controller_no_archive_replay": {
+    "case": "offline-no-archives",
+    "checks": {
+      "config_sha256_preserved": true,
+      "container_identity_expected": true,
+      "credential_sha256_preserved": true,
+      "data_volume_preserved": true,
+      "expected_exit": true,
+      "healthy": true,
+      "organization_id_preserved": true,
+      "published_addresses_preserved": true,
+      "sentinel": true
+    },
+    "cold_download": false,
+    "exit_code": 0,
+    "mode": "exact",
+    "ok": true,
+    "seconds": 6.667,
+    "unpacked": false
+  },
+  "prior_failures": [
+    "Docker omitted default string fields were null in image metadata but empty in container metadata; normalized only default User/WorkingDir and final matrix passed."
+  ],
+  "privacy": {
+    "credential_values": false,
+    "operator_paths": false,
+    "organization_or_container_ids": false
+  },
+  "program_replacement": {
+    "cold_archives_in_program_bundles": false,
+    "failed_program_restored_exact_old_container": true,
+    "fixed_foundation_preserved": true,
+    "layers_a": 8,
+    "layers_b": 8,
+    "new_compiled_version_tested": false,
+    "obsolete_program_file_removed": true,
+    "ok": true,
+    "original_public_image_restored": true,
+    "scope": "controlled archive changes; real Docker and MCP, unchanged valid runtime binaries"
+  },
+  "runtime_source": "daec20e98ec9cd1aa1af7948ef369bec4c5c8b38",
+  "schema": "mcpgitrelease.program-upgrade-qualification.v1",
+  "scope": {
+    "actions_used": false,
+    "data_format_rollback_tested": false,
+    "fresh_host_image_cache_existed": true,
+    "fresh_public_downloads": true,
+    "hwlinux_used": false,
+    "new_compiled_cross_version_tested": false,
+    "real_docker_and_mcp": true,
+    "runtime_release_or_pointer_changed": false
+  }
+}

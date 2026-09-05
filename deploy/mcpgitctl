@@ -18,7 +18,7 @@ Commands:
   status       Show installed instance, release, storage and health facts
   doctor       Cross-check the installation and print actionable failures
   logs         Show service logs
-  upgrade      Upgrade through the MCPGit product installer (reserved)
+  upgrade      Verified Program-only upgrade; --check performs preflight only
   backup       Manage verified instance backups (reserved)
 
 Environment: MCPGIT_INSTANCE, MCPGIT_URL and MCPGIT_PORT provide defaults.
@@ -287,11 +287,14 @@ case "$COMMAND" in
     docker logs "$INSTANCE"
     ;;
   upgrade)
-    echo "Upgrade is not enabled in this product facade yet."
-    echo "Use the installer for the same instance; it preserves the data volume."
+    shift
+    helper=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/install_state.py
+    [ -f "$helper" ] || { echo 'Install the current product tools before upgrade' >&2; exit 2; }
+    exec python3 "$helper" upgrade --instance "$INSTANCE" "$@"
     ;;
   backup)
-    echo "Verified backup orchestration is not enabled in this product facade yet."
+    echo 'Verified backup orchestration is not implemented; no backup was created.' >&2
+    exit 2
     ;;
   help) usage ;;
   *) usage >&2; exit 1 ;;

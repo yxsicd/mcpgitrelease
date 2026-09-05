@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+umask 077
 
 # One-command MCPGit install: download the latest offline release from GitHub,
 # assemble the runtime image, start the instance, and print a real connection
@@ -58,7 +59,7 @@ fetch_snapshot_file() (
   snapshot_target=$2
   snapshot_temporary="${snapshot_target}.tmp.$$"
   rm -f "$snapshot_temporary"
-  if ! curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+  if ! curl -fsSL --connect-timeout 10 --max-time 180 --retry 2 --retry-delay 2 \
     "$snapshot_source" -o "$snapshot_temporary"; then
     rm -f "$snapshot_temporary"
     return 1
@@ -72,15 +73,18 @@ fetch_bundle() {
   mkdir -p "$target"
   base_url="https://github.com/yxsicd/mcpgitrelease/releases/download/$tag"
   echo "==> fetching offline release $tag"
-  curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-    "$base_url/mcpgit-offline-release-v1.json" -o "$target/mcpgit-offline-release-v1.json"
+  fetch_snapshot_file "$base_url/mcpgit-offline-release-v1.json" "$control_dir/manifest.json"
+  python3 "$install_tool" manifest --manifest "$control_dir/manifest.json" --selection "$control_dir/selection.json"
+  cp "$control_dir/manifest.json" "$target/mcpgit-offline-release-v1.json"
   manifest="$target/mcpgit-offline-release-v1.json"
+  make_install_plan
   layer_list=$(mktemp "${TMPDIR:-/tmp}/mcpgit-layers.XXXXXX")
-  trap 'rm -f "$layer_list"' EXIT INT TERM
-  python3 - "$manifest" > "$layer_list" <<'PY'
+  python3 - "$manifest" "$install_mode" > "$layer_list" <<'PY'
 import json
 import sys
 for layer in json.load(open(sys.argv[1]))["layers"]:
+    if sys.argv[2] == "exact" or (sys.argv[2] == "program" and layer["kind"] != "program"):
+        continue
     print(layer["file"], layer["sha256"])
 PY
   while read -r file expected; do
@@ -91,25 +95,47 @@ PY
       echo "    changed: $file"
     fi
     echo "    download: $file"
-    curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-      "$base_url/$file" -o "$target/$file"
+    curl -fsSL --connect-timeout 10 --max-time 600 --retry 2 --retry-delay 2 \
+      "$base_url/$file" -o "$target/$file.partial.$$"
+    [ "$(sha256_file "$target/$file.partial.$$")" = "$expected" ] || {
+      rm -f "$target/$file.partial.$$"; echo 'downloaded layer digest mismatch' >&2; return 1;
+    }
+    mv "$target/$file.partial.$$" "$target/$file"
   done < "$layer_list"
   rm -f "$layer_list"
-  mkdir -p "$target/scripts"
-  for helper in scripts/mcpgit-offline-release.py scripts/bootstrap-builtin-auth.py; do
-    fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/$helper" "$target/$helper"
-  done
-  fetch_snapshot_file \
-    "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" \
-    "$target/Dockerfile.offline-runtime"
   for product_file in novice-install.sh mcpgit-install.sh mcpgitctl; do
     fetch_snapshot_file \
       "$MCPGIT_INSTALL_CONTENT_BASE/deploy/$product_file" \
       "$target/$product_file"
     chmod 0755 "$target/$product_file"
   done
-  python3 "$target/scripts/mcpgit-offline-release.py" verify \
-    --manifest "$manifest" --asset-dir "$target"
+  verify_install_assets
+}
+
+make_install_plan() {
+  plan_flags=
+  [ "$program_only" = false ] || plan_flags=--program-only
+  [ "$rebuild" = false ] && [ "$download_only" = false ] || plan_flags="$plan_flags --full"
+  python3 "$install_tool" plan --manifest "$manifest" --instance "$instance" \
+    --assembly "$(sha256_file "$bundle/Dockerfile.offline-runtime")" \
+    --output "$control_dir/plan.json" $plan_flags >"$control_dir/plan.env"
+  . "$control_dir/plan.env"
+  echo "==> installation plan: $install_mode"
+  if [ "$check_only" = true ]; then
+    echo "PASS: preflight only; no container or data changes (mode=$install_mode)"
+    exit 0
+  fi
+}
+
+verify_install_assets() {
+  case "$install_mode" in
+    full) python3 "$bundle/scripts/mcpgit-offline-release.py" verify --manifest "$manifest" --asset-dir "$bundle" ;;
+    program)
+      program_file=$(python3 "$bundle/scripts/mcpgit-offline-release.py" field --manifest "$manifest" --path layers.2.file)
+      python3 "$bundle/scripts/mcpgit-offline-release.py" verify-layer --manifest "$manifest" --kind program --asset "$bundle/$program_file" ;;
+    exact) echo '    reusing verified immutable image; no layer download or unpack' ;;
+    *) echo 'invalid installation plan' >&2; exit 1 ;;
+  esac
 }
 
 platform_key() {
@@ -137,24 +163,20 @@ expected_program_targets() {
 
 resolve_tag() {
   if [ -n "$MCPGIT_RELEASE_TAG" ]; then
-    echo "$MCPGIT_RELEASE_TAG"
+    python3 - "$MCPGIT_RELEASE_TAG" "${MCPGIT_EXPECTED_MANIFEST_SHA256:-}" "$(platform_key)" "$control_dir/selection.json" <<'PY'
+import json,re,sys
+tag,digest,platform,out=sys.argv[1:]
+match=re.fullmatch(r'mcpgit-git-([0-9a-f]{40})-linux-(amd64|arm64)',tag)
+if not match or not re.fullmatch(r'[0-9a-f]{64}',digest) or platform != 'linux-'+match[2]:
+    raise SystemExit('explicit tag requires matching architecture and MCPGIT_EXPECTED_MANIFEST_SHA256')
+target={'linux-amd64':'x86_64-unknown-linux-musl','linux-arm64':'aarch64-unknown-linux-musl'}[platform]
+open(out,'w').write(json.dumps({'tag':tag,'source_sha':match[1],'target':target,'manifest_sha256':digest}))
+print(tag)
+PY
     return 0
   fi
-  platform=$(platform_key)
-  curl -fsSL --retry 5 --retry-delay 5 "$MCPGIT_CHANNEL_URL" \
-    | python3 -c '
-import json, sys
-data = json.load(sys.stdin)
-platform = sys.argv[1]
-architectures = data.get("architectures")
-if architectures is None:
-    print(data["tag"])
-else:
-    entry = architectures.get(platform)
-    if entry is None:
-        raise SystemExit(f"offline channel has no release for {platform}")
-    print(entry["tag"] if isinstance(entry, dict) else entry)
-' "$platform"
+  fetch_snapshot_file "$MCPGIT_CHANNEL_URL" "$control_dir/pointer.json"
+  python3 "$install_tool" select --pointer "$control_dir/pointer.json" --platform "$(platform_key)" --output "$control_dir/selection.json"
 }
 
 usage() {
@@ -172,6 +194,8 @@ Usage: novice-install.sh [options]
   --builder-repos R   builder repos, comma separated (default: works,tablegit,binarygit)
   --download-only     download the bundle and stop (no Docker needed for this)
   --rebuild           force rebuilding the offline runtime image
+  --program-only      require verified installed Base/Tools; update Program only
+  --check             resolve and validate an upgrade plan without activation
 All settings can also be set via MCPGIT_* environment variables; see the top
 of this script for defaults and which ones to customize.
 EOF
@@ -189,8 +213,14 @@ guest_repo=works
 builder_repos=works,tablegit,binarygit
 rebuild=false
 download_only=false
+program_only=false
+check_only=false
 executable_build_repository=$MCPGIT_EXECUTABLE_BUILD_REPOSITORY
 while [ $# -gt 0 ]; do
+  case "$1" in
+    --bundle|--instance|--data-volume|--netrc|--zone|--port|--guest-repo|--builder-repos)
+      [ $# -ge 2 ] || { echo "$1 requires a value" >&2; exit 2; } ;;
+  esac
   case "$1" in
     --bundle) bundle=$2; bundle_explicit=true; shift 2 ;;
     --instance) instance=$2; shift 2 ;;
@@ -202,10 +232,63 @@ while [ $# -gt 0 ]; do
     --builder-repos) builder_repos=$2; shift 2 ;;
     --download-only) download_only=true; shift ;;
     --rebuild) rebuild=true; shift ;;
+    --program-only) program_only=true; shift ;;
+    --check) check_only=true; shift ;;
     *) usage ;;
   esac
 done
 [ -n "$instance" ] || usage
+python3 - "$instance" "$data_volume" "$port" <<'PY'
+import re,sys
+for name in sys.argv[1:3]:
+    if name and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}',name):
+        raise SystemExit('invalid instance or volume name')
+if not sys.argv[3].isdigit() or not 1 <= int(sys.argv[3]) <= 65535:
+    raise SystemExit('invalid service port')
+PY
+[ "$program_only" = false ] || { [ "$download_only" = false ] && [ "$rebuild" = false ]; } || {
+  echo '--program-only cannot download a full bundle or rebuild cold layers' >&2; exit 2;
+}
+bundle=$(python3 -c 'import os,sys; print(os.path.abspath(sys.argv[1]))' "$bundle")
+mkdir -p "$bundle"
+lock="$bundle/.install-lock"
+mkdir "$lock" 2>/dev/null || { echo 'another install owns this bundle; inspect its lock before retrying' >&2; exit 1; }
+printf '%s\n' "$$" >"$lock/pid"
+control_dir=$(mktemp -d "$bundle/.attempt.XXXXXX")
+ctx=
+instance_lock=
+cleanup_install() {
+  code=$?
+  trap - EXIT INT TERM
+  if [ "${replacement_started:-false}" = true ] && [ "${installation_accepted:-false}" = false ]; then
+    restore_previous_instance || code=1
+  fi
+  [ -z "$ctx" ] || rm -rf "$ctx"
+  if [ "$code" != 0 ] && [ -d "$control_dir" ]; then
+    evidence_root="${MCPGIT_STATE_DIR:-$HOME/.mcpgit/install-state}/attempts"
+    mkdir -p "$evidence_root"
+    mv "$control_dir" "$evidence_root/$instance-$(date +%s)-$$"
+  else
+    rm -rf "$control_dir"
+  fi
+  rm -rf "$lock"
+  [ -z "$instance_lock" ] || rm -rf "$instance_lock"
+  exit "$code"
+}
+trap cleanup_install EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+if [ "$download_only" = false ]; then
+  lock_root="${MCPGIT_STATE_DIR:-$HOME/.mcpgit/install-state}/locks"
+  mkdir -p "$lock_root"
+  requested_lock="$lock_root/$instance"
+  mkdir "$requested_lock" 2>/dev/null || { echo 'another installer owns this instance' >&2; exit 1; }
+  instance_lock=$requested_lock
+  printf '%s\n' "$$" >"$instance_lock/pid"
+fi
+install_tool="$bundle/scripts/install_state.py"
+install_mode=full
+program_parent=
 
 # The default bundle directory is a verified download cache, not a version
 # pin. Every normal online install must re-read offline-latest.json (or the
@@ -218,6 +301,14 @@ if [ "$bundle_explicit" = false ] \
   || [ "$download_only" = true ] \
   || [ -n "$MCPGIT_RELEASE_TAG" ]; then
   refresh_bundle=true
+fi
+
+if [ "$refresh_bundle" = true ] || [ ! -f "$install_tool" ]; then
+  mkdir -p "$bundle/scripts"
+  for helper in mcpgit-offline-release.py bootstrap-builtin-auth.py install_state.py agent_onboarding_probe.py; do
+    fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/scripts/$helper" "$bundle/scripts/$helper"
+  done
+  fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" "$bundle/Dockerfile.offline-runtime"
 fi
 
 if [ "$refresh_bundle" = true ] \
@@ -249,7 +340,8 @@ dockerfile="$bundle/Dockerfile.offline-runtime"
 [ -f "$dockerfile" ] || { echo "bundle missing Dockerfile.offline-runtime" >&2; exit 1; }
 
 echo "==> verifying bundle integrity"
-python3 "$parser" verify --manifest "$manifest" --asset-dir "$bundle"
+if [ ! -f "$control_dir/plan.json" ]; then make_install_plan; fi
+verify_install_assets
 
 field() {
   python3 "$parser" field --manifest "$manifest" --path "$1"
@@ -297,6 +389,8 @@ current_netrc_source=
 current_executable_build_repository=
 if docker container inspect "$instance" >/dev/null 2>&1; then
   current_container=true
+  python3 "$install_tool" preserve --instance "$instance"
+  current_container_id=$(docker inspect "$instance" --format '{{.Id}}')
   current_was_running=$(docker inspect "$instance" --format '{{.State.Running}}')
   current_image_id=$(docker inspect "$instance" --format '{{.Image}}')
   current_program_version=$(docker inspect "$instance" \
@@ -317,6 +411,34 @@ if docker container inspect "$instance" >/dev/null 2>&1; then
     '{{range .Config.Env}}{{println .}}{{end}}' \
     | sed -n 's/^MCPGIT_EXECUTABLE_BUILD_REPOSITORY=//p' | tail -n 1)
 fi
+
+# This facade owns ordinary single-node instances, not custom fleet deployments.
+# Refuse unsupported preservation instead of silently dropping mounts/routes.
+port_binding=$(python3 - "$instance" "$current_container" "$port" "${MCPGIT_BIND_ADDRESS:-}" <<'PY'
+import ipaddress,json,subprocess,sys
+name,exists,port,requested=sys.argv[1:]
+host='127.0.0.1'
+if exists == 'true':
+    c=json.loads(subprocess.check_output(['docker','inspect',name],text=True))[0]
+    if set(c['NetworkSettings']['Networks']) != {'bridge'}:
+        raise SystemExit('custom networks require their deployment owner; no implicit network replacement')
+    if any(m['Destination'] not in {'/data','/config/mcpgit.toml','/root/.netrc'} for m in c['Mounts']):
+        raise SystemExit('custom mounts require their deployment owner')
+    if any(k.startswith('traefik.') for k in (c['Config'].get('Labels') or {})):
+        raise SystemExit('custom routing labels require their deployment owner')
+    bindings=c['HostConfig'].get('PortBindings') or {}
+    if set(bindings) != {'8001/tcp'} or len(bindings['8001/tcp']) != 1:
+        raise SystemExit('custom port bindings require their deployment owner')
+    host=bindings['8001/tcp'][0]['HostIp']
+if requested:
+    ipaddress.ip_address(requested)
+    if requested not in {'127.0.0.1','0.0.0.0'}:
+        raise SystemExit('this facade supports explicit IPv4 loopback/all-interface binding only')
+    host=requested
+if ':' in host: host='['+host+']'
+print((host+':' if host else '')+port+':8001')
+PY
+)
 
 if [ "$current_host_port" != "$port" ]; then
   if ! python3 - "$port" <<'PY'
@@ -347,8 +469,14 @@ if docker volume inspect "$data_volume" >/dev/null 2>&1; then
 fi
 if [ "$update_mode" = true ]; then
   echo "==> existing instance detected: update mode (data volume preserved)"
+  python3 - "$bundle/scripts/agent_onboarding_probe.py" "$MCPGIT_CREDENTIAL_DIR/$instance-systemadmin.env" <<'PY'
+import importlib.util,sys
+s=importlib.util.spec_from_file_location('probe',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+m.credentials(sys.argv[2])
+PY
 fi
 
+if [ "$install_mode" = full ]; then
 echo "==> loading exact base image ($base_image_tag)"
 base_manifest_id=$(python3 "$parser" image-identity \
   --archive "$base_archive" --image-tag "$base_image_tag" --field manifest_id)
@@ -369,31 +497,48 @@ if ! base_image_identity_matches "$actual_base_image_id"; then
   exit 1
 fi
 echo "    exact image identity: $actual_base_image_id"
+fi
 
 runtime_image="mcpgit-offline-runtime:$release_id"
 
 work_dir="${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit}"
 mkdir -p "$work_dir"
 ctx=$(mktemp -d "$work_dir/work.XXXXXX")
-trap 'rm -rf "$ctx"' EXIT INT TERM
+if [ "$install_mode" != exact ]; then
 echo "==> unpacking program and tools"
-tar -xzf "$program_archive" -C "$ctx"
-tar -xzf "$tools_archive" -C "$ctx"
+python3 "$parser" extract --archive "$program_archive" --destination "$ctx" --root program
+if [ "$install_mode" = full ]; then
+  python3 "$parser" extract --archive "$tools_archive" --destination "$ctx" --root tools
+fi
+fi
 cp "$dockerfile" "$ctx/Dockerfile.offline-runtime"
+if [ "$install_mode" = program ]; then
+  python3 - "$ctx/Dockerfile.offline-runtime" <<'PY'
+from pathlib import Path
+import sys
+p=Path(sys.argv[1]); s=p.read_text()
+assert s.count('COPY tools /opt/mcpgit/tools') == 1
+p.write_text(s.replace('COPY tools /opt/mcpgit/tools','RUN rm -rf /opt/mcpgit/program'))
+PY
+fi
 
 exec_sha() {
   sha256_file "$1"
 }
 
+if [ "$install_mode" != exact ]; then
 expected_mcpgit_sha=$(exec_sha "$ctx/program/bin/mcpgit")
 expected_mcpgitgw_sha=$(exec_sha "$ctx/program/bin/mcpgitgw")
 expected_safe_recover_sha=
 if [ -f "$ctx/program/bin/mcpgit-safe-recover" ]; then
   expected_safe_recover_sha=$(exec_sha "$ctx/program/bin/mcpgit-safe-recover")
 fi
+fi
+if [ "$install_mode" = full ]; then
 expected_node_sha=$(exec_sha "$ctx/tools/bin/node")
 expected_bun_sha=$(exec_sha "$ctx/tools/bin/bun")
 expected_credential_sha=$(exec_sha "$ctx/tools/bin/git-credential-netrc")
+fi
 
 image_label() {
   docker image inspect "$runtime_image" --format "{{index .Config.Labels \"$1\"}}" 2>/dev/null || true
@@ -441,9 +586,10 @@ printf "credential=%s\n" "$(sha256sum /opt/mcpgit/tools/bin/git-credential-netrc
 
 if [ "$rebuild" = true ] || ! runtime_image_exact; then
   echo "==> assembling offline runtime image ($runtime_image)"
-  docker build \
-    --file "$ctx/Dockerfile.offline-runtime" \
-    --build-arg "MCPGIT_BASE_IMAGE=$base_image_tag" \
+  [ "$install_mode" != exact ] || { echo 'verified image disappeared or changed; retry full verification' >&2; exit 1; }
+  cp "$ctx/Dockerfile.offline-runtime" "$ctx/Dockerfile"
+  tar -C "$ctx" -cf - . | docker build --pull=false \
+    --build-arg "MCPGIT_BASE_IMAGE=${program_parent:-$base_image_tag}" \
     --build-arg "MCPGIT_SOURCE_SHA=$source_sha" \
     --build-arg "MCPGIT_RELEASE_ID=$release_id" \
     --build-arg "MCPGIT_ASSEMBLY_SHA256=$assembly_sha" \
@@ -462,7 +608,7 @@ if [ "$rebuild" = true ] || ! runtime_image_exact; then
     --build-arg "MCPGIT_EXEC_BUN_SHA256=$expected_bun_sha" \
     --build-arg "MCPGIT_EXEC_CREDENTIAL_SHA256=$expected_credential_sha" \
     --tag "$runtime_image" \
-    "$ctx"
+    -
   if ! runtime_image_exact; then
     echo "assembled runtime image failed exact release verification" >&2
     exit 1
@@ -566,6 +712,35 @@ PY
 )
 fi
 
+record_installation() {
+  credential="$MCPGIT_CREDENTIAL_DIR/$instance-systemadmin.env"
+  python3 "$bundle/scripts/agent_onboarding_probe.py" --url "http://127.0.0.1:$port" \
+    --credential-file "$credential" --expected-instance-id "$org_id" || return 1
+  n=0
+  while [ "$(docker inspect "$instance" --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" != healthy ]; do
+    n=$((n+1)); [ "$n" -lt 30 ] || return 1; sleep 1
+  done
+  docker exec "$instance" sh -ec 'test "$(stat -c %a /data/repos/safegit/.git/mcpgit/safegit-agent-key.v1.json)" = 600' || return 1
+  python3 "$install_tool" record --manifest "$manifest" --instance "$instance" \
+    --assembly "$assembly_sha" --plan "$control_dir/plan.json" --bundle "$bundle" \
+    --config "$config" --credential "$credential" --volume "$data_volume" --port "$port" \
+    --bin-dir "${MCPGIT_BIN_DIR:-$HOME/.local/bin}"
+}
+
+if [ "$current_container" = true ]; then
+  [ "$current_config_source" = "$requested_config_source" ] \
+    && [ "$current_netrc_source" = "$requested_netrc_source" ] || {
+      echo 'refusing implicit config or credential mount relocation' >&2; exit 1;
+    }
+fi
+python3 - "$data_volume" "${current_container_id:-}" <<'PY'
+import subprocess,sys
+volume,current=sys.argv[1:]
+ids=subprocess.check_output(['docker','ps','--no-trunc','--filter','volume='+volume,'--format','{{.ID}}'],text=True).split()
+if any(i != current for i in ids):
+    raise SystemExit('data volume has another running consumer; refusing another writer')
+PY
+
 if [ "$current_container" = true ] \
   && [ "$current_was_running" = true ] \
   && [ "$current_image_id" = "$desired_runtime_id" ] \
@@ -573,8 +748,11 @@ if [ "$current_container" = true ] \
   && [ "$current_config_source" = "$requested_config_source" ] \
   && [ "$current_netrc_source" = "$requested_netrc_source" ] \
   && [ "$current_executable_build_repository" = "$executable_build_repository" ] \
-  && [ "$(curl -s -o /dev/null -w '%{http_code}' \
+  && [ -z "${MCPGIT_BIND_ADDRESS:-}" ] \
+  && [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
     "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
+  record_installation || { echo 'existing instance Agent acceptance failed' >&2; exit 1; }
+  installation_accepted=true
   docker update --restart unless-stopped "$instance" >/dev/null
   echo
   echo "PASS: instance $instance already matches the selected release; no restart required"
@@ -801,7 +979,7 @@ bootstrap_deadline=$(( $(date +%s) + 60 ))
 bootstrap_ready=false
 while [ "$(date +%s)" -lt "$bootstrap_deadline" ]; do
   if docker exec "$auth_bootstrap_container" \
-    curl -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
+    curl --max-time 3 -fsS -o /dev/null http://127.0.0.1:8001/healthz >/dev/null 2>&1; then
     bootstrap_ready=true
     break
   fi
@@ -865,12 +1043,32 @@ fi
 
 rollback_container="${instance}-rollback"
 previous_preserved=false
+candidate_container_id=
+transaction_id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+replacement_started=false
 previous_host_port="$current_host_port"
 
 restore_previous_instance() {
-  docker rm -f "$instance" >/dev/null 2>&1 || true
-  if [ "$previous_preserved" = true ] \
+  if docker container inspect "$instance" >/dev/null 2>&1; then
+    restore_id=$(docker inspect "$instance" --format '{{.Id}}')
+    if [ "$restore_id" = "${current_container_id:-}" ]; then
+      if [ "$current_was_running" = true ]; then docker start "$restore_id" >/dev/null || return 1; fi
+      replacement_started=false
+      return 0
+    fi
+    candidate_transaction=$(docker inspect "$instance" --format '{{index .Config.Labels "com.yxsicd.mcpgit.install-transaction"}}')
+    if [ "$candidate_transaction" = "$transaction_id" ] && [ -z "$candidate_container_id" ]; then
+      candidate_container_id=$restore_id
+    fi
+    if [ -n "$candidate_container_id" ] && [ "$restore_id" = "$candidate_container_id" ]; then
+      docker rm -f "$candidate_container_id" >/dev/null || return 1
+    else
+      echo 'refusing to delete an unowned container during rollback' >&2; return 1
+    fi
+  fi
+  if [ "$current_container" = true ] \
     && docker container inspect "$rollback_container" >/dev/null 2>&1; then
+    [ "$(docker inspect "$rollback_container" --format '{{.Id}}')" = "$current_container_id" ] || return 1
     if ! docker rename "$rollback_container" "$instance" >/dev/null; then
       echo "automatic rollback could not restore previous container name: $rollback_container" >&2
       return 1
@@ -882,7 +1080,7 @@ restore_previous_instance() {
       fi
       if [ -n "$previous_host_port" ]; then
         rollback_deadline=$(( $(date +%s) + 60 ))
-        while [ "$(curl -s -o /dev/null -w '%{http_code}' \
+        while [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
           "http://127.0.0.1:$previous_host_port/healthz" 2>/dev/null || true)" != "204" ]; do
           if [ "$(date +%s)" -ge "$rollback_deadline" ]; then
             echo "automatic rollback restarted the previous container but health did not recover" >&2
@@ -892,6 +1090,8 @@ restore_previous_instance() {
         done
       fi
     fi
+    previous_preserved=false
+    replacement_started=false
     echo "==> restored previous instance $instance after candidate failure" >&2
     return 0
   fi
@@ -909,7 +1109,16 @@ restore_previous_instance() {
 
 echo "==> starting candidate instance $instance (port $port)"
 if [ "$current_container" = true ]; then
-  docker rm -f "$rollback_container" >/dev/null 2>&1 || true
+  # Keep previously retained recovery objects; use a new transaction-owned name.
+  if docker container inspect "$rollback_container" >/dev/null 2>&1; then
+    rollback_container="${instance}-rollback-$(date +%s)-$$"
+  fi
+  replacement_started=true
+  python3 - "$control_dir/replacement.json" "$current_container_id" "$rollback_container" "$transaction_id" <<'PY'
+import json,sys
+out,old,name,transaction=sys.argv[1:]
+open(out,'w').write(json.dumps({'old_container_id':old,'rollback_name':name,'transaction_id':transaction,'phase':'before_stop'}))
+PY
   if [ "$current_was_running" = true ]; then
     docker stop "$instance" >/dev/null
   fi
@@ -924,6 +1133,7 @@ fi
 if ! docker run -d \
   --name "$instance" \
   --restart no \
+  --label "com.yxsicd.mcpgit.install-transaction=$transaction_id" \
   --label "org.opencontainers.image.version=git-$source_sha" \
   --label "org.opencontainers.image.revision=$source_sha" \
   --label "com.yxsicd.mcpgit.distribution=github-offline-v2" \
@@ -942,18 +1152,19 @@ if ! docker run -d \
   -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
   -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
   -e MCPGIT_EXECUTABLE_BUILD_REPOSITORY="$executable_build_repository" \
-  -p "$port":8001 \
+  -p "$port_binding" \
   "$runtime_image" >/dev/null; then
   echo "candidate container failed to start; restoring previous instance" >&2
   restore_previous_instance || true
   exit 1
 fi
+candidate_container_id=$(docker inspect "$instance" --format '{{.Id}}')
 
 echo "==> waiting for health"
 deadline=$(( $(date +%s) + 120 ))
 candidate_healthy=false
 while [ "$(date +%s)" -lt "$deadline" ]; do
-  if [ "$(curl -s -o /dev/null -w '%{http_code}' \
+  if [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
     "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
     candidate_healthy=true
     break
@@ -987,6 +1198,12 @@ if [ "$update_mode" = false ]; then
 fi
 
 docker update --restart unless-stopped "$instance" >/dev/null
+if ! record_installation; then
+  echo 'candidate Agent or byte acceptance failed; restoring previous instance' >&2
+  restore_previous_instance || true
+  exit 1
+fi
+installation_accepted=true
 
 echo
 if [ "$update_mode" = true ]; then

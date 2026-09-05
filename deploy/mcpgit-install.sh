@@ -22,6 +22,8 @@ Usage: mcpgit-install.sh [common options]
   --zone ZONE         authentication zone (default: blue)
   --download-only     fetch/verify the release bundle without installing
   --rebuild           force runtime image reconstruction
+  --program-only      update only Program; refuse incompatible cold layers
+  --check             validate the install/upgrade plan without activation
 
 Advanced MCPGIT_* environment settings are passed through to the backend.
 EOF
@@ -34,6 +36,7 @@ esac
 instance=${MCPGIT_INSTANCE:-mcpgit}
 port=${MCPGIT_PORT:-8001}
 download_only=false
+check_only=false
 expect=
 for arg in "$@"; do
   if [ "$expect" = instance ]; then instance=$arg; expect=; continue; fi
@@ -42,6 +45,7 @@ for arg in "$@"; do
     --instance) expect=instance ;;
     --port) expect=port ;;
     --download-only) download_only=true ;;
+    --check) check_only=true ;;
   esac
 done
 
@@ -57,7 +61,7 @@ fetch_file() {
   name=$1
   target=$2
   command -v curl >/dev/null 2>&1 || { echo "curl is required to bootstrap MCPGit" >&2; exit 1; }
-  curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "$PUBLIC_DEPLOY_BASE/$name" -o "$target"
+  curl -fsSL --connect-timeout 10 --max-time 90 --retry 2 --retry-delay 2 "$PUBLIC_DEPLOY_BASE/$name" -o "$target"
 }
 
 backend="$SCRIPT_DIR/novice-install.sh"
@@ -80,13 +84,25 @@ echo
 
 MCPGIT_INSTANCE="$instance" MCPGIT_PORT="$port" sh "$backend" "$@"
 
-if [ "$download_only" = true ]; then
+if [ "$download_only" = true ] || [ "$check_only" = true ]; then
   exit 0
 fi
 
 mkdir -p "$BIN_DIR"
 cp "$ctl_source" "$BIN_DIR/mcpgitctl"
 chmod 0755 "$BIN_DIR/mcpgitctl"
+bundle_dir="${MCPGIT_BUNDLE_DIR:-$HOME/.mcpgit/bundle}"
+expect_bundle=false
+for arg in "$@"; do
+  if [ "$expect_bundle" = true ]; then bundle_dir=$arg; expect_bundle=false; continue; fi
+  [ "$arg" != --bundle ] || expect_bundle=true
+done
+for helper in install_state.py mcpgit-offline-release.py; do
+  if [ -f "$bundle_dir/scripts/$helper" ]; then
+    cp "$bundle_dir/scripts/$helper" "$BIN_DIR/$helper"
+    chmod 0755 "$BIN_DIR/$helper"
+  fi
+done
 
 echo
 echo "MCPGit product tools"

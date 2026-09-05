@@ -218,7 +218,17 @@ if not all(value["checks"].values()):
 PY
 }
 
-cleanup_old
+# Never reset a pre-existing instance, even when --keep was supplied.
+trap - EXIT
+for path in "$bundle" "$credentials" "$installer" "$instance_config"; do
+  [[ ! -e "$path" && ! -L "$path" ]] || { echo 'new-agent-smoke: existing paths are not disposable' >&2; exit 1; }
+done
+if docker container inspect "$instance" >/dev/null 2>&1 || docker volume inspect "${instance}_data" >/dev/null 2>&1; then
+  echo 'new-agent-smoke: existing instance/data volume; refusing destructive reset' >&2
+  trap - EXIT
+  exit 1
+fi
+trap cleanup_failed_sensitive EXIT
 curl -fsSL --retry 3 "$install_url" -o "$installer"
 chmod 0755 "$installer"
 install_sha=$(python3 - "$installer" <<'PY'
