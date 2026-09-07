@@ -213,7 +213,8 @@ class InstallStateTests(unittest.TestCase):
         image = {'Config': {'Env': ['PATH=/usr/bin'], 'Cmd':['run'],'Entrypoint':['init'],'User':'','WorkingDir':''}}
         current = {'Config': copy.deepcopy(image['Config']), 'HostConfig': {}}
         current['Config']['Env'] += ['MCPGIT_BOOTSTRAP_REMOTE_REPOS=', 'MCPGIT_BOOTSTRAP_REPO_SOURCES=none',
-                                    'MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1']
+                                    'MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1',
+                                    'MCPGIT_SOURCE_REVISION=' + 'a' * 40]
         state.supported_configuration(current, image)
         image['Config']['User'] = None
         image['Config']['WorkingDir'] = None
