@@ -1,15 +1,14 @@
-# Programmable analysis integration candidate
+# Programmable analysis
 
-This guide describes the integration candidate for Service Client SDK 2.5.0.
-It is not a release announcement or evidence that your instance supports the
-feature. The runtime selected by [offline-latest.json](../offline-latest.json)
+This guide describes the programmable analysis interfaces shipped with Service
+Client SDK 2.5.0. The runtime selected by [offline-latest.json](../offline-latest.json)
 and the independently selected [client-sdk.json](../client-sdk.json) remain
 the installation authorities. An already installed instance may be older than
 those pointers. Check its live metadata and operation contracts before use.
 
 ## Choose the interface and contract
 
-| Surface | Candidate version | What it identifies |
+| Surface | Version | What it identifies |
 | --- | --- | --- |
 | Rust Service SDK and Client crates | 2.5.0 | Application-to-Service request/result types and transport client |
 | Rust Guest SDK / Core execution ABI | 2.4.0 | The generated Guest facade and exact Host/Guest execution contract |
@@ -19,7 +18,7 @@ those pointers. Check its live metadata and operation contracts before use.
 These versions belong to different surfaces. Installing the Service Client SDK
 does not install or activate a Guest package, configure a compiler, or upgrade
 a server. A Guest contract version is not a WAsmC language release version.
-The official WAsmC language release pin remains **v0.0.4**; this candidate does
+The official WAsmC language release pin remains **v0.0.4**; this release does
 not change that pin. Use the exact WIT, ABI, SDK and provider digests admitted
 by the instance's build contract. Do not relabel an older artifact to match a
 new version; the experimental typed-result contract requires matching builds.
@@ -58,7 +57,7 @@ the instance's separately advertised lifecycle contracts for those actions.
 
 ## Rust Service clients and result projection
 
-The candidate SDK exposes
+Service Client SDK 2.5.0 exposes
 `McpGitClient::invoke_executable_analysis(InvokeExecutableAnalysisRequest)`
 over Service method `executable.analysis.invoke`. The request has the same
 three activation fences plus `ExecutableAnalysisProjection`. Before calling,
@@ -66,7 +65,7 @@ check that the connected Service advertises the method and
 `executable-analysis-invoke.v1` capability; the server still checks current
 caller authority. See [Client integration](CLIENT_INTEGRATION.md) for SDK
 installation. Choose package versions from the formal SDK pointer, not from
-this candidate guide.
+this guide.
 
 Omitting `projection` selects `metadata`. The response contains the scalar
 value, relation column count, row count and output-byte count, exact activation
@@ -92,7 +91,7 @@ Scalar-only output remains a separate profile.
 Agent IR is the Host's internal relational execution machinery. Selected
 existing Search/SQL/Relation operations can benefit from Host planning and
 execution improvements. There is no new public Guest `agent_plan` function,
-WIT import or direct MCP plan tool in this candidate. Guest authors continue
+WIT import or direct MCP plan tool in this release. Guest authors continue
 to use the admitted Search/SQL/Relation interfaces; Rust and WAsmC share the
 same Host semantics and capability boundaries.
 
@@ -100,5 +99,5 @@ Transparent Search-to-Count rewriting is deferred. Search admits the selected
 rows and their bytes before returning a handle, even when a Guest only counts
 or drops the result. A count-only shortcut must preserve row/byte limits,
 cumulative budgets, ordering, errors and lifetime semantics before it can
-replace that path. This release candidate does not promise an additional
+replace that path. This release does not promise an additional
 lazy Count speedup or a new Count authoring API.

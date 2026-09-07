@@ -19,8 +19,8 @@ Both modes depend only on immutable bytes published to GitHub
 first, install offline later. The SDK is not published to crates.io; the two
 `mcpgit-service-*` crates always come from the GitHub SDK Release.
 
-For the pending Service SDK 2.5.0 analysis API, exact activation fences and
-result projection behavior, see [Programmable analysis integration candidate](PROGRAMMABLE_ANALYSIS.md).
+For the Service SDK 2.5.0 analysis API, exact activation fences and
+result projection behavior, see [Programmable analysis](PROGRAMMABLE_ANALYSIS.md).
 That guide does not supersede the current recommended SDK pointer or prove
 that a connected instance supports the operation.
 
