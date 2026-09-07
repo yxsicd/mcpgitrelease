@@ -393,6 +393,10 @@ SHA-256 checksums. The target host does not need jq or Python.
 
 ## Rust Client SDK
 
+For the pending programmable-analysis contract and its separate Service and
+Guest SDK versions, see [Programmable analysis integration candidate](docs/PROGRAMMABLE_ANALYSIS.md).
+Availability depends on the live instance and formal release pointers.
+
 The Rust Client SDK is an independent immutable Release family. It is not
 selected by `dev`, `main`, or `prod`, and downloading or configuring it never
 installs, upgrades, restarts, promotes, or rolls back an MCPGit instance.
