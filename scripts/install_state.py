@@ -167,7 +167,8 @@ def supported_configuration(current, image):
     original_env = dict(item.split('=', 1) for item in original.get('Env') or [])
     actual = dict(item.split('=', 1) for item in config.get('Env') or [])
     allowed = {'MCPGIT_BOOTSTRAP_REMOTE_REPOS', 'MCPGIT_BOOTSTRAP_REPO_SOURCES',
-               'MCPGIT_ALLOWED_HOSTS', 'MCPGIT_PUBLIC_BASE_URL', 'MCPGIT_EXECUTABLE_BUILD_REPOSITORY'}
+               'MCPGIT_ALLOWED_HOSTS', 'MCPGIT_PUBLIC_BASE_URL', 'MCPGIT_EXECUTABLE_BUILD_REPOSITORY',
+               'MCPGIT_SOURCE_REVISION'}
     require(all(k in allowed or actual.get(k) == original_env.get(k) for k in actual.keys() | original_env.keys()),
             'custom environment requires its deployment owner; no silent deletion')
     expected = {'MCPGIT_BOOTSTRAP_REMOTE_REPOS': '', 'MCPGIT_BOOTSTRAP_REPO_SOURCES': 'none',
