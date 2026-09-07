@@ -423,7 +423,7 @@ class ProductInstallerTests(unittest.TestCase):
 
     def test_template_install_creates_repositories_missing_from_archive(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
-        loop = "for r in works rootskills mcpgitsystem safegit systemconfig tablegit binarygit; do"
+        loop = "for r in works rootskills mcpgitsystem safegit systemconfig tablegit binary; do"
         loop_start = novice.index(loop)
         loop_end = novice.index("done", loop_start)
         template_init = novice[loop_start:loop_end]

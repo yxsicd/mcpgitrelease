@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+
 instance="mcpgit-newagent-$(git rev-parse --short=8 HEAD 2>/dev/null || date +%s)"
 port=18041
 expected_source_sha=""
@@ -56,9 +58,22 @@ instance_config="${HOME:?HOME is required}/.mcpgit/instances/${instance}.toml"
 evidence=${evidence:-"$tmp_root/${instance}-public-install-evidence.json"}
 mkdir -p "$(dirname "$evidence")"
 
-cleanup_old() {
-  docker rm -f "$instance" >/dev/null 2>&1 || true
-  docker volume rm "${instance}_data" >/dev/null 2>&1 || true
+created_container_id=""
+created_volume_timestamp=""
+
+cleanup_created() {
+  local current_container current_volume
+  [[ -n "$created_container_id" && -n "$created_volume_timestamp" ]] || return 1
+  current_container=$(docker container inspect "$instance" --format '{{.Id}}') || return 1
+  current_volume=$(docker volume inspect "${instance}_data" --format '{{.CreatedAt}}') || return 1
+  if [[ "$current_container" != "$created_container_id" || "$current_volume" != "$created_volume_timestamp" ]]; then
+    echo 'new-agent-smoke: cleanup identity changed; preserving resources for inspection' >&2
+    return 1
+  fi
+  docker rm -f "$created_container_id" >/dev/null || return 1
+  current_volume=$(docker volume inspect "${instance}_data" --format '{{.CreatedAt}}') || return 1
+  [[ "$current_volume" == "$created_volume_timestamp" ]] || return 1
+  docker volume rm "${instance}_data" >/dev/null || return 1
   rm -rf -- "$bundle" "$credentials" "$installer"
   rm -f -- "$instance_config"
 }
@@ -75,7 +90,6 @@ cleanup_failed_sensitive() {
   fi
   return "$status"
 }
-trap cleanup_failed_sensitive EXIT
 
 redact_log() {
   sed -E 's/(MCPGIT_[A-Z0-9_]*(TOKEN|SECRET|PASSWORD|VERIFY|AUTHORIZATION|KEY)[A-Z0-9_]*=).*/\1<redacted>/g'
@@ -139,9 +153,9 @@ PY
 
 write_evidence() {
   local install_sha=$1 healthz=$2
-  python3 - "$evidence" "$instance" "$port" "$install_sha" "$healthz" "$expected_source_sha" "$tmp_root/${instance}.mcp.json" "$credentials" <<'PY'
+  python3 - "$evidence" "$instance" "$port" "$install_sha" "$healthz" "$expected_source_sha" "$tmp_root/${instance}.mcp.json" "$credentials" "$script_dir/verify_repository_layout.py" <<'PY'
 import glob, json, os, pathlib, subprocess, sys
-out, instance, port, install_sha, healthz, expected, mcp_path, credentials_dir = sys.argv[1:]
+out, instance, port, install_sha, healthz, expected, mcp_path, credentials_dir, layout_script = sys.argv[1:]
 container = json.loads(subprocess.check_output(["docker", "inspect", instance], text=True))[0]
 labels = {key: value for key, value in (container.get("Config", {}).get("Labels") or {}).items() if key.startswith("com.yxsicd.mcpgit.")}
 image = container.get("Config", {}).get("Image") or ""
@@ -160,12 +174,13 @@ credential_files = []
 for path in sorted(glob.glob(os.path.join(credentials_dir, "*"))):
     stat = os.stat(path)
     credential_files.append({"path": path, "mode": oct(stat.st_mode & 0o777), "size": stat.st_size})
-repo_list = subprocess.check_output([
-    "docker", "run", "--rm", "-v", f"{instance}_data:/data", "--entrypoint", "sh", image,
-    "-lc", "find /data/repos -maxdepth 1 -mindepth 1 -type d -exec basename {} \\; | sort",
-], text=True).splitlines()
+layout = json.loads(subprocess.check_output([
+    "docker", "run", "--rm", "-i", "-v", f"{instance}_data:/data:ro", "--entrypoint", "python3", image,
+    "-", "/data/repos",
+], input=pathlib.Path(layout_script).read_text(), text=True))
+repo_list = layout["git_repositories"]
 locks = subprocess.check_output([
-    "docker", "run", "--rm", "-v", f"{instance}_data:/data", "--entrypoint", "sh", image,
+    "docker", "run", "--rm", "-v", f"{instance}_data:/data:ro", "--entrypoint", "sh", image,
     "-lc", "find /data/repos \\( -path '*/config.lock' -o -path '*/.git/config.lock' \\) -type f -print | sed -n '1,20p' || true",
 ], text=True).splitlines()
 mcp = json.loads(pathlib.Path(mcp_path).read_text(encoding="utf-8"))
@@ -187,6 +202,7 @@ value = {
     "healthz_code": int(healthz),
     "credential_files": credential_files,
     "standard_repos": repo_list,
+    "repository_layout": layout,
     "remaining_config_locks": locks,
     "mcp_initialize": mcp,
     "checks": {
@@ -196,7 +212,7 @@ value = {
         "healthz": int(healthz) == 204,
         "doctor": "Result: healthy" in tail(f"/tmp/{instance}.doctor.log"),
         "credentials_mode_0600": bool(credential_files) and all(item["mode"] == "0o600" for item in credential_files),
-        "standard_repos_initialized": set(repo_list) >= {"works", "tablegit", "binarygit", "rootskills", "mcpgitsystem", "safegit", "systemconfig"},
+        **layout["checks"],
         "no_config_locks": not locks,
         "release_identity_match": identity_match,
         "mcp_initialize": mcp.get("initialize_status") == 200,
@@ -219,13 +235,11 @@ PY
 }
 
 # Never reset a pre-existing instance, even when --keep was supplied.
-trap - EXIT
 for path in "$bundle" "$credentials" "$installer" "$instance_config"; do
   [[ ! -e "$path" && ! -L "$path" ]] || { echo 'new-agent-smoke: existing paths are not disposable' >&2; exit 1; }
 done
 if docker container inspect "$instance" >/dev/null 2>&1 || docker volume inspect "${instance}_data" >/dev/null 2>&1; then
   echo 'new-agent-smoke: existing instance/data volume; refusing destructive reset' >&2
-  trap - EXIT
   exit 1
 fi
 trap cleanup_failed_sensitive EXIT
@@ -244,6 +258,9 @@ install_status=$?
 set -e
 redact_log <"/tmp/${instance}.install.log" | tail -220
 [[ "$install_status" == 0 ]] || exit "$install_status"
+created_container_id=$(docker container inspect "$instance" --format '{{.Id}}')
+created_volume_timestamp=$(docker volume inspect "${instance}_data" --format '{{.CreatedAt}}')
+[[ -n "$created_container_id" && -n "$created_volume_timestamp" ]] || exit 1
 wait_healthy
 healthz=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$port/healthz" || true)
 [[ "$healthz" == 204 ]] || { echo "new-agent-smoke: /healthz returned $healthz" >&2; exit 1; }
@@ -257,6 +274,8 @@ if ! write_evidence "$install_sha" "$healthz"; then
   exit 1
 fi
 if [[ "$cleanup_on_success" == true ]]; then
-  cleanup_old
+  # A failed identity fence must also preserve local credential/config files.
+  trap - EXIT
+  cleanup_created || exit 1
 fi
 echo "new-agent-smoke: PASS evidence=$evidence"

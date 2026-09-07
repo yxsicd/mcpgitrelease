@@ -393,6 +393,10 @@ SHA-256 checksums. The target host does not need jq or Python.
 
 ## Rust Client SDK
 
+For the pending programmable-analysis contract and its separate Service and
+Guest SDK versions, see [Programmable analysis integration candidate](docs/PROGRAMMABLE_ANALYSIS.md).
+Availability depends on the live instance and formal release pointers.
+
 The Rust Client SDK is an independent immutable Release family. It is not
 selected by `dev`, `main`, or `prod`, and downloading or configuring it never
 installs, upgrades, restarts, promotes, or rolls back an MCPGit instance.
@@ -521,7 +525,10 @@ mcpgit-runtime.env and configure the remote Git backend, organization, and
 bootstrap repository names.
 
 The bundled full-feature repository baseline is `works`, `tablegit`,
-`binarygit`, `rootskills`, `mcpgitsystem`, and `safegit`. SafeGit root
+`binary`, `rootskills`, `mcpgitsystem`, and `safegit`. Fresh novice installs also
+initialize `systemconfig`. Existing installations that register `binarygit` retain
+that repository name and its data on upgrade; this default change does not rename
+repositories, migrate data, or re-run repository/auth provisioning. SafeGit root
 material is never included in a Release asset; provide it only through the
 mode-0600 runtime environment or the target's secret manager.
 

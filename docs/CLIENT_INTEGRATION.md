@@ -19,6 +19,11 @@ Both modes depend only on immutable bytes published to GitHub
 first, install offline later. The SDK is not published to crates.io; the two
 `mcpgit-service-*` crates always come from the GitHub SDK Release.
 
+For the pending Service SDK 2.5.0 analysis API, exact activation fences and
+result projection behavior, see [Programmable analysis integration candidate](PROGRAMMABLE_ANALYSIS.md).
+That guide does not supersede the current recommended SDK pointer or prove
+that a connected instance supports the operation.
+
 ## Shared: recommended SDK pointer
 
 ```sh
@@ -138,7 +143,7 @@ incremental (unchanged layers are cached by SHA-256) and the update is a
 fast image rebuild plus container swap.
 
 The seven template repositories (`works`, `rootskills`, `mcpgitsystem`,
-`safegit`, `systemconfig`, `tablegit`, `binarygit`) live in
+`safegit`, `systemconfig`, `tablegit`, `binary`) live in
 `deploy/instance-templates` and carry only READMEs plus standard skeleton
 files (works validation entry, rootskills skillsgit layout, mcpgitsystem
 docs/release policy). `rootskills` ships the standard governance skill
@@ -156,9 +161,12 @@ curl -fsSL https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/deploy/no
 This resolves the latest offline release via
 `offline-latest.json`, downloads the four layers (SHA-256 verified, cached
 across runs), assembles the runtime image, starts `mcpgit` on port 8001,
-initializes SafeGit in novice mode, and prints a real connection:
-`http://127.0.0.1:8001`, login `systemadmin`/`change-me`, and the SkillsTable
-`table.initialize` hint.
+initializes SafeGit in novice mode, and prints the connection address
+(default `http://127.0.0.1:8001`) and the path to a generated per-instance
+`systemadmin` credential file. There is no shared default password. The file
+has mode 0600 and defaults to
+`$HOME/.mcpgit/credentials/<instance>-systemadmin.env`; `MCPGIT_CREDENTIAL_DIR`
+can select another directory. Use the actual path printed by the installer.
 
 Everything can be customized with environment variables set before the
 command; defaults work without any of them:
@@ -196,10 +204,14 @@ machine for the fetch-on-A/install-on-B flow.
 SafeGit initializes in novice mode on first start: a random recovery password,
 a default Shamir 3-of-5 bundle, and an Agent Key are persisted (0600) next to
 the safegit repository, and the installer prints the paths plus the
-`docker cp` command for backing up the shares file externally. First login is
-`systemadmin` / `change-me`; change it after login. The instance stays
-health-first: remote repo sync uses the netrc when `--netrc` is supplied and
-is simply inactive otherwise.
+`docker cp` command for backing up the shares file externally. Authenticate
+with the generated `systemadmin` credential using HTTP Basic Authorization.
+The file's `MCPGIT_BASIC_USERNAME` and `MCPGIT_BASIC_VERIFY` values are not MCP
+`basic_username` / `basic_verify` tool arguments; see the
+[fresh-installer credential guide](MCP_AGENT_QUICKSTART.md#fresh-installer-credentials).
+SafeGit recovery material and the login credential serve different purposes;
+retain both securely. The instance stays health-first: remote repo sync uses
+the netrc when `--netrc` is supplied and is simply inactive otherwise.
 
 ## Fast verification loop
 
@@ -279,6 +291,13 @@ string and performs no key management. Hard rules: never hardcode a key into
 source code, never commit it to Git, never write it to logs. The examples
 read `MCPGIT_CLIENT_KEY` by convention.
 
+Fresh-install acceptance compares the active SystemConfig repository registry
+with the actual initialized Git directories, including each registered path.
+`.mcpgit-runtime` is runtime state, not a repository. A `binarygit` registration
+plus an unused `binary` template directory must fail this check. Existing
+`binarygit` installations keep their registry and data during upgrades; no
+automatic rename or data migration is performed.
+
 ## Built-in Persons
 
 Every bootstrapped instance provisions three built-in Persons:
@@ -287,7 +306,7 @@ Every bootstrapped instance provisions three built-in Persons:
 systemadmin  control plane + SafeGit (no business repository access by default)
 guest        read-only on granted repositories (default for missing credentials)
 builder      business read/write on the standard business repositories
-             (works, tablegit, binarygit by default)
+             (works, tablegit, binary by default)
 ```
 
 ## Known constraints

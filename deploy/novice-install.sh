@@ -191,7 +191,7 @@ Usage: novice-install.sh [options]
   --zone ZONE         built-in auth zone (default: $MCPGIT_ZONE)
   --port PORT         host port for the Service endpoint (default: $MCPGIT_PORT)
   --guest-repo REPO   guest-readable repo (default: works)
-  --builder-repos R   builder repos, comma separated (default: works,tablegit,binarygit)
+  --builder-repos R   builder repos, comma separated (default: works,tablegit,binary)
   --download-only     download the bundle and stop (no Docker needed for this)
   --rebuild           force rebuilding the offline runtime image
   --program-only      require verified installed Base/Tools; update Program only
@@ -210,7 +210,7 @@ netrc=${MCPGIT_NETRC}
 zone=${MCPGIT_ZONE}
 port=${MCPGIT_PORT}
 guest_repo=works
-builder_repos=works,tablegit,binarygit
+builder_repos=works,tablegit,binary
 rebuild=false
 download_only=false
 program_only=false
@@ -629,7 +629,7 @@ if [ -z "$org_id" ]; then
 fi
 echo "==> organization id (immutable identity): $org_id"
 
-repos="works rootskills mcpgitsystem safegit systemconfig tablegit binarygit"
+repos="works rootskills mcpgitsystem safegit systemconfig tablegit binary"
 if [ "$update_mode" = false ]; then
   echo "==> preparing data volume $data_volume"
   docker volume create "$data_volume" >/dev/null
@@ -642,7 +642,7 @@ if [ "$update_mode" = false ]; then
         set -eu
         mkdir -p /data/repos
         tar -xzf /provision/instance-templates.tar.gz -C /data/repos
-        for r in works rootskills mcpgitsystem safegit systemconfig tablegit binarygit; do
+        for r in works rootskills mcpgitsystem safegit systemconfig tablegit binary; do
           dir=/data/repos/$r
           mkdir -p "$dir"
           if [ -z "$(find "$dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
