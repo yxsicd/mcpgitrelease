@@ -172,7 +172,7 @@ def bootstrap(repo: Path, instance_id: str, zone: str, guest_repository: str) ->
 
     builder_repositories = [
         repository.strip()
-        for repository in (os.environ.get("MCPGIT_BUILDER_REPOSITORIES", "works,tablegit,binarygit").split(","))
+        for repository in (os.environ.get("MCPGIT_BUILDER_REPOSITORIES", "works,tablegit,binary").split(","))
         if repository.strip()
     ]
     if not builder_repositories:
@@ -409,7 +409,7 @@ def main() -> int:
     parser.add_argument(
         "--builder-repositories",
         default=None,
-        help="comma-separated business repositories granted to the built-in builder Person (default: works,tablegit,binarygit)",
+        help="comma-separated business repositories granted to the built-in builder Person (default: works,tablegit,binary)",
     )
     parser.add_argument("--apply", action="store_true", help="write and commit instead of reporting the planned change")
     parser.add_argument("--no-commit", action="store_true", help="write rows but leave the Git commit to the caller")

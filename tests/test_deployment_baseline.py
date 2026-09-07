@@ -18,7 +18,7 @@ class DeploymentBaselineTests(unittest.TestCase):
         self.assertNotIn('link_repository = "linkgit"', config)
         self.assertIn(
             "MCPGIT_BOOTSTRAP_REMOTE_REPOS="
-            "works,tablegit,binarygit,rootskills,mcpgitsystem,safegit",
+            "works,tablegit,binary,rootskills,mcpgitsystem,safegit",
             runtime,
         )
         self.assertNotIn("linkgit", runtime)

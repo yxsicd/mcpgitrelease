@@ -525,7 +525,10 @@ mcpgit-runtime.env and configure the remote Git backend, organization, and
 bootstrap repository names.
 
 The bundled full-feature repository baseline is `works`, `tablegit`,
-`binarygit`, `rootskills`, `mcpgitsystem`, and `safegit`. SafeGit root
+`binary`, `rootskills`, `mcpgitsystem`, and `safegit`. Fresh novice installs also
+initialize `systemconfig`. Existing installations that register `binarygit` retain
+that repository name and its data on upgrade; this default change does not rename
+repositories, migrate data, or re-run repository/auth provisioning. SafeGit root
 material is never included in a Release asset; provide it only through the
 mode-0600 runtime environment or the target's secret manager.
 

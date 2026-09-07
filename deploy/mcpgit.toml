@@ -2,7 +2,7 @@
 id = "works"
 path = "/data/repos/works"
 table_repository = "tablegit"
-binary_repository = "binarygit"
+binary_repository = "binary"
 author_name = "mcpgit agent"
 author_email = "mcpgit-agent@example.invalid"
 
@@ -22,8 +22,8 @@ program = "python3"
 args = ["-c", "from pathlib import Path; import json; [json.loads(p.read_text(encoding='utf-8')) for p in Path('data/tables').rglob('*.json')]"]
 
 [[repositories]]
-id = "binarygit"
-path = "/data/repos/binarygit"
+id = "binary"
+path = "/data/repos/binary"
 
 [[repositories]]
 id = "safegit"

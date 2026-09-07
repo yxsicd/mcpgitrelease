@@ -143,7 +143,7 @@ incremental (unchanged layers are cached by SHA-256) and the update is a
 fast image rebuild plus container swap.
 
 The seven template repositories (`works`, `rootskills`, `mcpgitsystem`,
-`safegit`, `systemconfig`, `tablegit`, `binarygit`) live in
+`safegit`, `systemconfig`, `tablegit`, `binary`) live in
 `deploy/instance-templates` and carry only READMEs plus standard skeleton
 files (works validation entry, rootskills skillsgit layout, mcpgitsystem
 docs/release policy). `rootskills` ships the standard governance skill
@@ -291,6 +291,13 @@ string and performs no key management. Hard rules: never hardcode a key into
 source code, never commit it to Git, never write it to logs. The examples
 read `MCPGIT_CLIENT_KEY` by convention.
 
+Fresh-install acceptance compares the active SystemConfig repository registry
+with the actual initialized Git directories, including each registered path.
+`.mcpgit-runtime` is runtime state, not a repository. A `binarygit` registration
+plus an unused `binary` template directory must fail this check. Existing
+`binarygit` installations keep their registry and data during upgrades; no
+automatic rename or data migration is performed.
+
 ## Built-in Persons
 
 Every bootstrapped instance provisions three built-in Persons:
@@ -299,7 +306,7 @@ Every bootstrapped instance provisions three built-in Persons:
 systemadmin  control plane + SafeGit (no business repository access by default)
 guest        read-only on granted repositories (default for missing credentials)
 builder      business read/write on the standard business repositories
-             (works, tablegit, binarygit by default)
+             (works, tablegit, binary by default)
 ```
 
 ## Known constraints
