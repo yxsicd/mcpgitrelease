@@ -962,6 +962,7 @@ if ! docker run -d \
   ${netrc:+-v "$netrc":/root/.netrc:ro} \
   -e MCPGIT_BOOTSTRAP_REMOTE_REPOS= \
   -e MCPGIT_BOOTSTRAP_REPO_SOURCES=none \
+  -e MCPGIT_SOURCE_REVISION="$source_sha" \
   -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
   -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
   "$runtime_image" >/dev/null; then
@@ -1149,6 +1150,7 @@ if ! docker run -d \
   ${netrc:+-v "$netrc":/root/.netrc:ro} \
   -e MCPGIT_BOOTSTRAP_REMOTE_REPOS= \
   -e MCPGIT_BOOTSTRAP_REPO_SOURCES=none \
+  -e MCPGIT_SOURCE_REVISION="$source_sha" \
   -e MCPGIT_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
   -e MCPGIT_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
   -e MCPGIT_EXECUTABLE_BUILD_REPOSITORY="$executable_build_repository" \

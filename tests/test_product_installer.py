@@ -16,6 +16,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class ProductInstallerTests(unittest.TestCase):
+    def test_novice_runtime_receives_exact_source_revision(self):
+        installer = (ROOT / "deploy" / "novice-install.sh").read_text()
+        self.assertEqual(
+            installer.count('-e MCPGIT_SOURCE_REVISION="$source_sha"'),
+            2,
+        )
+
     def test_docker_save_identity_accepts_config_and_oci_manifest_ids(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
