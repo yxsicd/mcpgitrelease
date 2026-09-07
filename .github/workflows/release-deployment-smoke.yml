@@ -1,0 +1,58 @@
+name: release deployment smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [offline-latest.json]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-deployment-smoke
+  cancel-in-progress: false
+
+jobs:
+  install-deploy-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve promoted release identity
+        id: release
+        run: |
+          source_sha=$(jq -r .source_sha offline-latest.json)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "instance=mcpgit-gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - name: Install promoted package and run baseline smoke
+        run: |
+          mkdir -p "$RUNNER_TEMP/mcpgit-release-smoke"
+          scripts/new_agent_public_install_smoke.sh \
+            --instance "${{ steps.release.outputs.instance }}" \
+            --port 18041 \
+            --expected-source-sha "${{ steps.release.outputs.source_sha }}" \
+            --evidence "$RUNNER_TEMP/mcpgit-release-smoke/install.json" \
+            --keep
+      - name: Discover and smoke all three service surfaces
+        run: |
+          python3 scripts/service_interface_smoke.py \
+            --base-url http://127.0.0.1:18041 \
+            --expected-source-revision "${{ steps.release.outputs.source_sha }}" \
+            --output "$RUNNER_TEMP/mcpgit-release-smoke/service-interfaces.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-deployment-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/mcpgit-release-smoke
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove disposable deployment
+        if: always()
+        run: |
+          instance="${{ steps.release.outputs.instance }}"
+          docker rm -f "$instance" >/dev/null 2>&1 || true
+          docker volume rm "${instance}_data" >/dev/null 2>&1 || true
+          rm -rf -- "$RUNNER_TEMP/${instance}-bundle" "$RUNNER_TEMP/${instance}-creds" "$RUNNER_TEMP/${instance}-install.sh"
+          rm -f -- "$HOME/.mcpgit/instances/${instance}.toml"

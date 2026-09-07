@@ -30,6 +30,13 @@ immutable Release and layer checksums, preserves the instance data volume on
 upgrade, starts MCPGit, and installs `mcpgitctl`. GitHub's UI "Latest" marker
 is not release authority.
 
+This binary release repository owns hosted deployment smoke. When
+`offline-latest.json` advances, `.github/workflows/release-deployment-smoke.yml`
+installs that promoted package into a disposable Docker instance, runs the
+new-Agent/doctor/MCP baseline, then begins at public `SKILL.md` and verifies
+HTTP, MCP, and Website Skills without a business mutation. MCPGit source
+compilation and its source gate remain local; this workflow never runs Cargo.
+
 For a named instance alongside other installations, select its name and port:
 
 ```sh

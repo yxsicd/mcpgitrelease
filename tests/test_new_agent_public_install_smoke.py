@@ -109,6 +109,21 @@ rm() { echo "local rm $*" >> "$COMMAND_LOG"; }
         validate = (ROOT / "scripts" / "validate.sh").read_text(encoding="utf-8")
         self.assertIn("bash -n scripts/new_agent_public_install_smoke.sh", validate)
 
+    def test_release_workflow_installs_before_service_interface_smoke(self):
+        workflow = (ROOT / ".github/workflows/release-deployment-smoke.yml").read_text()
+        self.assertIn("paths: [offline-latest.json]", workflow)
+        self.assertIn("scripts/new_agent_public_install_smoke.sh", workflow)
+        self.assertIn("--keep", workflow)
+        self.assertIn("scripts/service_interface_smoke.py", workflow)
+        self.assertLess(workflow.index("scripts/new_agent_public_install_smoke.sh"), workflow.index("scripts/service_interface_smoke.py"))
+        self.assertNotIn("cargo build", workflow)
+        self.assertIn("if: always()", workflow)
+        probe = (ROOT / "scripts/service_interface_smoke.py").read_text()
+        self.assertIn('"SKILL.md"', probe)
+        self.assertIn('"service_metadata"', probe)
+        self.assertIn('"businessMutationsInvoked": False', probe)
+        self.assertIn("sdk/rust/CLIENT_SDK_RELEASE.md", probe)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,12 @@
+{
+  "schema": "mst-workstream-integration-evidence/v1",
+  "task_id": "WS-20260907-service-interface-smoke",
+  "status": "ready",
+  "target_commit": "02006cc238570677b70b226a398cc1a820dd93aa",
+  "validated_source_commit": "02006cc238570677b70b226a398cc1a820dd93aa",
+  "checks": [
+    {"name": "release repository gate", "status": "passed", "evidence": "scripts/validate.sh passed 95 tests including workflow ordering, no-source-build, cleanup, and smoke contract checks"},
+    {"name": "actual process black-box", "status": "passed", "evidence": "service_interface_smoke.py discovered three surfaces, eight MCP tools, six protocols and same-origin SDK documents without business mutations"},
+    {"name": "hosted package run", "status": "pending", "evidence": "run after offline-latest.json selects a package containing the new service interface; current public pointer predates it"}
+  ]
+}
