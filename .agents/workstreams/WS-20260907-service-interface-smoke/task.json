@@ -1,0 +1,16 @@
+{
+  "schema": "mst-workstream/v1",
+  "task_id": "WS-20260907-service-interface-smoke",
+  "target_branch": "main",
+  "workstream_branch": "work/ws-20260907-service-interface-smoke",
+  "original_base": "02006cc238570677b70b226a398cc1a820dd93aa",
+  "objective": "Validate promoted MCPGit binary packages by installing a disposable instance in GitHub Actions and black-box smoking HTTP, MCP, and Website Skills without compiling source or mutating business data.",
+  "execution_state": "complete",
+  "integration_state": "ready",
+  "boundaries": "This binary release repository owns the hosted workflow. MCPGit source compilation remains local. The workflow follows offline-latest.json, creates one uniquely named disposable container and volume, uploads sanitized evidence, and cleans them on every outcome.",
+  "validation": [
+    "scripts/validate.sh",
+    "client-only service_interface_smoke.py against an actual MCPGit process",
+    "workflow contract test proves install precedes smoke and contains no cargo build"
+  ]
+}
