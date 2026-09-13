@@ -5,7 +5,8 @@ This public repository is the install and release authority for MCPGit.
 Linux Program binaries are compiled only by the target architecture's native
 Linux Cargo/rustc toolchain. Build and validate on explicitly allocated local
 native hosts, then upload immutable artifacts to GitHub Releases. GitHub Actions
-is not a prerequisite or fallback; GitHub stores Git and Release bytes only.
+verifies published packages on disposable native amd64 and arm64 runners; it
+does not compile private source in this release path.
 Docker/BuildKit is not a Program compiler; it remains a Base/Tools/runtime
 assembly mechanism only.
 
@@ -36,6 +37,11 @@ installs that promoted package into a disposable Docker instance, runs the
 new-Agent/doctor/MCP baseline, then begins at public `SKILL.md` and verifies
 HTTP, MCP, and Website Skills without a business mutation. MCPGit source
 compilation and its source gate remain local; this workflow never runs Cargo.
+Manual dispatch accepts a candidate source SHA and both manifest SHA-256 pins,
+so a release can be installed and restart-checked before advancing
+`offline-latest.json`. The installer and helpers are bound to the workflow's
+exact public Git revision. An Actions success is package evidence, not evidence
+that an existing production instance has been upgraded.
 
 For a named instance alongside other installations, select its name and port:
 

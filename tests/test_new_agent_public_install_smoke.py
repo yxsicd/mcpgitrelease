@@ -8,6 +8,38 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class NewAgentPublicInstallSmokeTests(unittest.TestCase):
+    def test_candidate_identity_is_validated_before_any_external_action(self):
+        source = "a" * 40
+        good_tag = f"mcpgit-git-{source}-linux-amd64"
+        for arguments in [
+            ["--release-tag", good_tag],
+            ["--manifest-sha256", "b" * 64],
+            ["--expected-source-sha", source, "--release-tag", good_tag, "--manifest-sha256", "bad"],
+            ["--expected-source-sha", "c" * 40, "--release-tag", good_tag, "--manifest-sha256", "b" * 64],
+            ["--install-revision", "main"],
+        ]:
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(["bash", str(ROOT / "scripts/new_agent_public_install_smoke.sh"), *arguments],
+                                        capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("new-agent-smoke:", result.stderr)
+                self.assertNotIn("fetched public installer", result.stdout)
+
+    def test_candidate_workflow_pins_both_native_architectures_without_promotion(self):
+        workflow = (ROOT / ".github/workflows/release-deployment-smoke.yml").read_text()
+        for text in ["ubuntu-24.04-arm", "amd64_manifest_sha256", "arm64_manifest_sha256",
+                     "--release-tag", "--manifest-sha256", '--install-revision "$GITHUB_SHA"',
+                     ".architectures[$platform].manifest_sha256", "docker restart", "contents: read"]:
+            self.assertIn(text, workflow)
+        self.assertNotIn("git push", workflow)
+        self.assertNotIn("gh release create", workflow)
+        self.assertNotIn("yxsicd/MCPGit", workflow)
+        self.assertNotIn("MCPGIT_DEPLOY_KEY", workflow)
+        script = (ROOT / "scripts/new_agent_public_install_smoke.sh").read_text()
+        self.assertIn('MCPGIT_RELEASE_TAG="$release_tag"', script)
+        self.assertIn('MCPGIT_EXPECTED_MANIFEST_SHA256="$manifest_sha256"', script)
+        self.assertIn('MCPGIT_INSTALL_REVISION="$install_revision"', script)
+
     def test_existing_paths_and_docker_names_are_rejected_without_cleanup(self):
         for collision in ["bundle", "credentials", "installer", "config", "container", "volume"]:
             with self.subTest(collision=collision), tempfile.TemporaryDirectory() as directory:

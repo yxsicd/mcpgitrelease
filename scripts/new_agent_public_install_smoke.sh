@@ -6,6 +6,9 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 instance="mcpgit-newagent-$(git rev-parse --short=8 HEAD 2>/dev/null || date +%s)"
 port=18041
 expected_source_sha=""
+release_tag=""
+manifest_sha256=""
+install_revision=""
 install_url="https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/install.sh"
 evidence=""
 cleanup_on_success=true
@@ -24,6 +27,9 @@ Options:
   --instance NAME             disposable instance name
   --port PORT                 host port (default: 18041)
   --expected-source-sha SHA   accepted MCPGit source SHA for release identity
+  --release-tag TAG          explicit immutable candidate (does not promote latest)
+  --manifest-sha256 DIGEST   required SHA-256 pin with --release-tag
+  --install-revision SHA     immutable public installer snapshot
   --install-url URL           public installer URL override
   --evidence FILE             output evidence JSON
   --keep                      keep container, data volume, bundle and credentials on success
@@ -35,6 +41,9 @@ while [[ $# -gt 0 ]]; do
     --instance) instance=${2:?}; shift 2 ;;
     --port) port=${2:?}; shift 2 ;;
     --expected-source-sha) expected_source_sha=${2:?}; shift 2 ;;
+    --release-tag) release_tag=${2:?}; shift 2 ;;
+    --manifest-sha256) manifest_sha256=${2:?}; shift 2 ;;
+    --install-revision) install_revision=${2:?}; shift 2 ;;
     --install-url) install_url=${2:?}; shift 2 ;;
     --evidence) evidence=${2:?}; shift 2 ;;
     --keep) cleanup_on_success=false; shift ;;
@@ -48,6 +57,16 @@ done
 if [[ -n "$expected_source_sha" && ! "$expected_source_sha" =~ ^[0-9a-f]{40}$ ]]; then
   echo "new-agent-smoke: --expected-source-sha must be a full Git SHA" >&2
   exit 1
+fi
+
+if [[ -n "$release_tag" || -n "$manifest_sha256" ]]; then
+  [[ -n "$expected_source_sha" && "$release_tag" =~ ^mcpgit-git-${expected_source_sha}-linux-(amd64|arm64)$ && "$manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+    echo 'new-agent-smoke: candidate requires matching source, immutable tag and manifest SHA-256' >&2; exit 1;
+  }
+fi
+if [[ -n "$install_revision" ]]; then
+  [[ "$install_revision" =~ ^[0-9a-f]{40}$ ]] || { echo 'new-agent-smoke: invalid install revision' >&2; exit 1; }
+  install_url="https://raw.githubusercontent.com/yxsicd/mcpgitrelease/$install_revision/install.sh"
 fi
 
 tmp_root="${TMPDIR:-/tmp}"
@@ -253,6 +272,7 @@ PY
 echo "new-agent-smoke: fetched public installer sha256=$install_sha"
 set +e
 MCPGIT_INSTANCE="$instance" MCPGIT_PORT="$port" MCPGIT_BUNDLE_DIR="$bundle" MCPGIT_CREDENTIAL_DIR="$credentials" \
+  MCPGIT_RELEASE_TAG="$release_tag" MCPGIT_EXPECTED_MANIFEST_SHA256="$manifest_sha256" MCPGIT_INSTALL_REVISION="$install_revision" \
   bash "$installer" --instance "$instance" --port "$port" >"/tmp/${instance}.install.log" 2>&1
 install_status=$?
 set -e
