@@ -42,6 +42,12 @@ so a release can be installed and restart-checked before advancing
 `offline-latest.json`. The installer and helpers are bound to the workflow's
 exact public Git revision. An Actions success is package evidence, not evidence
 that an existing production instance has been upgraded.
+Both native architectures also verify the entire bundled WAsmC snapshot using
+its source-free integrity utility in the exact installed image, with networking
+disabled, a read-only filesystem, and no instance-data or credential mounts.
+This checks locked release bytes, file modes, exact inventory, and the current
+compiler Wasm; it does not compile private sources or require publisher Git
+metadata. Each architecture retains a `wasmc-offline-integrity.json` receipt.
 
 For a named instance alongside other installations, select its name and port:
 
