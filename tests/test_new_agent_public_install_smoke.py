@@ -31,6 +31,9 @@ class NewAgentPublicInstallSmokeTests(unittest.TestCase):
                      "--release-tag", "--manifest-sha256", '--install-revision "$GITHUB_SHA"',
                      ".architectures[$platform].manifest_sha256", "docker restart", "contents: read"]:
             self.assertIn(text, workflow)
+        self.assertIn("scripts/agent_onboarding_probe.py", workflow)
+        self.assertIn("restart-authenticated-agent.json", workflow)
+        self.assertNotIn("--write-probe", workflow)
         self.assertNotIn("git push", workflow)
         self.assertNotIn("gh release create", workflow)
         self.assertNotIn("yxsicd/MCPGit", workflow)

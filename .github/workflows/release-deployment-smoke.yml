@@ -97,6 +97,11 @@ jobs:
           python3 scripts/service_interface_smoke.py --base-url http://127.0.0.1:18041 \
             --expected-source-revision "$SOURCE_SHA" \
             --output "$RUNNER_TEMP/mcpgit-release-smoke/restart-service-interfaces.json"
+          organization_id=$(docker inspect "$INSTANCE" --format '{{index .Config.Labels "com.yxsicd.mcpgit.instance-id"}}')
+          python3 scripts/agent_onboarding_probe.py --url http://127.0.0.1:18041 \
+            --credential-file "$RUNNER_TEMP/${INSTANCE}-creds/${INSTANCE}-systemadmin.env" \
+            --expected-instance-id "$organization_id" \
+            > "$RUNNER_TEMP/mcpgit-release-smoke/restart-authenticated-agent.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
