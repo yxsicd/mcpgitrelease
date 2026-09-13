@@ -84,9 +84,9 @@ jobs:
         run: |
           set -euo pipefail
           image_id=$(docker inspect "$INSTANCE" --format '{{.Image}}')
-          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
-          [[ $(docker image inspect "$image_id" --format '{{.Architecture}}') == "$ARCH" ]]
-          [[ $(docker image inspect "$image_id" --format '{{index .Config.Labels "com.yxsicd.mcpgit.source-sha"}}') == "$SOURCE_SHA" ]]
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+          [[ $(docker image inspect "$image_id" --format '{{.Architecture}}') == "$ARCH" ]] || exit 1
+          [[ $(docker image inspect "$image_id" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}') == "$SOURCE_SHA" ]] || exit 1
           docker run --rm --network none --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,size=32m \
             --entrypoint /opt/mcpgit/tools/bin/node "$image_id" \
