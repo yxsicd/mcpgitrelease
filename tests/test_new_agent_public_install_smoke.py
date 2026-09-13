@@ -33,6 +33,9 @@ class NewAgentPublicInstallSmokeTests(unittest.TestCase):
             self.assertIn(text, workflow)
         self.assertIn("scripts/agent_onboarding_probe.py", workflow)
         self.assertIn("restart-authenticated-agent.json", workflow)
+        install_step = workflow[workflow.index("      - name: Install exact immutable package"):workflow.index("      - name: Discover and smoke")]
+        self.assertIn("TMPDIR: ${{ runner.temp }}", install_step)
+        self.assertIn('$RUNNER_TEMP/${INSTANCE}-creds/${INSTANCE}-systemadmin.env', workflow)
         self.assertNotIn("--write-probe", workflow)
         self.assertNotIn("git push", workflow)
         self.assertNotIn("gh release create", workflow)
