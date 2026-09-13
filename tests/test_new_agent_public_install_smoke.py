@@ -2,6 +2,7 @@ import pathlib
 import os
 import subprocess
 import tempfile
+import textwrap
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -51,7 +52,7 @@ class NewAgentPublicInstallSmokeTests(unittest.TestCase):
         step = workflow[workflow.index("      - name: Verify complete bundled WAsmC"):workflow.index("      - name: Discover and smoke")]
         self.assertLess(workflow.index("--keep"), workflow.index("      - name: Verify complete bundled WAsmC"))
         for expected in [
-            "docker inspect", "{{.Image}}", "{{.Architecture}}", "com.yxsicd.mcpgit.source-sha",
+            "docker inspect", "{{.Image}}", "{{.Architecture}}", "org.opencontainers.image.revision",
             "docker run --rm --network none --read-only", "--tmpfs /tmp:rw,noexec,nosuid,size=32m",
             '--entrypoint /opt/mcpgit/tools/bin/node "$image_id"',
             "/opt/mcpgit/tools/verify-wasmc-offline.mjs /opt/mcpgit/tools/wasmc",
@@ -65,6 +66,45 @@ class NewAgentPublicInstallSmokeTests(unittest.TestCase):
             self.assertNotIn(forbidden, step)
         self.assertNotIn("yxsicd/MCPGit", workflow)
         self.assertNotIn("MCPGIT_DEPLOY_KEY", workflow)
+        producer = (ROOT / "Dockerfile.offline-runtime").read_text()
+        self.assertIn('org.opencontainers.image.revision="${MCPGIT_SOURCE_SHA}"', producer)
+        self.assertNotIn('"com.yxsicd.mcpgit.source-sha"', step)
+
+    def test_offline_step_executes_with_oci_revision_and_fails_closed(self):
+        workflow = (ROOT / ".github/workflows/release-deployment-smoke.yml").read_text()
+        step = workflow[workflow.index("      - name: Verify complete bundled WAsmC"):workflow.index("      - name: Discover and smoke")]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        mock = r'''
+docker() {
+  case "$1 $2" in
+    "inspect test") printf 'sha256:%064d\n' 1 ;;
+    "image inspect")
+      case "$5" in
+        '{{.Architecture}}') printf '%s\n' "$ARCH" ;;
+        '{{index .Config.Labels "org.opencontainers.image.revision"}}') printf '%s\n' "$MOCK_REVISION" ;;
+        *) return 90 ;;
+      esac ;;
+    "run --rm")
+      printf 'invoked\n' >> "$RUNNER_TEMP/invocations"
+      [[ "$MOCK_CASE" != utility-error ]] || return 91
+      printf '{"schema":"mcpgit.wasmc-source-free-offline-integrity.v1","ok":%s,"compiler_wasm_valid":true,"file_count_and_modes_verified":true,"network_requests":false,"application_queries_or_imports":false}\n' "$MOCK_OK" ;;
+    *) return 92 ;;
+  esac
+}
+'''
+        for arch in ["amd64", "arm64"]:
+            for case in ["valid", "wrong-source", "utility-error", "invalid-report"]:
+                with self.subTest(arch=arch, case=case), tempfile.TemporaryDirectory() as directory:
+                    root = pathlib.Path(directory)
+                    (root / "mcpgit-release-smoke").mkdir()
+                    env = dict(os.environ, RUNNER_TEMP=directory, INSTANCE="test", ARCH=arch,
+                               SOURCE_SHA="a" * 40, MOCK_CASE=case,
+                               MOCK_REVISION=("b" if case == "wrong-source" else "a") * 40,
+                               MOCK_OK="false" if case == "invalid-report" else "true")
+                    result = subprocess.run(["bash", "-c", mock + script], env=env,
+                                            capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode == 0, case == "valid", result.stderr)
+                    self.assertEqual((root / "invocations").exists(), case != "wrong-source")
 
     def test_existing_paths_and_docker_names_are_rejected_without_cleanup(self):
         for collision in ["bundle", "credentials", "installer", "config", "container", "volume"]:
