@@ -76,6 +76,24 @@ jobs:
             --install-revision "$GITHUB_SHA" \
             --evidence "$RUNNER_TEMP/mcpgit-release-smoke/install.json" \
             --keep
+      - name: Verify complete bundled WAsmC without network or instance data
+        env:
+          INSTANCE: ${{ steps.release.outputs.instance }}
+          SOURCE_SHA: ${{ steps.release.outputs.source_sha }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          image_id=$(docker inspect "$INSTANCE" --format '{{.Image}}')
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ $(docker image inspect "$image_id" --format '{{.Architecture}}') == "$ARCH" ]]
+          [[ $(docker image inspect "$image_id" --format '{{index .Config.Labels "com.yxsicd.mcpgit.source-sha"}}') == "$SOURCE_SHA" ]]
+          docker run --rm --network none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=32m \
+            --entrypoint /opt/mcpgit/tools/bin/node "$image_id" \
+            /opt/mcpgit/tools/verify-wasmc-offline.mjs /opt/mcpgit/tools/wasmc \
+            > "$RUNNER_TEMP/mcpgit-release-smoke/wasmc-offline-integrity.json"
+          jq -e '.schema == "mcpgit.wasmc-source-free-offline-integrity.v1" and .ok == true and .compiler_wasm_valid == true and .file_count_and_modes_verified == true and .network_requests == false and .application_queries_or_imports == false' \
+            "$RUNNER_TEMP/mcpgit-release-smoke/wasmc-offline-integrity.json" >/dev/null
       - name: Discover and smoke all three service surfaces
         run: |
           python3 scripts/service_interface_smoke.py \

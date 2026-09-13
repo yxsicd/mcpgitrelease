@@ -46,6 +46,26 @@ class NewAgentPublicInstallSmokeTests(unittest.TestCase):
         self.assertIn('MCPGIT_EXPECTED_MANIFEST_SHA256="$manifest_sha256"', script)
         self.assertIn('MCPGIT_INSTALL_REVISION="$install_revision"', script)
 
+    def test_wasmc_offline_workflow_checks_exact_image_without_data_or_network(self):
+        workflow = (ROOT / ".github/workflows/release-deployment-smoke.yml").read_text()
+        step = workflow[workflow.index("      - name: Verify complete bundled WAsmC"):workflow.index("      - name: Discover and smoke")]
+        self.assertLess(workflow.index("--keep"), workflow.index("      - name: Verify complete bundled WAsmC"))
+        for expected in [
+            "docker inspect", "{{.Image}}", "{{.Architecture}}", "com.yxsicd.mcpgit.source-sha",
+            "docker run --rm --network none --read-only", "--tmpfs /tmp:rw,noexec,nosuid,size=32m",
+            '--entrypoint /opt/mcpgit/tools/bin/node "$image_id"',
+            "/opt/mcpgit/tools/verify-wasmc-offline.mjs /opt/mcpgit/tools/wasmc",
+            "wasmc-offline-integrity.json", "mcpgit.wasmc-source-free-offline-integrity.v1",
+            ".ok == true", ".compiler_wasm_valid == true", ".file_count_and_modes_verified == true",
+            ".network_requests == false", ".application_queries_or_imports == false",
+        ]:
+            self.assertIn(expected, step)
+        for forbidden in ["--volume", "--mount", "--env", "-v ", ":/data", "credential-file",
+                          "cargo", "rustc", "validate-integrity.mjs", "git clone", "curl", "wget"]:
+            self.assertNotIn(forbidden, step)
+        self.assertNotIn("yxsicd/MCPGit", workflow)
+        self.assertNotIn("MCPGIT_DEPLOY_KEY", workflow)
+
     def test_existing_paths_and_docker_names_are_rejected_without_cleanup(self):
         for collision in ["bundle", "credentials", "installer", "config", "container", "volume"]:
             with self.subTest(collision=collision), tempfile.TemporaryDirectory() as directory:
