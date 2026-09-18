@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__/
 *.pyc
+
+# Local Web Component build dependencies
+web-components/**/node_modules/

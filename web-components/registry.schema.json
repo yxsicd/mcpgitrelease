@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MCPGit Web Components Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "release",
+    "components"
+  ],
+  "properties": {
+    "schema": {
+      "const": "mcpgitrelease/web-components-registry/v1"
+    },
+    "release": {
+      "type": "string",
+      "minLength": 1
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "api",
+          "entry",
+          "integrity"
+        ],
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "api": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "entry": {
+            "type": "string"
+          },
+          "integrity": {
+            "type": "string",
+            "pattern": "^sha256-[A-Za-z0-9+/=]+$"
+          }
+        }
+      }
+    }
+  }
+}

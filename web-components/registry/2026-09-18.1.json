@@ -1,0 +1,12 @@
+{
+  "schema": "mcpgitrelease/web-components-registry/v1",
+  "release": "2026-09-18.1",
+  "components": {
+    "pptx-presentation": {
+      "version": "0.1.0",
+      "api": 1,
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@pptx-presentation-v0.1.0/web-components/pptx-presentation/0.1.0/index.js",
+      "integrity": "sha256-i3DSwPnt5fJerRnmY8MnJXCDfrykEj+iQqM31VoroR4="
+    }
+  }
+}

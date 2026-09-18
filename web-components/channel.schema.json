@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MCPGit Web Components Channel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "channel",
+    "registry"
+  ],
+  "properties": {
+    "schema": {
+      "const": "mcpgitrelease/web-components-channel/v1"
+    },
+    "channel": {
+      "type": "string"
+    },
+    "registry": {
+      "type": "string"
+    }
+  }
+}
