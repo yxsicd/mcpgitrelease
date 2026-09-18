@@ -1,0 +1,1 @@
+import {C} from './theme.js';export function frame(s,t){s.addText(t,{x:.7,y:.7,w:11,h:.6,fontFace:'Arial',fontSize:28,bold:true,color:C.dark,margin:0});s.addShape('line',{x:.7,y:1.45,w:11.8,h:0,line:{color:C.red,width:2}})}

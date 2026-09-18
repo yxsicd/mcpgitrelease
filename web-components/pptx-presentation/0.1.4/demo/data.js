@@ -1,0 +1,1 @@
+export async function load(){return {revision:'fact-r7',title:'Thin Contract · Open Projection'}}
