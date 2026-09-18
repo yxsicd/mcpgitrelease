@@ -1,16 +1,16 @@
 {
   "schema": "mcpgitrelease/web-components-catalog/v1",
-  "registry": "web-components/registry/2026-09-18.6.json",
+  "registry": "web-components/registry/2026-09-18.7.json",
   "components": [
     {
       "id": "pptx-presentation",
       "skill": "web-components/pptx-presentation/SKILL.md",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "api": 1,
       "channel": "stable",
-      "manifest": "web-components/pptx-presentation/0.1.5/manifest.json",
-      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@pptx-presentation-v0.1.5/web-components/pptx-presentation/0.1.5/index.js",
-      "integrity": "sha256-QKrV40GAYy7sKEpu3pcnJ3Cf6vJ9NSo6/hTZeBHXEXM="
+      "manifest": "web-components/pptx-presentation/0.1.6/manifest.json",
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@pptx-presentation-v0.1.6/web-components/pptx-presentation/0.1.6/index.js",
+      "integrity": "sha256-MM2Ibnm6MbOPNJAeuSb0uyy+Ontz03aRIe6um2x0FLY="
     }
   ]
 }
