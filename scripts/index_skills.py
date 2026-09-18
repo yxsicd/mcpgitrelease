@@ -48,7 +48,11 @@ for path in sorted(ROOT.rglob("SKILL.md")):
 ids=[s["id"] for s in skills]
 if len(ids)!=len(set(ids)): raise SystemExit("duplicate Skill ids")
 
-registry_path=ROOT/"web-components/registry/2026-09-18.1.json"
+channel_path=ROOT/"web-components/channels/stable.json"
+channel=json.loads(channel_path.read_text())
+registry_path=(channel_path.parent/channel["registry"]).resolve()
+if ROOT.resolve() not in registry_path.parents:
+    raise SystemExit("stable registry escaped repository root")
 registry=json.loads(registry_path.read_text())
 components=registry["components"]
 catalog=[]

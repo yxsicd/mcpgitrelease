@@ -1,0 +1,43 @@
+{
+  "schema": "mcpgitrelease/web-component/v1",
+  "id": "pptx-presentation",
+  "version": "0.1.1",
+  "api": 1,
+  "element": "pptx-presentation",
+  "source": {
+    "repository": "yxsgit/works",
+    "revision": "07d1f8c967be80f671e231bf9d615da929e70a37",
+    "path": "pptx-source-preview-poc/src/pptx-presentation.js"
+  },
+  "artifact": {
+    "file": "index.js",
+    "sha256": "cf4c254ca0783f9f0ea419013f7128f76a18c5f61f459c1e41e8531ab376dbdb",
+    "integrity": "sha256-z0wlTKB4P58OpBkBP3Eo92oYxfYfRZweQehTGrN229s=",
+    "size": 1611507
+  },
+  "contract": {
+    "entry": "buildDeck(runtime, context)",
+    "returns": [
+      "ArrayBuffer",
+      "{ bytes: ArrayBuffer, ...metadata }"
+    ],
+    "projectionInternals": "unrestricted",
+    "methods": [
+      "refresh()",
+      "download(filename?)",
+      "next()",
+      "previous()",
+      "goTo(index)",
+      "toggleFullscreen()"
+    ]
+  },
+  "ui": {
+    "compactToolbar": true,
+    "download": true,
+    "downloadReusesBuiltBytes": true
+  },
+  "dependencies": {
+    "pptxgenjs": "4.0.1",
+    "@aiden0z/pptx-renderer": "1.3.0"
+  }
+}

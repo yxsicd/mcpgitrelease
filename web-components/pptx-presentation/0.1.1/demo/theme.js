@@ -1,0 +1,1 @@
+export const C={red:'C7000B',dark:'111111',muted:'666666',light:'F5F6F7'};
