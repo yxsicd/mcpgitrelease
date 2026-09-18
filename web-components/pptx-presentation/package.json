@@ -1,10 +1,10 @@
 {
   "name": "@mcpgitrelease/pptx-presentation",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --format=esm --platform=browser --target=es2022 --minify --sourcemap --outfile=0.1.1/index.js"
+    "build": "esbuild src/index.js --bundle --format=esm --platform=browser --target=es2022 --minify --sourcemap --outfile=0.1.2/index.js"
   },
   "dependencies": {
     "pptxgenjs": "4.0.1",
