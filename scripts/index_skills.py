@@ -66,6 +66,26 @@ for cid,item in sorted(components.items()):
     m=json.loads(manifest.read_text())
     if m["id"]!=cid or m["version"]!=item["version"] or str(m["api"])!=str(item["api"]):
         raise SystemExit(f"component registry/manifest mismatch: {cid}")
+
+    # Agent-visible Skill documentation must not lag the machine contract.
+    skill_text=skill_path.read_text(encoding="utf-8")
+    contract=m.get("contract") or {}
+    required_tokens=[]
+    entry=contract.get("entry")
+    if entry:
+        required_tokens.append(str(entry).split("(",1)[0])
+    for method in contract.get("methods") or []:
+        required_tokens.append(str(method).split("(",1)[0])
+    for event in contract.get("events") or []:
+        required_tokens.append(str(event))
+    for attr in (contract.get("attributes") or {}).keys():
+        required_tokens.append(str(attr))
+    state_schema=(m.get("state") or {}).get("schema")
+    if state_schema:
+        required_tokens.append(str(state_schema))
+    missing_tokens=sorted({token for token in required_tokens if token and token not in skill_text})
+    if missing_tokens:
+        raise SystemExit(f"component Skill contract coverage missing for {cid}: {missing_tokens}")
     catalog.append({
       "id":cid,"skill":skill_path.relative_to(ROOT).as_posix(),
       "version":item["version"],"api":item["api"],"channel":skill.get("channel"),

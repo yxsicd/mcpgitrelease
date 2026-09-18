@@ -30,6 +30,16 @@ Agent-first registry for browser components.
 
 [loader.js](./loader.js) resolves channel -> registry -> immutable artifact and performs SHA-256/SRI verification before Blob import.
 
+## Consumer rules
+
+- Agent discovery starts from this Skill and the selected child component Skill.
+- Machine resolution follows `channels/stable.json` -> immutable registry -> version manifest.
+- Normal consumers should follow `stable`; pin an immutable version only for reproducibility, evidence or rollback.
+- Public loader/registry/artifacts are fetched without protected-host credentials.
+- Protected same-origin projection/data resources use the hosting origin's authentication; component code must not forward Basic credentials.
+- Record immutable tag + integrity when exact evidence matters.
+- Do not duplicate component contracts in local consumer repositories; route to the public child Skill instead.
+
 ## Components
 
 - [pptx-presentation](./pptx-presentation/SKILL.md)

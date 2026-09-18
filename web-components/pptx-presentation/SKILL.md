@@ -2,7 +2,7 @@
 id: web-component:pptx-presentation
 name: pptx-presentation
 kind: web-component
-description: "Source-driven PPTX projection runtime for browser rendering."
+description: "Source-driven PPTX projection runtime for browser rendering, navigation, export and host-owned state."
 disclosure: on_demand
 lifecycle: active
 api: "1"
@@ -15,27 +15,280 @@ metadata:
 
 # pptx-presentation
 
-Thin runtime for source-driven PPTX projections.
+Thin browser runtime for source-driven PPTX projections. Keep the runtime generic: projection code owns business facts, templates and presentation decisions; the component owns execution, rendering and player lifecycle.
 
-## Use
+## When to use
+
+Use this component when an Agent or browser page needs to:
+
+- build PPTX bytes from source code and render them in-browser;
+- navigate slides with mouse, wheel, keyboard or host code;
+- enter fullscreen presentation mode;
+- download the already-built PPTX without rebuilding it;
+- expose current slide and presentation state to the host;
+- follow a centrally managed public component release while keeping projection source local.
+
+## When not to use
+
+Do not use it as:
+
+- a PPTX editor;
+- a business-data store or canonical fact authority;
+- a template DSL that constrains projection internals;
+- a replacement for the projection's own modules, themes, adapters or provenance;
+- an implicit persistence layer. The component does not write browser storage.
+
+## Quick start
 
 ```html
-<pptx-presentation src="./deck.js"></pptx-presentation>
+<pptx-presentation
+  src="./deck.js"
+  chrome="minimal"
+  initial-slide="1">
+</pptx-presentation>
 ```
 
-Projection entry:
+The component's public custom element is `pptx-presentation`.
+
+## Projection contract
+
+The projection module must export:
 
 ```js
 export async function buildDeck(PptxGenJS, context) {
-  return arrayBuffer;
+  const pptx = new PptxGenJS();
+  // Projection internals are unrestricted.
+  return await pptx.write({ outputType: 'arraybuffer' });
 }
 ```
 
-Also accepted: `{ bytes: arrayBuffer, ...metadata }`.
+A metadata-rich result is also supported:
 
-## Boundary
+```js
+export async function buildDeck(PptxGenJS, context) {
+  const bytes = await buildPptxSomehow(PptxGenJS);
 
-The runtime owns execution lifecycle, rendering, navigation and fullscreen.
-The projection owns facts, data adapters, templates, module structure, inheritance/composition and provenance.
+  return {
+    bytes,
+    title: 'Architecture Review',
+    filename: 'architecture-review.pptx',
+    revision: 'r428',
+    provenance: {
+      source: 'TableGit: experiment-results',
+      revision: 'r428'
+    }
+  };
+}
+```
 
-Read the version manifest referenced by frontmatter for exact artifact/source metadata.
+`bytes` is the only required field of the object form. Unknown metadata is tolerated. Common metadata such as `title`, `filename`, `revision` and `provenance` belongs to the projection, not to the runtime's business model.
+
+## Ownership boundary
+
+The runtime owns:
+
+- projection execution;
+- PPTX byte lifecycle;
+- rendering;
+- slide navigation;
+- fullscreen/player controls;
+- download of built bytes;
+- controlled slide state;
+- serializable presentation state;
+- cancellation/load sequencing.
+
+The projection owns:
+
+- canonical facts and data access;
+- joins and transformations;
+- themes and templates;
+- PptxGenJS composition;
+- arbitrary imports and module graphs;
+- inheritance/composition;
+- presentation-specific metadata and provenance.
+
+Thin contract, open projection: do not move projection semantics into the component.
+
+## Attributes
+
+`src`
+: Projection module URL.
+
+`chrome="normal|minimal|none"`
+: Player chrome. `normal` shows title/meta plus controls, `minimal` hides nonessential meta, and `none` removes component chrome.
+
+`initial-slide="N"`
+: 1-based slide requested for first load when no controlled `current-slide` overrides it.
+
+`current-slide="N"`
+: 1-based controlled/current slide. External changes drive navigation; internal navigation canonicalizes this attribute to the actual clamped slide.
+
+## Navigation and lifecycle
+
+Slide numbers exposed to humans/attributes are 1-based. `goTo(index)` uses the existing 0-based programmatic index.
+
+Source change and refresh intentionally have different semantics:
+
+```text
+new src
+  -> treat as a different deck
+  -> resolve current-slide / initial-slide
+  -> do not inherit the old deck's current page
+
+refresh()
+  -> rebuild the same deck
+  -> preserve the current slide by default
+
+refresh({ preserveSlide: false })
+  -> rebuild
+  -> resolve current-slide / initial-slide again
+```
+
+Out-of-range slide requests are clamped. The canonical `current-slide` attribute is updated to the real slide.
+
+## Methods
+
+`refresh(options?)`
+: Rebuild the current projection. Defaults to preserving the current slide.
+
+`download(filename?)`
+: Download the cached PPTX bytes. This does not rebuild the deck. Projection `filename` or `title` metadata is used when no explicit filename is supplied.
+
+`next()`
+: Navigate to the next slide.
+
+`previous()`
+: Navigate to the previous slide.
+
+`goTo(index)`
+: Navigate by 0-based slide index.
+
+`toggleFullscreen()`
+: Enter or leave presentation fullscreen, with CSS fallback where native fullscreen is unavailable.
+
+`getState()`
+: Return a serializable presentation state snapshot.
+
+`restoreState(state, options?)`
+: Restore a state snapshot. By default it does not replace `src`; pass `{ restoreSource: true }` to explicitly allow source restoration.
+
+## State contract
+
+Current state schema: `pptx-presentation/state-v1`.
+
+```js
+const state = presentation.getState();
+// {
+//   schema: 'pptx-presentation/state-v1',
+//   src: './deck.js',
+//   slide: 4,
+//   chrome: 'minimal',
+//   buildRevision: 'r428'
+// }
+
+await presentation.restoreState(state);
+```
+
+The state is JSON-serializable.
+
+The component deliberately has no built-in persistence. It does not write:
+
+- localStorage;
+- sessionStorage;
+- IndexedDB;
+- URL/query/hash state;
+- TableGit or server state.
+
+The host owns persistence policy. A host may persist `statechange.detail.state` anywhere appropriate, or nowhere.
+
+## Events
+
+`ready`
+: Projection built and viewer opened. Detail includes `src`, `slideCount`, build metadata and current state.
+
+`slidechange`
+: Slide navigation completed. Detail includes both 0-based `index` and 1-based `slide`.
+
+`download`
+: A PPTX download was initiated.
+
+`statechange`
+: Serializable state changed. Detail contains `reason` and `state`. Current reasons include `ready`, `slide` and `chrome`.
+
+`error`
+: Projection import/build or viewer opening failed.
+
+## Presentation controls
+
+Fullscreen controls are overlays rather than layout rows, so hiding them does not resize the slide.
+
+Current presentation behavior includes:
+
+- compact previous/next/download/fullscreen controls;
+- automatic control hiding during presentation;
+- top-edge pointer wake behavior;
+- first pointer action after hidden controls wakes controls without accidental navigation;
+- delayed single-click navigation so double-click fullscreen does not also change slide.
+
+These are runtime behavior, not projection-template requirements.
+
+## Authentication boundary
+
+Public loader, registry and immutable component artifacts are public distribution resources and must not receive protected-host Basic credentials.
+
+For public component distribution:
+
+```text
+credentials = omit
+```
+
+For a protected same-origin projection, authentication belongs to the hosting origin/browser protection space. Component code must not construct, persist or forward Basic Authorization credentials.
+
+Read the parent registry Skill and `auth-policy.json` for the distribution policy.
+
+## Versioning and authority
+
+Normal consumers should follow the stable channel through the public loader/registry.
+
+Use an immutable component tag only when exact pinning is required for evidence, reproduction or rollback.
+
+Authority chain:
+
+```text
+stable channel
+  -> immutable registry
+  -> version manifest
+  -> immutable tag
+  -> artifact + integrity
+```
+
+The version manifest referenced in this Skill frontmatter is the machine-readable exact contract and release evidence for the current stable component.
+
+## Failure and recovery
+
+Projection module cannot import
+: Check `src`, same-origin authentication and module syntax. The component emits `error`.
+
+`buildDeck()` throws or returns an invalid value
+: Fix the projection. It must return `ArrayBuffer` or `{ bytes: ArrayBuffer, ... }`.
+
+Viewer open/render fails
+: Treat as runtime/render compatibility failure; inspect the `error` event rather than silently regenerating different content.
+
+Invalid state passed to `restoreState()`
+: The method throws. Do not silently accept a different state schema.
+
+Unknown `chrome`
+: Runtime canonicalizes to `normal`.
+
+Out-of-range slide
+: Runtime clamps and canonicalizes `current-slide`.
+
+Public artifact integrity mismatch
+: Fail closed. Do not import unverified bytes.
+
+## Agent integration rule
+
+Prefer native PptxGenJS composition in the projection. Do not invent a thick helper DSL unless a missing runtime primitive has been demonstrated.
+
+Use the component for reality-facing primitives and lifecycle; let capable Agents retain freedom over slide design.

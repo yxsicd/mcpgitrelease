@@ -37,7 +37,7 @@
       "id": "web-component:pptx-presentation",
       "name": "pptx-presentation",
       "kind": "web-component",
-      "description": "Source-driven PPTX projection runtime for browser rendering.",
+      "description": "Source-driven PPTX projection runtime for browser rendering, navigation, export and host-owned state.",
       "disclosure": "on_demand",
       "lifecycle": "active",
       "api": "1",
