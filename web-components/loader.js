@@ -1,7 +1,7 @@
 const CDN_ROOT='https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@main/web-components/';
 
 async function readResponse(url,options={}){
-  const r=await fetch(url,{cache:'no-store',...options});
+  const r=await fetch(url,{cache:'no-store',credentials:'omit',...options});
   if(!r.ok)throw new Error(`component fetch failed: ${r.status} ${url}`);
   return r;
 }

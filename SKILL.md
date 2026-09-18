@@ -1,24 +1,29 @@
 ---
+id: release:mcpgitrelease
 name: mcpgitrelease
-description: "Public release authority and Agent-first discovery root for MCPGit runtime artifacts, SDKs, deployment assets, and Web Components."
+kind: release-authority
+description: "Public release authority and Agent-first discovery root for MCPGit deliverables."
 disclosure: progressive
 lifecycle: stable
-profile: release-authority
+authority: release:mcpgitrelease
+metadata:
+  skill-index: ./metadata/skills.json
+  web-components: ./web-components/catalog.json
 ---
 
 # mcpgitrelease
 
-This repository is the public release authority for MCPGit deliverables.
+Public release authority for MCPGit deliverables.
 
 ## Agent entrypoints
 
-- [Web Components](./web-components/SKILL.md) — browser components distributed through jsDelivr.
-- [README](./README.md) — human-oriented release and installation documentation.
-- [MCP Agent Quickstart](./docs/MCP_AGENT_QUICKSTART.md) — MCP client discovery and usage.
+- [Web Components](./web-components/SKILL.md)
+- [README](./README.md)
+- [MCP Agent Quickstart](./docs/MCP_AGENT_QUICKSTART.md)
 
 ## Rules
 
-- Treat immutable tags/releases as published artifact authority.
-- Treat mutable channels as pointers only; resolve them to immutable artifacts before execution.
-- Follow child `SKILL.md` files for progressive disclosure instead of scanning the whole repository.
-- Do not infer source authority from release artifacts; use each artifact's source revision metadata.
+- Immutable tags/releases are artifact authority.
+- Mutable channels are pointers only.
+- Follow child `SKILL.md` files progressively.
+- Use metadata pointers for large machine-readable state instead of expanding frontmatter.

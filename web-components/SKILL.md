@@ -1,42 +1,35 @@
 ---
+id: registry:web-components
 name: mcpgitrelease-web-components
-description: "Discover, load, publish, promote, and roll back MCPGit browser Web Components."
+kind: skill-registry
+description: "Registry and distribution surface for public MCPGit browser Web Components."
 disclosure: progressive
 lifecycle: active
-profile: web-components-registry
+api: "1"
+authority: release:mcpgitrelease
+metadata:
+  catalog: ./catalog.json
+  channel: ./channels/stable.json
+  registry-schema: ./registry.schema.json
+  auth-policy: ./auth-policy.json
 ---
 
 # MCPGit Web Components
 
-This directory is the Agent-first registry and distribution surface for public browser components.
+Agent-first registry for browser components.
 
 ## Discovery
 
-1. Read [channels/stable.json](./channels/stable.json) for the mutable stable pointer.
-2. Resolve its `registry` field to an immutable registry document under [registry/](./registry/).
-3. Select a component by id.
-4. Follow the exact immutable component entry URL and integrity value from that registry item.
-5. Read the component's own `SKILL.md` before integrating it.
+1. Read `channels/stable.json`.
+2. Resolve its immutable registry document.
+3. Select a component id.
+4. Read that component's `SKILL.md`.
+5. Load the exact artifact only after resolving integrity metadata.
 
-## Runtime loader
+## Runtime
 
-- [loader.js](./loader.js) resolves channel -> registry -> immutable artifact.
-- The loader fetches component bytes, verifies SHA-256/SRI, then imports from a Blob URL for CSP-restricted hosts.
-- Pages should follow a channel or compatibility policy; artifacts remain immutable.
+[loader.js](./loader.js) resolves channel -> registry -> immutable artifact and performs SHA-256/SRI verification before Blob import.
 
-## Available components
+## Components
 
-- [pptx-presentation](./pptx-presentation/SKILL.md) — presentation projection runtime.
-
-## Publishing model
-
-```text
-source authority
-  -> build/test
-  -> immutable component version
-  -> immutable registry
-  -> mutable channel pointer
-  -> consumer loader
-```
-
-A component directory owns its own usage contract, build contract, manifest and examples.
+- [pptx-presentation](./pptx-presentation/SKILL.md)

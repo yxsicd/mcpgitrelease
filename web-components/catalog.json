@@ -1,0 +1,16 @@
+{
+  "schema": "mcpgitrelease/web-components-catalog/v1",
+  "registry": "web-components/registry/2026-09-18.1.json",
+  "components": [
+    {
+      "id": "pptx-presentation",
+      "skill": "web-components/pptx-presentation/SKILL.md",
+      "version": "0.1.0",
+      "api": 1,
+      "channel": "stable",
+      "manifest": "web-components/pptx-presentation/0.1.0/manifest.json",
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@pptx-presentation-v0.1.0/web-components/pptx-presentation/0.1.0/index.js",
+      "integrity": "sha256-i3DSwPnt5fJerRnmY8MnJXCDfrykEj+iQqM31VoroR4="
+    }
+  ]
+}

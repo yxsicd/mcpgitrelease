@@ -1,0 +1,52 @@
+{
+  "schema": "mcpgitrelease/skill-index/v1",
+  "skills": [
+    {
+      "path": "SKILL.md",
+      "id": "release:mcpgitrelease",
+      "name": "mcpgitrelease",
+      "kind": "release-authority",
+      "description": "Public release authority and Agent-first discovery root for MCPGit deliverables.",
+      "disclosure": "progressive",
+      "lifecycle": "stable",
+      "authority": "release:mcpgitrelease",
+      "metadata": {
+        "skill-index": "./metadata/skills.json",
+        "web-components": "./web-components/catalog.json"
+      }
+    },
+    {
+      "path": "web-components/SKILL.md",
+      "id": "registry:web-components",
+      "name": "mcpgitrelease-web-components",
+      "kind": "skill-registry",
+      "description": "Registry and distribution surface for public MCPGit browser Web Components.",
+      "disclosure": "progressive",
+      "lifecycle": "active",
+      "api": "1",
+      "authority": "release:mcpgitrelease",
+      "metadata": {
+        "catalog": "./catalog.json",
+        "channel": "./channels/stable.json",
+        "registry-schema": "./registry.schema.json",
+        "auth-policy": "./auth-policy.json"
+      }
+    },
+    {
+      "path": "web-components/pptx-presentation/SKILL.md",
+      "id": "web-component:pptx-presentation",
+      "name": "pptx-presentation",
+      "kind": "web-component",
+      "description": "Source-driven PPTX projection runtime for browser rendering.",
+      "disclosure": "on_demand",
+      "lifecycle": "active",
+      "api": "1",
+      "channel": "stable",
+      "authority": "release:mcpgitrelease",
+      "metadata": {
+        "manifest": "./0.1.0/manifest.json",
+        "parent-registry": "../catalog.json"
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "mcpgitrelease/web-components-auth/v1",
+  "publicDistribution": {
+    "authentication": "none",
+    "credentials": "omit",
+    "rule": "Public loader, registry and immutable component artifacts must never depend on or forward YXSGIT Basic credentials."
+  },
+  "protectedHostedConsumers": {
+    "authentication": "HTTP Basic",
+    "protectionSpace": "origin + realm",
+    "requirements": [
+      "Keep the realm stable for resources that belong to one hosted authentication boundary.",
+      "Let the browser reuse successful Basic credentials for same-origin pages, modules and projection resources.",
+      "Component code must not construct, persist or forward Basic Authorization headers.",
+      "Cross-origin public component fetches use credentials=omit."
+    ]
+  },
+  "longLivedSession": {
+    "status": "design-required",
+    "objective": "One interactive authentication, then long-lived silent reuse across related hosted sites.",
+    "recommendedModel": "Exchange successful Basic bootstrap for an opaque server-side session; store only an HttpOnly Secure session cookie, never the Basic password.",
+    "constraints": [
+      "Do not rely on Basic itself for a server-controlled multi-day cache lifetime.",
+      "Use explicit expiry, rotation and revocation.",
+      "Only share a parent-domain cookie when all sibling hosts are one trust boundary; otherwise use a central auth host with silent host-specific session minting.",
+      "Do not expose the session token to JavaScript."
+    ]
+  }
+}
