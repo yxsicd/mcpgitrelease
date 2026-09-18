@@ -9,7 +9,7 @@ api: "1"
 channel: stable
 authority: release:mcpgitrelease
 metadata:
-  manifest: ./0.1.4/manifest.json
+  manifest: ./0.1.5/manifest.json
   parent-registry: ../catalog.json
 ---
 
