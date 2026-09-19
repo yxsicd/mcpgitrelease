@@ -37,6 +37,9 @@ generated={ROOT/'metadata/skills.json', ROOT/'web-components/catalog.json'}
 skills=[]
 for path in sorted(ROOT.rglob("SKILL.md")):
     if ".git" in path.parts: continue
+    # Repository-local maintainer Skills are deliberately outside the public
+    # consumer discovery index. Validate them separately below.
+    if ".agents" in path.parts: continue
     meta=parse_frontmatter(path)
     rel=path.relative_to(ROOT).as_posix()
     for _,value in (meta.get("metadata") or {}).items():
@@ -47,6 +50,24 @@ for path in sorted(ROOT.rglob("SKILL.md")):
 
 ids=[s["id"] for s in skills]
 if len(ids)!=len(set(ids)): raise SystemExit("duplicate Skill ids")
+
+maintainer_skills=[]
+maintainer_root=ROOT/".agents"
+if maintainer_root.exists():
+    for path in sorted(maintainer_root.rglob("SKILL.md")):
+        meta=parse_frontmatter(path)
+        rel=path.relative_to(ROOT).as_posix()
+        for _,value in (meta.get("metadata") or {}).items():
+            target=local_ref(path.parent,value)
+            if target and not target.exists() and target not in generated:
+                raise SystemExit(f"{rel}: metadata target missing: {value}")
+        maintainer_skills.append({"path":rel,**meta})
+    maintainer_ids=[s["id"] for s in maintainer_skills]
+    if len(maintainer_ids)!=len(set(maintainer_ids)):
+        raise SystemExit("duplicate maintainer Skill ids")
+    overlap=set(ids)&set(maintainer_ids)
+    if overlap:
+        raise SystemExit(f"public/maintainer Skill id collision: {sorted(overlap)}")
 
 channel_path=ROOT/"web-components/channels/stable.json"
 channel=json.loads(channel_path.read_text())
@@ -102,8 +123,8 @@ if "--check" in sys.argv:
     for path,value in [(out1,skill_index),(out2,component_catalog)]:
         if not path.exists() or path.read_text()!=render(value):
             raise SystemExit(f"generated metadata stale: {path.relative_to(ROOT)}")
-    print(f"PASS skill index: {len(skills)} Skills, {len(catalog)} Web Components")
+    print(f"PASS skill index: {len(skills)} public Skills, {len(maintainer_skills)} maintainer Skills, {len(catalog)} Web Components")
 else:
     out1.write_text(render(skill_index),encoding="utf-8")
     out2.write_text(render(component_catalog),encoding="utf-8")
-    print(f"WROTE {out1.relative_to(ROOT)} {out2.relative_to(ROOT)}")
+    print(f"WROTE {out1.relative_to(ROOT)} {out2.relative_to(ROOT)}; validated {len(maintainer_skills)} maintainer Skills")

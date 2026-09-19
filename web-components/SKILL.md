@@ -18,6 +18,9 @@ metadata:
 
 Agent-first registry for browser components.
 
+This registry is a consumer discovery surface. Repository-local maintainer
+Skills are intentionally excluded from the generated public Skill index.
+
 ## Discovery
 
 1. Read `channels/stable.json`.
@@ -39,6 +42,8 @@ Agent-first registry for browser components.
 - Protected same-origin projection/data resources use the hosting origin's authentication; component code must not forward Basic credentials.
 - Record immutable tag + integrity when exact evidence matters.
 - Do not duplicate component contracts in local consumer repositories; route to the public child Skill instead.
+- Custom application policy should stay in ordinary host/projection JavaScript
+  unless a child component documents a required runtime primitive.
 
 ## Components
 

@@ -17,6 +17,11 @@ metadata:
 
 Thin browser runtime for source-driven PPTX projections. Keep the runtime generic: projection code owns business facts, templates and presentation decisions; the component owns execution, rendering and player lifecycle.
 
+This file is the consumer contract for released behavior. It tells a CodeAgent
+what it can rely on when using the component; maintainer architecture and
+capability-admission rationale are intentionally kept out of this public
+contract.
+
 ## When to use
 
 Use this component when an Agent or browser page needs to:
@@ -108,6 +113,10 @@ The projection owns:
 - presentation-specific metadata and provenance.
 
 Thin contract, open projection: do not move projection semantics into the component.
+
+For custom interaction policy, UI, orchestration or workflow, prefer ordinary
+host/deck JavaScript composed around the runtime primitives. Component
+attributes are declarative conveniences, not a configuration language.
 
 ## Attributes
 
@@ -289,6 +298,9 @@ Public artifact integrity mismatch
 
 ## Agent integration rule
 
-Prefer native PptxGenJS composition in the projection. Do not invent a thick helper DSL unless a missing runtime primitive has been demonstrated.
+Prefer native PptxGenJS composition in the projection and ordinary JavaScript
+for host policy. Use the component's small imperative API and events where a
+stable runtime boundary is useful. Do not invent a thick helper/configuration
+DSL unless a missing runtime primitive has been demonstrated.
 
 Use the component for reality-facing primitives and lifecycle; let capable Agents retain freedom over slide design.
