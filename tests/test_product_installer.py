@@ -422,11 +422,20 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("linux-amd64", workflow)
         self.assertIn("linux-arm64", workflow)
         self.assertIn("offline-latest.json", workflow)
-        self.assertIn("scripts/mcpgit-offline-release.py assets", workflow)
+        self.assertIn('layer.get("asset_tag") or source_tag', workflow)
+        self.assertIn('gh release download "$asset_tag"', workflow)
         self.assertIn("scripts/mcpgit-offline-release.py verify", workflow)
         self.assertIn("--asset-dir", workflow)
         self.assertNotIn("verify-layer", workflow)
         self.assertNotIn("--kind base_image", workflow)
+
+    def test_offline_installers_follow_content_addressed_layer_tags(self) -> None:
+        novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
+        fetch = (ROOT / "deploy/novice-fetch.sh").read_text(encoding="utf-8")
+        for script in (novice, fetch):
+            self.assertIn('layer.get("asset_tag", "")', script)
+            self.assertIn('releases/download/$asset_release_tag', script)
+            self.assertIn("invalid release asset tag in manifest", script)
 
     def test_template_install_creates_repositories_missing_from_archive(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")

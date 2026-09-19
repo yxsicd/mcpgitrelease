@@ -85,9 +85,9 @@ import sys
 for layer in json.load(open(sys.argv[1]))["layers"]:
     if sys.argv[2] == "exact" or (sys.argv[2] == "program" and layer["kind"] != "program"):
         continue
-    print(layer["file"], layer["sha256"])
+    print(layer["file"], layer["sha256"], layer.get("asset_tag", ""))
 PY
-  while read -r file expected; do
+  while read -r file expected asset_tag; do
     [ -n "$file" ] || continue
     if [ -f "$target/$file" ]; then
       actual=$(sha256_file "$target/$file")
@@ -95,8 +95,13 @@ PY
       echo "    changed: $file"
     fi
     echo "    download: $file"
+    asset_release_tag=${asset_tag:-$tag}
+    case "$asset_release_tag" in
+      ''|*[!A-Za-z0-9._-]*) echo 'invalid release asset tag in manifest' >&2; return 1 ;;
+    esac
+    asset_base_url="https://github.com/yxsicd/mcpgitrelease/releases/download/$asset_release_tag"
     curl -fsSL --connect-timeout 10 --max-time 600 --retry 2 --retry-delay 2 \
-      "$base_url/$file" -o "$target/$file.partial.$$"
+      "$asset_base_url/$file" -o "$target/$file.partial.$$"
     [ "$(sha256_file "$target/$file.partial.$$")" = "$expected" ] || {
       rm -f "$target/$file.partial.$$"; echo 'downloaded layer digest mismatch' >&2; return 1;
     }
