@@ -11,11 +11,17 @@ def test_multi_instance_keyboard_has_explicit_active_owner():
     assert "if(!this.active&&document.fullscreenElement!==this)return;" in SOURCE
 
 
-def test_interaction_and_fullscreen_claim_ownership():
-    assert "this.activate('pointer')" in SOURCE
-    assert "this._onFocusIn=()=>this.activate('focus')" in SOURCE
+def test_host_policy_does_not_implicitly_claim_ownership():
+    assert "this.activate('pointer')" not in SOURCE
+    assert "activate('focus')" not in SOURCE
+    assert "_onFocusIn" not in SOURCE
+
+
+def test_fullscreen_claims_ownership_as_runtime_mechanism():
     assert "this.activate('fullscreen')" in SOURCE
     assert "activechange" in SOURCE
+    toggle = SOURCE[SOURCE.index("async toggleFullscreen()"):SOURCE.index("#slideAttr(", SOURCE.index("async toggleFullscreen()"))]
+    assert toggle.index("this.activate('fullscreen')") > toggle.index("this.setAttribute('data-css-fullscreen','')")
 
 
 def test_restore_state_does_not_claim_ownership():
