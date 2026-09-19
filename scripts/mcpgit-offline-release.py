@@ -83,6 +83,7 @@ def _descriptor_reaches_config(
     if media_type not in {
         "application/vnd.oci.image.index.v1+json",
         "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
     }:
         return False
     digest_value = str(descriptor.get("digest", ""))
@@ -100,7 +101,10 @@ def _descriptor_reaches_config(
     value = _json_bytes(blob, "OCI descriptor blob")
     if not isinstance(value, dict):
         fail("Docker image archive OCI descriptor blob must be an object")
-    if media_type == "application/vnd.oci.image.manifest.v1+json":
+    if media_type in {
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
+    }:
         config = value.get("config")
         return isinstance(config, dict) and config.get("digest") == config_id
     manifests = value.get("manifests")
@@ -225,6 +229,9 @@ def load_manifest(path: pathlib.Path) -> dict[str, object]:
             fail(f"manifest layer {name} has an invalid byte count")
         if not SAFE_NAME_RE.fullmatch(str(layer.get("version", ""))):
             fail(f"manifest layer {name} has an invalid version")
+        asset_tag = layer.get("asset_tag")
+        if asset_tag is not None and not SAFE_NAME_RE.fullmatch(str(asset_tag)):
+            fail(f"manifest layer {name} has an invalid asset_tag")
     base = layers[0]
     if not IMAGE_TAG_RE.fullmatch(str(base.get("image_tag", ""))):
         fail("base image_tag is invalid")
@@ -232,6 +239,21 @@ def load_manifest(path: pathlib.Path) -> dict[str, object]:
         fail("base image_id is invalid")
     if not SAFE_NAME_RE.fullmatch(str(layers[2].get("target", ""))):
         fail("program target is invalid")
+    executables = layers[2].get("executables", ["mcpgit", "mcpgitgw"])
+    if (
+        not isinstance(executables, list)
+        or not executables
+        or any(
+            not isinstance(name, str)
+            or not SAFE_NAME_RE.fullmatch(name)
+            or pathlib.PurePosixPath(name).name != name
+            for name in executables
+        )
+        or len(set(executables)) != len(executables)
+    ):
+        fail("program executables must be unique safe basenames")
+    if not {"mcpgit", "mcpgitgw"}.issubset(executables):
+        fail("program executables must include mcpgit and mcpgitgw")
     return value
 
 
@@ -249,9 +271,21 @@ def command_create(args: argparse.Namespace) -> None:
             paths[0],
             image_tag=args.base_image_tag,
             image_id=args.base_image_id,
+            **({"asset_tag": args.base_asset_tag} if args.base_asset_tag else {}),
         ),
-        artifact("tools_volume", args.tools_version, paths[1]),
-        artifact("program", args.program_version, paths[2], target=args.target),
+        artifact(
+            "tools_volume",
+            args.tools_version,
+            paths[1],
+            **({"asset_tag": args.tools_asset_tag} if args.tools_asset_tag else {}),
+        ),
+        artifact(
+            "program",
+            args.program_version,
+            paths[2],
+            target=args.target,
+            executables=args.program_executable or ["mcpgit", "mcpgitgw"],
+        ),
     ]
     if getattr(args, "templates", None):
         templates_path = pathlib.Path(args.templates).resolve()
@@ -433,6 +467,9 @@ def parser() -> argparse.ArgumentParser:
         create.add_argument("--" + name.replace("_", "-"), required=True)
     create.add_argument("--templates", required=False)
     create.add_argument("--templates-version", required=False)
+    create.add_argument("--base-asset-tag", required=False)
+    create.add_argument("--tools-asset-tag", required=False)
+    create.add_argument("--program-executable", action="append", default=[])
     create.add_argument("--created-unix", type=int, required=True)
     create.set_defaults(handler=command_create)
     verify = commands.add_parser("verify")
