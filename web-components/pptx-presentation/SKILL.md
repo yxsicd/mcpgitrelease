@@ -9,7 +9,7 @@ api: "1"
 channel: stable
 authority: release:mcpgitrelease
 metadata:
-  manifest: ./0.1.7/manifest.json
+  manifest: ./0.1.8/manifest.json
   parent-registry: ../catalog.json
 ---
 
@@ -183,6 +183,12 @@ attributes are declarative conveniences, not a configuration language.
 ## Navigation and lifecycle
 
 Slide numbers exposed to humans/attributes are 1-based. `goTo(index)` uses the existing 0-based programmatic index.
+
+Hidden physical slides are excluded from the public navigation set when the
+renderer supplies complete hidden-slide metadata. Public `slideCount`,
+`current-slide`, `next()`, `previous()` and `goTo(index)` therefore
+address visible slides only. If renderer metadata is absent or incomplete, the
+component fails open and keeps the physical slide set rather than guessing.
 
 Source change and refresh intentionally have different semantics:
 
