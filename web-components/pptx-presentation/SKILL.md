@@ -130,6 +130,12 @@ runtime does not interpret, clone, serialize, persist or merge it into
 `getState()`. Assigning a new context does not implicitly rebuild the deck;
 the host calls `refresh()` when its own policy requires a rebuild.
 
+Capability injection is explicit. The component does not discover privileged
+objects from ambient page state. Because the selected projection module
+receives `context`, a host should inject privileged capabilities only when it
+trusts that projection source. Omitting `context` remains a complete,
+supported way to use the component.
+
 ## Ownership boundary
 
 The runtime owns:

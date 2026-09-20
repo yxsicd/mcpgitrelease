@@ -48,5 +48,15 @@ def test_machine_auth_policy_keeps_capabilities_host_owned_and_optional():
     assert policy["authentication"] == "host-owned"
     assert policy["hostOwnsIdentity"] is True
     assert policy["componentOwnsCredentials"] is False
+    assert policy["componentOwnsCapabilityLifecycle"] is False
+    assert policy["implicitCapabilityDiscovery"] is False
+    assert policy["hostMustAuthorizeProjection"] is True
     assert policy["additionalLogin"] is False
     assert policy["requiredForComponentOpen"] is False
+
+
+def test_privileged_capabilities_are_explicit_not_ambient():
+    assert "Capability injection is explicit" in SKILL_TEXT
+    assert "does not discover privileged objects from ambient page state" in SKILL_TEXT
+    assert "only when it trusts that projection source" in SKILL_TEXT
+    assert "Omitting `context` remains a complete, supported way" in SKILL_TEXT

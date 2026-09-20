@@ -9,6 +9,9 @@
     "authentication": "host-owned",
     "hostOwnsIdentity": true,
     "componentOwnsCredentials": false,
+    "componentOwnsCapabilityLifecycle": false,
+    "implicitCapabilityDiscovery": false,
+    "hostMustAuthorizeProjection": true,
     "additionalLogin": false,
     "requiredForComponentOpen": false,
     "rule": "Optional capability objects are supplied by the host page in its existing identity and permission context; the component treats them as opaque context and must not create a second authentication surface."
