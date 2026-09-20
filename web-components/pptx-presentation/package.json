@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "pptxgenjs": "4.0.1",
-    "@aiden0z/pptx-renderer": "1.3.0"
+    "@aiden0z/pptx-renderer": "https://github.com/yxsicd/pptx-renderer/releases/download/yxs-pptx-renderer-candidate-0cb602c/aiden0z-pptx-renderer-1.3.0-yxs-0cb602c.tgz"
   },
   "devDependencies": {
     "esbuild": "0.25.10"
