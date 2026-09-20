@@ -88,6 +88,48 @@ export async function buildDeck(PptxGenJS, context) {
 
 `bytes` is the only required field of the object form. Unknown metadata is tolerated. Common metadata such as `title`, `filename`, `revision` and `provenance` belongs to the projection, not to the runtime's business model.
 
+### Host-owned context and optional capabilities
+
+The host may assign any JavaScript value to the element's `context` property
+before loading or refreshing a projection. The runtime forwards that value
+unchanged as the second argument to `buildDeck(runtime, context)`.
+
+```js
+const presentation = document.querySelector('pptx-presentation');
+
+presentation.context = {
+  capabilities: {
+    tablegit: pageTableGit,
+    binary: pageBinary
+  },
+  data: hostOwnedData
+};
+
+presentation.src = './deck.js';
+```
+
+The object shape above is only a host convention. `pptx-presentation` does
+not define a TableGit schema, table locator, row model, query language,
+revision policy, cache policy or Binary asset model. A projection may use an
+injected capability when present and fall back to ordinary local or
+caller-provided data when it is absent.
+
+```js
+export async function buildDeck(PptxGenJS, context) {
+  const tablegit = context?.capabilities?.tablegit;
+  const facts = tablegit
+    ? await loadFactsWithApplicationOwnedCode(tablegit)
+    : localFallbackFacts;
+
+  return buildPresentation(PptxGenJS, facts);
+}
+```
+
+`context` is deliberately not an HTML attribute or configuration DSL. The
+runtime does not interpret, clone, serialize, persist or merge it into
+`getState()`. Assigning a new context does not implicitly rebuild the deck;
+the host calls `refresh()` when its own policy requires a rebuild.
+
 ## Ownership boundary
 
 The runtime owns:
@@ -252,6 +294,13 @@ credentials = omit
 ```
 
 For a protected same-origin projection, authentication belongs to the hosting origin/browser protection space. Component code must not construct, persist or forward Basic Authorization credentials.
+
+Injected capabilities follow the same rule. A TableGit, Binary or other
+capability is supplied by the host page already operating in that page's
+authentication/authorization context. The presentation component must not
+prompt for an additional login, request credentials, manufacture
+`Authorization` headers, persist tokens, or turn capability availability
+into a prerequisite for opening the component.
 
 Read the parent registry Skill and `auth-policy.json` for the distribution policy.
 
