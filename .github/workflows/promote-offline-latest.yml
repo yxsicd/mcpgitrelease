@@ -36,12 +36,21 @@ jobs:
             gh release view "$tag" --repo "$GH_REPO" >/dev/null
             mkdir -p "$tmp/$arch"
             gh release download "$tag" --repo "$GH_REPO" --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
-            python3 scripts/mcpgit-offline-release.py assets \
-              --manifest "$tmp/$arch/mcpgit-offline-release-v1.json" \
-              | while IFS= read -r asset; do
-                  [ -n "$asset" ] || continue
-                  gh release download "$tag" --repo "$GH_REPO" --pattern "$asset" --dir "$tmp/$arch"
-                done
+            asset_map="$tmp/$arch/assets.tsv"
+            python3 - "$tmp/$arch/mcpgit-offline-release-v1.json" "$tag" >"$asset_map" <<'PY'
+          import json, re, sys
+          manifest, source_tag = sys.argv[1:]
+          for layer in json.load(open(manifest))["layers"]:
+              tag = layer.get("asset_tag") or source_tag
+              if not re.fullmatch(r"[A-Za-z0-9._-]+", tag):
+                  raise SystemExit("invalid release asset tag in manifest")
+              print(f"{layer['file']}\t{tag}")
+          PY
+            while IFS=$'\t' read -r asset asset_tag; do
+              [ -n "$asset" ] || continue
+              gh release view "$asset_tag" --repo "$GH_REPO" >/dev/null
+              gh release download "$asset_tag" --repo "$GH_REPO" --pattern "$asset" --dir "$tmp/$arch"
+            done < "$asset_map"
             python3 scripts/mcpgit-offline-release.py verify \
               --manifest "$tmp/$arch/mcpgit-offline-release-v1.json" \
               --asset-dir "$tmp/$arch"

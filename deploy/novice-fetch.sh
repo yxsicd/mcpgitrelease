@@ -86,9 +86,9 @@ import json
 import sys
 
 for layer in json.load(open(sys.argv[1]))["layers"]:
-    print(layer["file"], layer["sha256"])
+    print(layer["file"], layer["sha256"], layer.get("asset_tag", ""))
 PY
-while read -r file expected; do
+while read -r file expected asset_tag; do
   [ -n "$file" ] || continue
   if [ -f "$bundle_dir/$file" ]; then
     actual=$(shasum -a 256 "$bundle_dir/$file" | awk '{print $1}')
@@ -99,8 +99,13 @@ while read -r file expected; do
     echo "    changed: $file (new layer hash)"
   fi
   echo "    download: $file"
+  asset_release_tag=${asset_tag:-$release_tag}
+  case "$asset_release_tag" in
+    ''|*[!A-Za-z0-9._-]*) echo 'invalid release asset tag in manifest' >&2; exit 1 ;;
+  esac
+  asset_base_url="https://github.com/yxsicd/mcpgitrelease/releases/download/$asset_release_tag"
   curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-    "$base_url/$file" -o "$bundle_dir/$file"
+    "$asset_base_url/$file" -o "$bundle_dir/$file"
 done < "$layer_list"
 
 echo "==> verifying bundle integrity"
