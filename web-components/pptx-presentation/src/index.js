@@ -1,5 +1,6 @@
 import PptxGenJS from 'pptxgenjs';
 import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from '@aiden0z/pptx-renderer/browser';
+import { createVisibleSlideMap } from './slide-map.js';
 
 const template=document.createElement('template');
 template.innerHTML=`<style>
@@ -45,7 +46,7 @@ class PptxPresentation extends HTMLElement{
       if(typeof mod.buildDeck!=='function')throw new Error(`${src} must export buildDeck(runtime, context)`);
       const result=normalizeBuildResult(await mod.buildDeck(PptxGenJS,this.context));const buildMs=performance.now()-buildStart;if(seq!==this._loadSeq)return;this._bytes=result.bytes;this._buildMeta=result.meta||{};
       const openStart=performance.now();this._viewer=await PptxViewer.open(result.bytes,this.$('.viewer'),{zipLimits:RECOMMENDED_ZIP_LIMITS,renderMode:'slide',fitMode:'contain'});if(seq!==this._loadSeq)return;
-      const slides=this._viewer.presentationData?.slides;this._slideMap=Array.isArray(slides)?slides.flatMap((slide,index)=>slide?.hidden?[]:[index]):Array.from({length:this._viewer.slideCount},(_,index)=>index);this._total=this._slideMap.length;this._current=this._total?Math.max(0,Math.min(this._total-1,requested-1)):0;const physical=this._slideMap[this._current];if(physical!==undefined&&(physical!==0||this._current))await this._viewer.renderSlide(physical);else if(physical===undefined)this.$('.viewer').replaceChildren();this.#syncCurrentSlideAttribute();this.$('.meta').textContent=this._buildMeta?.title||src;this.$('.meta').title=`${src} · build ${buildMs.toFixed(0)} ms · open ${(performance.now()-openStart).toFixed(0)} ms · ready ${(performance.now()-started).toFixed(0)} ms`;this.$('.loading').hidden=true;this.#sync();
+      const slides=this._viewer.presentationData?.slides;this._slideMap=createVisibleSlideMap(slides,this._viewer.slideCount);this._total=this._slideMap.length;this._current=this._total?Math.max(0,Math.min(this._total-1,requested-1)):0;const physical=this._slideMap[this._current];if(physical!==undefined&&(physical!==0||this._current))await this._viewer.renderSlide(physical);else if(physical===undefined)this.$('.viewer').replaceChildren();this.#syncCurrentSlideAttribute();this.$('.meta').textContent=this._buildMeta?.title||src;this.$('.meta').title=`${src} · build ${buildMs.toFixed(0)} ms · open ${(performance.now()-openStart).toFixed(0)} ms · ready ${(performance.now()-started).toFixed(0)} ms`;this.$('.loading').hidden=true;this.#sync();
       this.dispatchEvent(new CustomEvent('ready',{detail:{src,slideCount:this._total,build:result.meta,state:this.getState()}}));this.#emitStateChange('ready');
     }catch(error){if(seq!==this._loadSeq)return;this.$('.loading').hidden=false;this.$('.loading').textContent=`Failed: ${error.message}`;this.dispatchEvent(new CustomEvent('error',{detail:{src,error}}))}
   }
