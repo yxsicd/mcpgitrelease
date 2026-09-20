@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -6,6 +7,7 @@ SOURCE = Path("web-components/pptx-presentation/src/index.js").read_text(encodin
 STABLE = Path("web-components/pptx-presentation/0.1.7/index.js").read_text(encoding="utf-8")
 SKILL = Path("web-components/pptx-presentation/SKILL.md").read_text(encoding="utf-8")
 SKILL_TEXT = re.sub(r"\s+", " ", SKILL)
+AUTH_POLICY = json.loads(Path("web-components/auth-policy.json").read_text(encoding="utf-8"))
 
 
 def test_released_and_candidate_runtime_forward_host_context():
@@ -39,3 +41,12 @@ def test_context_does_not_expand_component_state_or_auth_surface():
     assert observed and "context" not in observed.group(1)
     assert state and "context" not in state.group(1)
     assert "Authorization" not in SOURCE
+
+
+def test_machine_auth_policy_keeps_capabilities_host_owned_and_optional():
+    policy = AUTH_POLICY["injectedCapabilities"]
+    assert policy["authentication"] == "host-owned"
+    assert policy["hostOwnsIdentity"] is True
+    assert policy["componentOwnsCredentials"] is False
+    assert policy["additionalLogin"] is False
+    assert policy["requiredForComponentOpen"] is False

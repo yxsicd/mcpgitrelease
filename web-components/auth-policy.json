@@ -5,6 +5,14 @@
     "credentials": "omit",
     "rule": "Public loader, registry and immutable component artifacts must never depend on or forward YXSGIT Basic credentials."
   },
+  "injectedCapabilities": {
+    "authentication": "host-owned",
+    "hostOwnsIdentity": true,
+    "componentOwnsCredentials": false,
+    "additionalLogin": false,
+    "requiredForComponentOpen": false,
+    "rule": "Optional capability objects are supplied by the host page in its existing identity and permission context; the component treats them as opaque context and must not create a second authentication surface."
+  },
   "protectedHostedConsumers": {
     "authentication": "HTTP Basic",
     "protectionSpace": "origin + realm",
