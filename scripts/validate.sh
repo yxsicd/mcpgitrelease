@@ -24,7 +24,7 @@ python3 -c 'compile(open("scripts/service_interface_smoke.py", encoding="utf-8")
 python3 scripts/index_skills.py --check
 node --test web-components/mcpgit-runtime/tests/*.test.mjs
 node web-components/mcpgit-runtime/scripts/build.mjs
-git diff --exit-code -- web-components/mcpgit-runtime/0.1.0/index.js
+git diff --exit-code -- web-components/mcpgit-runtime/0.1.1/index.js
 python3 -m unittest discover -s tests -v
 git diff --check
 
