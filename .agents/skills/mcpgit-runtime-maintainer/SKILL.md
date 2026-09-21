@@ -52,6 +52,11 @@ Keep application schemas and workflow policy out of L0-L2.
 4. Keep `call()` as the compatibility escape hatch.
 5. Prefer normal JavaScript composition over configuration DSLs.
 
+Transport diagnostics are part of the reusable mechanism boundary. Preserve
+HTTP failure identity before attempting to classify malformed successful MCP
+payloads: non-2xx undecodable responses are HTTP errors; only successful
+undecodable responses are decode errors.
+
 ## TableGit and Binary
 
 Exact revision binding, relation revision injection, immutable Binary identity,

@@ -75,6 +75,11 @@ requests so future page endpoints do not require a new SDK method.
 Calls accept an optional AbortSignal. Structured failures surface as
 `McpGitError` while preserving original details.
 
+Direct MCP transport preserves transport diagnostics: a non-success HTTP
+response that is not a decodable MCP envelope surfaces as `mcp_http_error`
+with HTTP status/body details; a successful HTTP response that cannot be
+decoded as JSON or SSE MCP remains `mcp_decode_error`.
+
 ## Composition boundary
 
 The runtime owns reusable MCPGit mechanics. Product schemas, report semantics,

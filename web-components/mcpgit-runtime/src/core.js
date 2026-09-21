@@ -144,7 +144,7 @@ export class McpGitHttpTransport {
     endpoint = '/mcp',
     fetch: fetchImpl = globalThis.fetch?.bind(globalThis),
     baseUrl = globalThis.location?.href ?? 'http://localhost/',
-    clientInfo = { name: 'mcpgit-runtime', version: '0.1.1' },
+    clientInfo = { name: 'mcpgit-runtime', version: '0.1.2' },
   } = {}) {
     if (typeof fetchImpl !== 'function') throw new TypeError('fetch must be a function');
     this.endpoint = new URL(endpoint, baseUrl).href;
@@ -184,6 +184,12 @@ export class McpGitHttpTransport {
     try {
       envelope = parseMcpEnvelope(text);
     } catch (error) {
+      if (!response.ok) {
+        throw new McpGitError('MCP HTTP request failed', {
+          code: 'mcp_http_error',
+          details: { status: response.status, body: text, cause: String(error) },
+        });
+      }
       throw new McpGitError('Failed to decode MCP response', {
         code: 'mcp_decode_error',
         details: { status: response.status, body: text, cause: String(error) },

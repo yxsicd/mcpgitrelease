@@ -130,6 +130,7 @@ test('direct MCP 2026-07-28 transport emits the official sessionless envelope', 
   assert.equal(body.method, 'tools/call');
   assert.equal(body.params.name, 'skill_get');
   assert.equal(body.params._meta['io.modelcontextprotocol/protocolVersion'], '2026-07-28');
+  assert.equal(body.params._meta['io.modelcontextprotocol/clientInfo'].version, '0.1.2');
   assert.deepEqual(body.params._meta['io.modelcontextprotocol/clientCapabilities'], {});
 });
 
@@ -169,4 +170,38 @@ test('direct transport decodes SSE and client endpoint composes it automatically
     view: { kind: 'committed', revision: 'R1' },
   });
   assert.equal(result.revision, 'R1');
+});
+
+test('direct transport preserves HTTP failure semantics before decode errors', async () => {
+  const transport = new McpGitHttpTransport({
+    endpoint: '/mcp',
+    baseUrl: 'https://example.test/app/',
+    fetch: async () => new Response('<html>not found</html>', {
+      status: 404,
+      headers: { 'Content-Type': 'text/html' },
+    }),
+  });
+
+  await assert.rejects(
+    () => transport.callTool('skill_list', {}),
+    error => error instanceof McpGitError &&
+      error.code === 'mcp_http_error' &&
+      error.details?.status === 404 &&
+      error.details?.body === '<html>not found</html>',
+  );
+});
+
+test('successful malformed responses remain decode errors', async () => {
+  const transport = new McpGitHttpTransport({
+    endpoint: '/mcp',
+    baseUrl: 'https://example.test/app/',
+    fetch: async () => new Response('not an MCP envelope', { status: 200 }),
+  });
+
+  await assert.rejects(
+    () => transport.callTool('skill_list', {}),
+    error => error instanceof McpGitError &&
+      error.code === 'mcp_decode_error' &&
+      error.details?.status === 200,
+  );
 });
