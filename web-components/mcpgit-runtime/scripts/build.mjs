@@ -13,7 +13,12 @@ const core = await readFile(corePath, 'utf8');
 const index = await readFile(indexPath, 'utf8');
 const importLine = "import { McpGitClient, McpGitError, McpGitView } from './core.js';\n";
 if (!index.startsWith(importLine)) throw new Error('unexpected src/index.js import boundary');
+const reexportLine = "export { McpGitClient, McpGitError, McpGitView };";
+const host = index.slice(importLine.length)
+  .split('\n')
+  .filter(line => line.trim() !== reexportLine)
+  .join('\n');
 
 await mkdir(outDir, { recursive: true });
-await writeFile(outPath, core.trimEnd() + '\n\n' + index.slice(importLine.length), 'utf8');
+await writeFile(outPath, core.trimEnd() + '\n\n' + host, 'utf8');
 console.log('WROTE 0.1.0/index.js');
