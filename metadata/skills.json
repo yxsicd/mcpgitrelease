@@ -33,6 +33,22 @@
       }
     },
     {
+      "path": "web-components/mcpgit-runtime/SKILL.md",
+      "id": "web-component:mcpgit-runtime",
+      "name": "mcpgit-runtime",
+      "kind": "web-component",
+      "description": "Headless MCPGit browser application runtime for dynamic Skill discovery and programmable capability composition.",
+      "disclosure": "on_demand",
+      "lifecycle": "active",
+      "api": "1",
+      "channel": "stable",
+      "authority": "release:mcpgitrelease",
+      "metadata": {
+        "manifest": "./0.1.0/manifest.json",
+        "parent-registry": "../catalog.json"
+      }
+    },
+    {
       "path": "web-components/pptx-presentation/SKILL.md",
       "id": "web-component:pptx-presentation",
       "name": "pptx-presentation",

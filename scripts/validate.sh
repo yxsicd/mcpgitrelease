@@ -22,6 +22,9 @@ python3 -c 'compile(open("scripts/install_state.py", encoding="utf-8").read(), "
 python3 -c 'compile(open("scripts/verify_repository_layout.py", encoding="utf-8").read(), "scripts/verify_repository_layout.py", "exec")'
 python3 -c 'compile(open("scripts/service_interface_smoke.py", encoding="utf-8").read(), "scripts/service_interface_smoke.py", "exec")'
 python3 scripts/index_skills.py --check
+node --test web-components/mcpgit-runtime/tests/*.test.mjs
+node web-components/mcpgit-runtime/scripts/build.mjs
+git diff --exit-code -- web-components/mcpgit-runtime/0.1.0/index.js
 python3 -m unittest discover -s tests -v
 git diff --check
 

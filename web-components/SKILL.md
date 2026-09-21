@@ -47,4 +47,5 @@ Skills are intentionally excluded from the generated public Skill index.
 
 ## Components
 
+- [mcpgit-runtime](./mcpgit-runtime/SKILL.md)
 - [pptx-presentation](./pptx-presentation/SKILL.md)

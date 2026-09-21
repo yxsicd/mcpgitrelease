@@ -1,0 +1,18 @@
+{
+  "schema": "mcpgitrelease/web-components-registry/v1",
+  "release": "2026-09-21.1",
+  "components": {
+    "mcpgit-runtime": {
+      "version": "0.1.0",
+      "api": 1,
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@mcpgit-runtime-v0.1.0/web-components/mcpgit-runtime/0.1.0/index.js",
+      "integrity": "sha256-yXjfEHHjdvxypzeVGJZzbt123h5XEHxE4yETpNbmLDQ="
+    },
+    "pptx-presentation": {
+      "version": "0.1.8",
+      "api": 1,
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@pptx-presentation-v0.1.8/web-components/pptx-presentation/0.1.8/index.js",
+      "integrity": "sha256-DlDc+mge+KAPpgCqqQxqWtmzMPA3YoQ0TuILpdFPVRw="
+    }
+  }
+}

@@ -1,7 +1,17 @@
 {
   "schema": "mcpgitrelease/web-components-catalog/v1",
-  "registry": "web-components/registry/2026-09-20.1.json",
+  "registry": "web-components/registry/2026-09-21.1.json",
   "components": [
+    {
+      "id": "mcpgit-runtime",
+      "skill": "web-components/mcpgit-runtime/SKILL.md",
+      "version": "0.1.0",
+      "api": 1,
+      "channel": "stable",
+      "manifest": "web-components/mcpgit-runtime/0.1.0/manifest.json",
+      "entry": "https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@mcpgit-runtime-v0.1.0/web-components/mcpgit-runtime/0.1.0/index.js",
+      "integrity": "sha256-yXjfEHHjdvxypzeVGJZzbt123h5XEHxE4yETpNbmLDQ="
+    },
     {
       "id": "pptx-presentation",
       "skill": "web-components/pptx-presentation/SKILL.md",
