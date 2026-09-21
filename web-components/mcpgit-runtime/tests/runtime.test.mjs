@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { McpGitClient, McpGitError, McpGitRuntimeElement } from '../src/index.js';
+import { McpGitClient, McpGitError, McpGitHttpTransport, McpGitRuntimeElement } from '../src/index.js';
 
 function kernelTransport(log, { denied = null } = {}) {
   const lanes = { read_op: 'read', write_op: 'write', publish_op: 'publish', table_query: 'read', table_rows_get: 'read', table_relation_query: 'read', binary_get: 'read' };
@@ -89,4 +89,84 @@ test('headless runtime shares one client without requiring DOM UI', async () => 
   runtime.disconnect();
   assert.equal(runtime.client, null);
   assert.throws(() => runtime.requireClient(), /not connected/);
+});
+
+test('direct MCP 2026-07-28 transport emits the official sessionless envelope', async () => {
+  const calls = [];
+  const transport = new McpGitHttpTransport({
+    endpoint: '/mcp',
+    baseUrl: 'https://example.test/app/',
+    fetch: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          structuredContent: {
+            skill: {
+              summary: { skill_version: '2.2.0' },
+              operations: [{ name: 'table_rows_get', access_lane: 'read' }],
+            },
+          },
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+
+  const value = await transport.callTool('skill_get', {
+    skill_id: 'table.query',
+    operation: 'table_rows_get',
+  });
+  assert.equal(value.skill.summary.skill_version, '2.2.0');
+
+  const request = calls[0];
+  assert.equal(request.url, 'https://example.test/mcp');
+  assert.equal(request.init.method, 'POST');
+  assert.equal(request.init.credentials, 'same-origin');
+  assert.equal(request.init.headers['MCP-Protocol-Version'], '2026-07-28');
+  assert.equal(request.init.headers['Mcp-Method'], 'tools/call');
+  assert.equal(request.init.headers['Mcp-Name'], 'skill_get');
+  const body = JSON.parse(request.init.body);
+  assert.equal(body.method, 'tools/call');
+  assert.equal(body.params.name, 'skill_get');
+  assert.equal(body.params._meta['io.modelcontextprotocol/protocolVersion'], '2026-07-28');
+  assert.deepEqual(body.params._meta['io.modelcontextprotocol/clientCapabilities'], {});
+});
+
+test('direct transport decodes SSE and client endpoint composes it automatically', async () => {
+  const client = new McpGitClient({
+    endpoint: '/mcp',
+    baseUrl: 'https://example.test/app/',
+    fetch: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      let payload;
+      if (body.params.name === 'skill_get') {
+        payload = {
+          skill: {
+            summary: { skill_version: '2.2.0' },
+            operations: [{ name: body.params.arguments.operation, access_lane: 'read' }],
+          },
+        };
+      } else {
+        payload = { rows: [], revision: 'R1' };
+      }
+      return new Response(
+        'event: message\ndata: ' + JSON.stringify({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: { structuredContent: payload },
+        }) + '\n\n',
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+      );
+    },
+  });
+
+  assert.ok(client.transport instanceof McpGitHttpTransport);
+  const result = await client.table.rowsGet({
+    repo: 'tablegit',
+    path: 'data/tables/facts',
+    keys: ['k'],
+    view: { kind: 'committed', revision: 'R1' },
+  });
+  assert.equal(result.revision, 'R1');
 });

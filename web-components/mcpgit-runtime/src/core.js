@@ -4,6 +4,17 @@ const RUN_TOOL = Object.freeze({
   publish: 'skill_run_publish',
 });
 
+const MCP_PROTOCOL_VERSION = '2026-07-28';
+const MCP_ACCEPT = 'application/json, text/event-stream';
+
+function modernMcpMeta(clientInfo) {
+  return {
+    'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
+    'io.modelcontextprotocol/clientInfo': clientInfo,
+    'io.modelcontextprotocol/clientCapabilities': {},
+  };
+}
+
 function abortError() {
   return new DOMException('The operation was aborted', 'AbortError');
 }
@@ -83,6 +94,40 @@ function forbidAuthorization(init) {
   return headers;
 }
 
+function parseMcpEnvelope(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const data = text
+      .split(/\r?\n/)
+      .filter(line => line.startsWith('data:'))
+      .map(line => line.slice(5).trimStart())
+      .join('\n');
+    if (!data) throw new Error('MCP response was neither JSON nor SSE');
+    return JSON.parse(data);
+  }
+}
+
+function toolPayload(envelope) {
+  if (envelope?.error) {
+    throw new McpGitError(envelope.error.message ?? 'MCP JSON-RPC error', {
+      code: String(envelope.error.code ?? 'mcp_jsonrpc_error'),
+      details: envelope.error,
+    });
+  }
+  const result = envelope?.result;
+  if (result?.structuredContent !== undefined) return result.structuredContent;
+  const text = result?.content?.[0]?.text;
+  if (typeof text === 'string') {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+  return result;
+}
+
 export class McpGitError extends Error {
   constructor(message, { code = 'mcpgit_error', skillId = null, operation = null, details = null } = {}) {
     super(message);
@@ -94,12 +139,74 @@ export class McpGitError extends Error {
   }
 }
 
+export class McpGitHttpTransport {
+  constructor({
+    endpoint = '/mcp',
+    fetch: fetchImpl = globalThis.fetch?.bind(globalThis),
+    baseUrl = globalThis.location?.href ?? 'http://localhost/',
+    clientInfo = { name: 'mcpgit-runtime', version: '0.1.1' },
+  } = {}) {
+    if (typeof fetchImpl !== 'function') throw new TypeError('fetch must be a function');
+    this.endpoint = new URL(endpoint, baseUrl).href;
+    this.fetch = fetchImpl;
+    this.clientInfo = Object.freeze({ ...clientInfo });
+    this._nextId = 1;
+  }
+
+  async callTool(name, arguments_ = {}, { signal } = {}) {
+    checkAbort(signal);
+    const id = this._nextId++;
+    const body = {
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: {
+        name,
+        arguments: arguments_,
+        _meta: modernMcpMeta(this.clientInfo),
+      },
+    };
+    const response = await this.fetch(this.endpoint, {
+      method: 'POST',
+      credentials: 'same-origin',
+      signal,
+      headers: {
+        Accept: MCP_ACCEPT,
+        'Content-Type': 'application/json',
+        'MCP-Protocol-Version': MCP_PROTOCOL_VERSION,
+        'Mcp-Method': 'tools/call',
+        'Mcp-Name': name,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    let envelope;
+    try {
+      envelope = parseMcpEnvelope(text);
+    } catch (error) {
+      throw new McpGitError('Failed to decode MCP response', {
+        code: 'mcp_decode_error',
+        details: { status: response.status, body: text, cause: String(error) },
+      });
+    }
+    if (!response.ok && !envelope?.error) {
+      throw new McpGitError('MCP HTTP request failed', {
+        code: 'mcp_http_error',
+        details: { status: response.status, envelope },
+      });
+    }
+    return toolPayload(envelope);
+  }
+}
+
 export class McpGitClient {
   constructor({
     callTool,
+    endpoint,
     readBinary,
     fetch: fetchImpl = globalThis.fetch?.bind(globalThis),
     baseUrl = globalThis.location?.href ?? 'http://localhost/',
+    clientInfo,
     emit = null,
   } = {}) {
     if (callTool !== undefined && typeof callTool !== 'function') {
@@ -113,6 +220,17 @@ export class McpGitClient {
     }
     if (!callTool && !fetchImpl && !readBinary) {
       throw new TypeError('at least one MCPGit transport capability is required');
+    }
+
+    this.transport = null;
+    if (!callTool && endpoint !== undefined) {
+      this.transport = new McpGitHttpTransport({
+        endpoint,
+        fetch: fetchImpl,
+        baseUrl,
+        ...(clientInfo ? { clientInfo } : {}),
+      });
+      callTool = this.transport.callTool.bind(this.transport);
     }
 
     this._callTool = callTool ?? null;

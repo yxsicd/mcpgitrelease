@@ -34,6 +34,21 @@ Discovery helpers are `skills.list()`, `skills.get()` and
 share `runtime.client`. `disconnect()` detaches it. `runtime.ready` resolves
 to the first connected client.
 
+On an MCPGit-hosted page the runtime can create its own official modern
+Streamable HTTP transport:
+
+```js
+const client = runtime.connect({ endpoint: '/mcp' });
+```
+
+The direct transport uses MCP `2026-07-28` sessionless `tools/call` framing.
+It does not require `initialize` or `Mcp-Session-Id`. An injected
+`callTool(name, arguments)` remains supported when the host already owns the
+transport.
+
+`McpGitHttpTransport` is exported for applications that need the transport
+without the DOM component.
+
 The element proxies `call()`, `at()` and `request()`.
 
 Events: `ready`, `clientchange`, `operation`, `error`.

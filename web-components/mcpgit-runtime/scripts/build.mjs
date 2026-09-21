@@ -11,9 +11,9 @@ const outPath = path.join(outDir, 'index.js');
 
 const core = await readFile(corePath, 'utf8');
 const index = await readFile(indexPath, 'utf8');
-const importLine = "import { McpGitClient, McpGitError, McpGitView } from './core.js';\n";
+const importLine = "import { McpGitClient, McpGitError, McpGitHttpTransport, McpGitView } from './core.js';\n";
 if (!index.startsWith(importLine)) throw new Error('unexpected src/index.js import boundary');
-const reexportLine = "export { McpGitClient, McpGitError, McpGitView };";
+const reexportLine = "export { McpGitClient, McpGitError, McpGitHttpTransport, McpGitView };";
 const host = index.slice(importLine.length)
   .split('\n')
   .filter(line => line.trim() !== reexportLine)

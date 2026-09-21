@@ -1,4 +1,4 @@
-import { McpGitClient, McpGitError, McpGitView } from './core.js';
+import { McpGitClient, McpGitError, McpGitHttpTransport, McpGitView } from './core.js';
 
 const HTMLElementBase = globalThis.HTMLElement ?? class {};
 
@@ -65,4 +65,4 @@ if (globalThis.customElements && !globalThis.customElements.get('mcpgit-runtime'
   globalThis.customElements.define('mcpgit-runtime', McpGitRuntimeElement);
 }
 
-export { McpGitClient, McpGitError, McpGitView };
+export { McpGitClient, McpGitError, McpGitHttpTransport, McpGitView };

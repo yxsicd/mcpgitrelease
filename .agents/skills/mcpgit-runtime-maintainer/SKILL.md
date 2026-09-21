@@ -27,6 +27,12 @@ The dynamic floor is:
 `call(skill, operation, args)` must continue to reach newly introduced MCPGit
 Skills before a hand-written convenience API exists.
 
+The browser-native direct transport follows MCPGit's stable
+`mcpgit.application.v7` contract: modern MCP `2026-07-28`, sessionless
+`tools/call`, routing headers matching the JSON-RPC body, and the eight-tool
+Kernel. Keep the wire transport isolated below `McpGitClient` so protocol
+evolution does not leak into application components.
+
 ## Layering
 
 - L0: host transports such as `callTool`, same-origin fetch, and optional
