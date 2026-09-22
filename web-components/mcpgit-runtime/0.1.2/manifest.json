@@ -1,0 +1,64 @@
+{
+  "schema": "mcpgitrelease/web-component/v1",
+  "id": "mcpgit-runtime",
+  "version": "0.1.2",
+  "api": 1,
+  "element": "mcpgit-runtime",
+  "source": {
+    "repository": "yxsicd/mcpgitrelease",
+    "revision": "13f09f38bc604669883995cdd74a8edf6e100852",
+    "path": "web-components/mcpgit-runtime/src/index.js"
+  },
+  "artifact": {
+    "file": "index.js",
+    "sha256": "37c37fb417c6d52552c226a4c47ec6073f41a4c357a53bd0b89f64a8c357698e",
+    "integrity": "sha256-N8N/tBfG1SVSwiakxH7GBz9BpMNXpTvQuJ9kqMNXaY4=",
+    "size": 15389
+  },
+  "contract": {
+    "entry": "McpGitClient(options)",
+    "methods": [
+      "connect(options)",
+      "disconnect()",
+      "call(skillId, operation, arguments, options?)",
+      "at(views)",
+      "request(path, init?)",
+      "skills.list()",
+      "skills.get()",
+      "skills.invalidate()",
+      "table.query()",
+      "table.rowsGet()",
+      "table.relationQuery()",
+      "binary.get()",
+      "binary.clearCache()",
+      "hosted.request()"
+    ],
+    "events": [
+      "ready",
+      "clientchange",
+      "operation",
+      "error"
+    ]
+  },
+  "programming": {
+    "dynamicSkillDiscovery": true,
+    "permissionDoesNotChangeApiShape": true,
+    "exactCommittedViews": true,
+    "binaryImmutableMemoization": true,
+    "hostedGenericRequest": true,
+    "directMcpTransport": {
+      "protocol": "2026-07-28",
+      "endpointDefault": "/mcp",
+      "lifecycle": "sessionless",
+      "initializeRequired": false,
+      "mcpSessionIdRequired": false
+    },
+    "injectedTransport": true,
+    "ui": "headless",
+    "futureExecutionLayers": [
+      "javascript",
+      "wasm"
+    ]
+  },
+  "dependencies": {}
+}

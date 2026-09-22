@@ -26,5 +26,5 @@ const host = index.slice(importLine.length)
   .join('\n');
 
 await mkdir(outDir, { recursive: true });
-await writeFile(outPath, core.trimEnd() + '\n\n' + host, 'utf8');
+await writeFile(outPath, core.trimEnd() + '\n\n' + host.trimEnd() + '\n', 'utf8');
 console.log(`WROTE ${version}/index.js`);
