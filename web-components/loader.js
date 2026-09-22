@@ -1,4 +1,4 @@
-const CDN_ROOT='https://cdn.jsdelivr.net/gh/yxsicd/mcpgitrelease@main/web-components/';
+const CONTROL_ROOT='https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/web-components/';
 
 async function readResponse(url,options={}){
   const r=await fetch(url,{cache:'no-store',credentials:'omit',...options});
@@ -8,6 +8,12 @@ async function readResponse(url,options={}){
 
 async function readJson(url){
   return (await readResponse(url)).json();
+}
+
+function mutableControlUrl(path){
+  const url=new URL(path,CONTROL_ROOT);
+  url.searchParams.set('_mcpgit_control',Date.now().toString());
+  return url;
 }
 
 function sriFromDigest(bytes){
@@ -33,8 +39,8 @@ async function importVerified(url,expectedIntegrity){
 }
 
 export async function resolveComponent(name,{channel='stable'}={}){
-  const pointer=await readJson(new URL(`channels/${channel}.json`,CDN_ROOT));
-  const registryUrl=new URL(pointer.registry,new URL('channels/',CDN_ROOT));
+  const pointer=await readJson(mutableControlUrl(`channels/${channel}.json`));
+  const registryUrl=new URL(pointer.registry,new URL('channels/',CONTROL_ROOT));
   const registry=await readJson(registryUrl);
   const item=registry.components?.[name];
   if(!item)throw new Error(`component not found: ${name}`);

@@ -10,6 +10,11 @@ Pages follow a small mutable channel pointer. The channel resolves an immutable 
 page -> loader -> channels/stable.json -> registry/<release>.json -> exact component tag -> index.js
 ```
 
+The mutable channel pointer is control-plane state and is read from the
+repository authority rather than a branch-cached artifact CDN. Immutable
+component bytes still come from exact tags through jsDelivr and are verified
+with SHA-256/SRI before import.
+
 Typical page:
 
 ```html

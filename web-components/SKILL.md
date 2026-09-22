@@ -33,6 +33,12 @@ Skills are intentionally excluded from the generated public Skill index.
 
 [loader.js](./loader.js) resolves channel -> registry -> immutable artifact and performs SHA-256/SRI verification before Blob import.
 
+Mutable channel discovery is control-plane traffic: the loader reads
+`channels/<channel>.json` from the repository authority with a per-read cache
+buster. Immutable component artifacts remain exact-tag CDN objects and are
+verified before import. Do not move mutable channel pointers back behind a
+long-lived branch CDN cache.
+
 ## Consumer rules
 
 - Agent discovery starts from this Skill and the selected child component Skill.

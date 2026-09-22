@@ -79,4 +79,8 @@ a concrete workload proves the minimum stable ABI.
 - Consumer Skill covers every manifest method and event.
 - Skill index and catalog validation pass.
 - Immutable artifact, registry and tag integrity are recorded.
+- Public loader resolution must return the newly promoted stable runtime in a
+  real browser. Mutable channel pointers must not depend on long-lived
+  branch-CDN cache state; immutable tagged artifacts should continue to use
+  CDN + SRI verification.
 - Commits record Development-Node and Development-Worktree.
