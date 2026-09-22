@@ -6,7 +6,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const corePath = path.join(root, 'src', 'core.js');
 const indexPath = path.join(root, 'src', 'index.js');
-const outDir = path.join(root, '0.1.1');
+const packagePath = path.join(root, 'package.json');
+const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
+const version = packageJson.version;
+if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) {
+  throw new Error('package.json must declare a semantic version');
+}
+const outDir = path.join(root, version);
 const outPath = path.join(outDir, 'index.js');
 
 const core = await readFile(corePath, 'utf8');
@@ -21,4 +27,4 @@ const host = index.slice(importLine.length)
 
 await mkdir(outDir, { recursive: true });
 await writeFile(outPath, core.trimEnd() + '\n\n' + host, 'utf8');
-console.log('WROTE 0.1.1/index.js');
+console.log(`WROTE ${version}/index.js`);
