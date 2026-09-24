@@ -11,11 +11,15 @@ authority: release:mcpgitrelease
 metadata:
   manifest: ./0.1.8/manifest.json
   parent-registry: ../catalog.json
+  composition: ../AGENT_COMPOSITION.md
 ---
 
 # pptx-presentation
 
 Thin browser runtime for source-driven PPTX projections. Keep the runtime generic: projection code owns business facts, templates and presentation decisions; the component owns execution, rendering and player lifecycle.
+
+For the supported composition with `mcpgit-runtime`, use the shared
+[Agent composition recipe](../AGENT_COMPOSITION.md).
 
 This file is the consumer contract for released behavior. It tells a CodeAgent
 what it can rely on when using the component; maintainer architecture and

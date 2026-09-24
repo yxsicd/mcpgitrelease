@@ -1,0 +1,17 @@
+{
+  "schema": "mst-workstream/v1",
+  "task_id": "WS-20260924-agent-first-composition-v1",
+  "target_branch": "main",
+  "workstream_branch": "work/WS-20260924-agent-first-composition-v1",
+  "original_base": "906c41b18a11eb16c30b0875663e71ca3bdcf46b",
+  "objective": "Publish one Agent-first consumer composition recipe for the already released mcpgit-runtime and pptx-presentation components without changing either stable artifact or public runtime API.",
+  "execution_state": "complete",
+  "integration_state": "ready",
+  "boundaries": "Documentation, public Skill discovery metadata, generated Skill index, tests and workstream evidence only. No released component artifact, manifest, registry selection, stable channel, or MCPGit Program deployment changes.",
+  "validation": [
+    "python3 scripts/index_skills.py --check: PASS, 4 public Skills / 3 maintainer Skills / 2 Web Components",
+    "composition contract: 4/4 PASS",
+    "scripts/validate.sh: PASS, Node runtime 10/10 and Python release suite 107/107",
+    "git diff --check: PASS"
+  ]
+}

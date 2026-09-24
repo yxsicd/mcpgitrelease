@@ -12,6 +12,7 @@ metadata:
   channel: ./channels/stable.json
   registry-schema: ./registry.schema.json
   auth-policy: ./auth-policy.json
+  composition: ./AGENT_COMPOSITION.md
 ---
 
 # MCPGit Web Components
@@ -27,7 +28,9 @@ Skills are intentionally excluded from the generated public Skill index.
 2. Resolve its immutable registry document.
 3. Select a component id.
 4. Read that component's `SKILL.md`.
-5. Load the exact artifact only after resolving integrity metadata.
+5. When multiple components are composed, read
+   [AGENT_COMPOSITION.md](./AGENT_COMPOSITION.md).
+6. Load the exact artifact only after resolving integrity metadata.
 
 ## Runtime
 
@@ -50,6 +53,9 @@ long-lived branch CDN cache.
 - Do not duplicate component contracts in local consumer repositories; route to the public child Skill instead.
 - Custom application policy should stay in ordinary host/projection JavaScript
   unless a child component documents a required runtime primitive.
+- For the supported `mcpgit-runtime` + `pptx-presentation` composition,
+  follow [AGENT_COMPOSITION.md](./AGENT_COMPOSITION.md) instead of duplicating
+  integration snippets in application repositories.
 
 ## Components
 

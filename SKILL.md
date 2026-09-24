@@ -9,6 +9,7 @@ authority: release:mcpgitrelease
 metadata:
   skill-index: ./metadata/skills.json
   web-components: ./web-components/catalog.json
+  agent-composition: ./web-components/AGENT_COMPOSITION.md
 ---
 
 # mcpgitrelease
@@ -18,6 +19,7 @@ Public release authority for MCPGit deliverables.
 ## Agent entrypoints
 
 - [Web Components](./web-components/SKILL.md)
+- [Web Component Agent Composition](./web-components/AGENT_COMPOSITION.md)
 - [README](./README.md)
 - [MCP Agent Quickstart](./docs/MCP_AGENT_QUICKSTART.md)
 

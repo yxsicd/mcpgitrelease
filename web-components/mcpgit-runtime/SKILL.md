@@ -11,12 +11,17 @@ authority: release:mcpgitrelease
 metadata:
   manifest: ./0.1.2/manifest.json
   parent-registry: ../catalog.json
+  composition: ../AGENT_COMPOSITION.md
 ---
 
 # mcpgit-runtime
 
 `mcpgit-runtime` is a headless browser runtime. The reusable JavaScript core is
 `McpGitClient`; the custom element is only a DOM lifecycle host.
+
+For composition with other released Web Components, including
+`pptx-presentation`, use the shared
+[Agent composition recipe](../AGENT_COMPOSITION.md).
 
 ## Dynamic programming
 

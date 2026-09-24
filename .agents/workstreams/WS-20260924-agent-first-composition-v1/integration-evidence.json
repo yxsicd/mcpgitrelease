@@ -1,0 +1,36 @@
+{
+  "schema": "mst-workstream-integration-evidence/v1",
+  "task_id": "WS-20260924-agent-first-composition-v1",
+  "status": "merged",
+  "target_commit": "906c41b18a11eb16c30b0875663e71ca3bdcf46b",
+  "validated_source_commit": "8302aa343dba7a31e8bca52b418a138d6f914b7f",
+  "integrated_source_commit": "8302aa343dba7a31e8bca52b418a138d6f914b7f",
+  "qualified_merge_tree": "8c2c615628df7cb39f1bcbaf4c3e822de09b48e9",
+  "checks": [
+    {
+      "name": "source validation",
+      "status": "passed",
+      "evidence": "scripts/validate.sh passed on source branch: Skill index 4 public/3 maintainer/2 Web Components, Node runtime 10/10, Python release suite 107/107, composition contract 4/4; log SHA-256 320dc15394cee0857fbdd00957c7a65520538364c1eec02dcd2a7468d211912a."
+    },
+    {
+      "name": "exact merge-tree validation",
+      "status": "passed",
+      "evidence": "Target 906c41b18a11eb16c30b0875663e71ca3bdcf46b plus source 8302aa343dba7a31e8bca52b418a138d6f914b7f produced tree 8c2c615628df7cb39f1bcbaf4c3e822de09b48e9 with no conflicts. Composition 4/4, Node runtime 10/10 and Python release suite 107/107 passed; validation log SHA-256 25bcc7f8f8603cd6a2055f85d26da14256d7dda77b2c878fe9f77112f1075f52."
+    },
+    {
+      "name": "agent-first discovery",
+      "status": "passed",
+      "evidence": "Root release Skill, Web Components registry Skill, mcpgit-runtime Consumer Skill and pptx-presentation Consumer Skill all expose one shared composition pointer; generated metadata/skills.json carries the same machine-discoverable links."
+    },
+    {
+      "name": "stable composition contract",
+      "status": "passed",
+      "evidence": "Recipe follows stable channel discovery, verified immutable loading, one shared mcpgit-runtime client, opaque pptx-presentation context injection, dynamic Skill discovery/call, exact views and host-owned authentication boundaries. It intentionally does not hard-code current component version tags."
+    },
+    {
+      "name": "release boundary",
+      "status": "passed",
+      "evidence": "No released component artifact, manifest, stable channel, immutable registry release or MCPGit Program/image/instance deployment is changed by this workstream."
+    }
+  ]
+}

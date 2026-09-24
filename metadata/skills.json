@@ -12,7 +12,8 @@
       "authority": "release:mcpgitrelease",
       "metadata": {
         "skill-index": "./metadata/skills.json",
-        "web-components": "./web-components/catalog.json"
+        "web-components": "./web-components/catalog.json",
+        "agent-composition": "./web-components/AGENT_COMPOSITION.md"
       }
     },
     {
@@ -29,7 +30,8 @@
         "catalog": "./catalog.json",
         "channel": "./channels/stable.json",
         "registry-schema": "./registry.schema.json",
-        "auth-policy": "./auth-policy.json"
+        "auth-policy": "./auth-policy.json",
+        "composition": "./AGENT_COMPOSITION.md"
       }
     },
     {
@@ -45,7 +47,8 @@
       "authority": "release:mcpgitrelease",
       "metadata": {
         "manifest": "./0.1.2/manifest.json",
-        "parent-registry": "../catalog.json"
+        "parent-registry": "../catalog.json",
+        "composition": "../AGENT_COMPOSITION.md"
       }
     },
     {
@@ -61,7 +64,8 @@
       "authority": "release:mcpgitrelease",
       "metadata": {
         "manifest": "./0.1.8/manifest.json",
-        "parent-registry": "../catalog.json"
+        "parent-registry": "../catalog.json",
+        "composition": "../AGENT_COMPOSITION.md"
       }
     }
   ]
