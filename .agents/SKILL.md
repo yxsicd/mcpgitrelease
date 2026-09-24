@@ -8,6 +8,7 @@ lifecycle: active
 authority: source:mcpgitrelease
 metadata:
   pptx-presentation: ./skills/pptx-presentation-maintainer/SKILL.md
+  mcpgit-runtime: ./skills/mcpgit-runtime-maintainer/SKILL.md
 ---
 
 # mcpgitrelease Maintainer Skills
@@ -20,8 +21,13 @@ It is not part of the public consumer Skill registry.
 - When changing web-components/pptx-presentation/**, read
   ./skills/pptx-presentation-maintainer/SKILL.md before editing runtime behavior
   or extending its public contract.
+- When changing web-components/mcpgit-runtime/**, read
+  ./skills/mcpgit-runtime-maintainer/SKILL.md before editing runtime behavior
+  or extending its public contract.
 - Consumer-facing usage remains authoritative in
-  ../web-components/pptx-presentation/SKILL.md.
+  ../web-components/pptx-presentation/SKILL.md,
+  ../web-components/mcpgit-runtime/SKILL.md, and
+  ../web-components/AGENT_COMPOSITION.md.
 
 ## Separation rule
 
