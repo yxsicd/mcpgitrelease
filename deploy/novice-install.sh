@@ -310,7 +310,7 @@ fi
 
 if [ "$refresh_bundle" = true ] || [ ! -f "$install_tool" ]; then
   mkdir -p "$bundle/scripts"
-  for helper in mcpgit-offline-release.py bootstrap-builtin-auth.py install_state.py agent_onboarding_probe.py; do
+  for helper in mcpgit-offline-release.py bootstrap-builtin-auth.py install_state.py agent_onboarding_probe.py auto_upgrade.py; do
     fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/scripts/$helper" "$bundle/scripts/$helper"
   done
   fetch_snapshot_file "$MCPGIT_INSTALL_CONTENT_BASE/Dockerfile.offline-runtime" "$bundle/Dockerfile.offline-runtime"
