@@ -31,6 +31,39 @@ uses the root installer with `--program-only`, retaining the recorded port,
 data volume, config directory, credential directory and tool installation path.
 No GitHub Actions, Node installation or private source checkout is required.
 
+## Continuous online Program updates
+
+After the first verified installation, enable the host-side updater once:
+
+```sh
+mcpgitctl --instance ddtry auto-upgrade enable
+```
+
+From then on, publishing and promoting a new immutable Program in this GitHub
+repository is the only routine release action. The host checks
+`offline-latest.json` every 15 minutes, selects its native architecture, and
+delegates preflight, byte verification, transactional container replacement,
+health acceptance, and rollback to the same installer used by an attended
+upgrade. It does not mount the Docker socket into MCPGit or modify `/data`.
+
+The controller defers activation while one-minute host load exceeds 1.5 per
+CPU or the MCPGit container exceeds 75 percent CPU. A continuously busy
+instance is updated after a bounded six-hour deferral so security and
+correctness releases do not remain stale indefinitely. These thresholds and
+the interval can be changed when enabling the updater, for example:
+
+```sh
+mcpgitctl --instance ddtry auto-upgrade enable \
+  --interval 300 --max-defer 7200 --max-container-cpu 85
+```
+
+Linux installs use a systemd timer (system scope for root, user scope
+otherwise); macOS installs use a LaunchAgent. Each attempt and final exact
+source/manifest identity is recorded under
+`$MCPGIT_STATE_DIR/auto-upgrade` (default `~/.mcpgit/auto-upgrade`). The update
+is fail-closed if the pointer, architecture selection, preflight, activation,
+or exact post-upgrade source readback differs.
+
 The equivalent explicit installer option is `--program-only`. For an existing
 older installation without a receipt, first run the ordinary installer once
 with the same instance name, paths and port. It fully checks the cached release

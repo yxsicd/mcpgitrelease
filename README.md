@@ -19,6 +19,11 @@ without activation. A first complete installation establishes the verified
 image-bound baseline. Base/Tools incompatibility never silently becomes a full
 environment reinstall under `--program-only`.
 
+`mcpgitctl --instance NAME auto-upgrade enable` installs the host-side online
+controller once. Afterwards, advancing the verified GitHub release pointer is
+enough to update that instance during a low-load window with bounded deferral,
+transactional replacement, exact readback, and automatic rollback on failure.
+
 For a normal Linux amd64/arm64 installation, this is the only command you need:
 
 ```sh

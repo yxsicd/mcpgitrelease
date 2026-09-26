@@ -19,6 +19,7 @@ python3 -c 'compile(open("scripts/mcpgit-offline-release.py", encoding="utf-8").
 python3 -c 'compile(open("scripts/bootstrap-builtin-auth.py", encoding="utf-8").read(), "scripts/bootstrap-builtin-auth.py", "exec")'
 python3 -c 'compile(open("scripts/agent_onboarding_probe.py", encoding="utf-8").read(), "scripts/agent_onboarding_probe.py", "exec")'
 python3 -c 'compile(open("scripts/install_state.py", encoding="utf-8").read(), "scripts/install_state.py", "exec")'
+python3 -c 'compile(open("scripts/auto_upgrade.py", encoding="utf-8").read(), "scripts/auto_upgrade.py", "exec")'
 python3 -c 'compile(open("scripts/verify_repository_layout.py", encoding="utf-8").read(), "scripts/verify_repository_layout.py", "exec")'
 python3 -c 'compile(open("scripts/service_interface_smoke.py", encoding="utf-8").read(), "scripts/service_interface_smoke.py", "exec")'
 python3 scripts/index_skills.py --check

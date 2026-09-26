@@ -97,7 +97,7 @@ for arg in "$@"; do
   if [ "$expect_bundle" = true ]; then bundle_dir=$arg; expect_bundle=false; continue; fi
   [ "$arg" != --bundle ] || expect_bundle=true
 done
-for helper in install_state.py mcpgit-offline-release.py; do
+for helper in install_state.py mcpgit-offline-release.py auto_upgrade.py; do
   if [ -f "$bundle_dir/scripts/$helper" ]; then
     cp "$bundle_dir/scripts/$helper" "$BIN_DIR/$helper"
     chmod 0755 "$BIN_DIR/$helper"

@@ -19,6 +19,7 @@ Commands:
   doctor       Cross-check the installation and print actionable failures
   logs         Show service logs
   upgrade      Verified Program-only upgrade; --check performs preflight only
+  auto-upgrade Enable or run the host-side verified online updater
   backup       Manage verified instance backups (reserved)
 
 Environment: MCPGIT_INSTANCE, MCPGIT_URL and MCPGIT_PORT provide defaults.
@@ -291,6 +292,14 @@ case "$COMMAND" in
     helper=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/install_state.py
     [ -f "$helper" ] || { echo 'Install the current product tools before upgrade' >&2; exit 2; }
     exec python3 "$helper" upgrade --instance "$INSTANCE" "$@"
+    ;;
+  auto-upgrade)
+    shift
+    helper=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/auto_upgrade.py
+    [ -f "$helper" ] || { echo 'Install the current product tools before enabling auto-upgrade' >&2; exit 2; }
+    action=${1:-run}
+    [ $# -eq 0 ] || shift
+    exec python3 "$helper" "$action" --instance "$INSTANCE" "$@"
     ;;
   backup)
     echo 'Verified backup orchestration is not implemented; no backup was created.' >&2
