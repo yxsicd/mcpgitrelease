@@ -21,9 +21,11 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path
+from string import Formatter
 
 POINTER_URL = "https://raw.githubusercontent.com/yxsicd/mcpgitrelease/main/offline-latest.json"
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+ADAPTER_FIELDS = {"instance", "source_sha", "manifest_sha256", "tag"}
 
 
 def fail(message: str) -> None:
@@ -118,6 +120,59 @@ def ctl_path() -> str:
     return os.environ.get("MCPGITCTL", "mcpgitctl")
 
 
+def validate_adapter(value: object) -> dict:
+    if not isinstance(value, dict) or value.get("schema") != "mcpgit.auto-upgrade-adapter.v1":
+        fail("upgrade adapter schema is not supported")
+    result = {"schema": value["schema"]}
+    for key in ("preflight_argv", "activate_argv"):
+        argv = value.get(key)
+        if not isinstance(argv, list) or not argv or len(argv) > 64:
+            fail(f"upgrade adapter {key} must contain 1..64 arguments")
+        if not isinstance(argv[0], str) or not Path(argv[0]).is_absolute():
+            fail(f"upgrade adapter {key} executable must be absolute")
+        checked = []
+        for argument in argv:
+            if not isinstance(argument, str) or not argument or len(argument) > 4096 or "\0" in argument:
+                fail(f"upgrade adapter {key} contains an invalid argument")
+            fields = {name for _literal, name, _format, _conversion in Formatter().parse(argument) if name}
+            if not fields.issubset(ADAPTER_FIELDS):
+                fail(f"upgrade adapter {key} contains an unknown placeholder")
+            checked.append(argument)
+        result[key] = checked
+    return result
+
+
+def read_adapter(path: str) -> dict:
+    source = Path(path).expanduser()
+    if not source.is_absolute() or source.is_symlink() or not source.is_file():
+        fail("upgrade adapter must be an absolute regular non-symlink file")
+    metadata = source.stat()
+    if metadata.st_mode & 0o022:
+        fail("upgrade adapter must not be group/world writable")
+    return validate_adapter(json.loads(source.read_text()))
+
+
+def render_argv(argv: list[str], instance: str, release: dict) -> list[str]:
+    values = {"instance": instance, "source_sha": release["source_sha"],
+              "manifest_sha256": release["manifest_sha256"], "tag": release["tag"]}
+    rendered = [argument.format_map(values) for argument in argv]
+    executable = Path(rendered[0])
+    if not executable.is_absolute() or not executable.is_file() or not os.access(executable, os.X_OK):
+        fail("upgrade adapter executable is unavailable")
+    return rendered
+
+
+def upgrade_commands(policy: dict, instance: str, release: dict) -> tuple[list[str], list[str]]:
+    adapter = policy.get("adapter")
+    if adapter is None:
+        ctl = ctl_path()
+        return ([ctl, "--instance", instance, "upgrade", "--check"],
+                [ctl, "--instance", instance, "upgrade"])
+    adapter = validate_adapter(adapter)
+    return (render_argv(adapter["preflight_argv"], instance, release),
+            render_argv(adapter["activate_argv"], instance, release))
+
+
 def one_run(args: argparse.Namespace) -> int:
     root = state_root()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -161,11 +216,11 @@ def one_run(args: argparse.Namespace) -> int:
             atomic_json(receipt_path, value)
             print(json.dumps({"ok": True, **value}))
             return 0
-        ctl = ctl_path()
-        preflight = run([ctl, "--instance", args.instance, "upgrade", "--check"], check=False)
+        preflight_argv, activate_argv = upgrade_commands(policy, args.instance, release)
+        preflight = run(preflight_argv, check=False)
         if preflight.returncode != 0:
             fail("upgrade preflight failed: " + preflight.stdout[-2000:])
-        activated = run([ctl, "--instance", args.instance, "upgrade"], timeout=1800, check=False)
+        activated = run(activate_argv, timeout=1800, check=False)
         if activated.returncode != 0:
             fail("transactional upgrade failed: " + activated.stdout[-2000:])
         after = label(args.instance, "org.opencontainers.image.revision")
@@ -186,6 +241,8 @@ def install_scheduler(args: argparse.Namespace) -> int:
               "enabled": True, "interval_seconds": args.interval,
               "max_defer_seconds": args.max_defer, "max_load_per_core": args.max_load_per_core,
               "max_container_cpu": args.max_container_cpu, "pointer_url": args.pointer_url}
+    if args.adapter:
+        policy["adapter"] = read_adapter(args.adapter)
     atomic_json(root / f"{args.instance}.policy.json", policy)
     executable = str(Path(__file__).resolve())
     if sys.platform == "darwin":
@@ -235,6 +292,7 @@ def main() -> int:
     enable.add_argument("--max-load-per-core", type=float, default=1.5)
     enable.add_argument("--max-container-cpu", type=float, default=75.0)
     enable.add_argument("--pointer-url", default=POINTER_URL)
+    enable.add_argument("--adapter", help="absolute protected JSON argv adapter for custom deployments")
     args = parser.parse_args()
     if not NAME.fullmatch(args.instance):
         parser.error("invalid instance name")

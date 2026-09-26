@@ -61,6 +61,51 @@ class AutoUpgradeTest(unittest.TestCase):
             self.assertEqual(receipt["outcome"], "upgraded")
             self.assertEqual(receipt["source_sha"], SOURCE)
 
+    def test_custom_adapter_is_copied_rendered_and_never_uses_a_shell(self):
+        completed = types.SimpleNamespace(returncode=0, stdout="ok")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable = root / "fleet-upgrade"
+            executable.write_text("#!/bin/sh\nexit 0\n")
+            executable.chmod(0o700)
+            adapter = {
+                "schema": "mcpgit.auto-upgrade-adapter.v1",
+                "preflight_argv": [str(executable), "check", "{instance}", "{tag}"],
+                "activate_argv": [str(executable), "apply", "{source_sha}", "{manifest_sha256}"],
+            }
+            (root / "demo.policy.json").write_text(json.dumps({"adapter": adapter}))
+            with mock.patch.object(MODULE, "state_root", return_value=root), \
+                 mock.patch.object(MODULE, "pointer", return_value=RELEASE), \
+                 mock.patch.object(MODULE, "label", side_effect=[OLD, SOURCE]), \
+                 mock.patch.object(MODULE, "load_per_core", return_value=0.1), \
+                 mock.patch.object(MODULE, "container_cpu", return_value=2.0), \
+                 mock.patch.object(MODULE, "run", return_value=completed) as runner:
+                self.assertEqual(MODULE.one_run(self.args()), 0)
+            self.assertEqual(runner.call_args_list[0].args[0],
+                             [str(executable), "check", "demo", "release"])
+            self.assertEqual(runner.call_args_list[1].args[0],
+                             [str(executable), "apply", SOURCE, "c" * 64])
+
+    def test_adapter_file_must_be_protected_and_use_known_placeholders(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "adapter.json"
+            path.write_text(json.dumps({
+                "schema": "mcpgit.auto-upgrade-adapter.v1",
+                "preflight_argv": ["/bin/true", "{unknown}"],
+                "activate_argv": ["/bin/true"],
+            }))
+            path.chmod(0o600)
+            with self.assertRaises(RuntimeError):
+                MODULE.read_adapter(str(path))
+            path.write_text(json.dumps({
+                "schema": "mcpgit.auto-upgrade-adapter.v1",
+                "preflight_argv": ["/bin/true"],
+                "activate_argv": ["/bin/true"],
+            }))
+            path.chmod(0o622)
+            with self.assertRaises(RuntimeError):
+                MODULE.read_adapter(str(path))
+
 
 if __name__ == "__main__":
     unittest.main()
