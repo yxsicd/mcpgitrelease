@@ -64,6 +64,23 @@ source/manifest identity is recorded under
 is fail-closed if the pointer, architecture selection, preflight, activation,
 or exact post-upgrade source readback differs.
 
+Deployment owners with reviewed custom networks, mounts, labels, or acceptance
+gates can keep those boundaries and still reuse the updater. Pass
+`--adapter /absolute/protected/adapter.json` when enabling it. The v1 adapter
+contains separate argv arrays for preflight and activation; commands are
+executed directly without a shell and may substitute only `{instance}`,
+`{source_sha}`, `{manifest_sha256}`, and `{tag}`. The updater copies and
+validates the adapter, rejects group/world-writable or symlink inputs, and
+still requires exact container revision readback after activation. Example:
+
+```json
+{
+  "schema": "mcpgit.auto-upgrade-adapter.v1",
+  "preflight_argv": ["/opt/mcpgit/bin/fleet-upgrade", "check", "{instance}", "{tag}"],
+  "activate_argv": ["/opt/mcpgit/bin/fleet-upgrade", "apply", "{instance}", "{tag}"]
+}
+```
+
 The equivalent explicit installer option is `--program-only`. For an existing
 older installation without a receipt, first run the ordinary installer once
 with the same instance name, paths and port. It fully checks the cached release
