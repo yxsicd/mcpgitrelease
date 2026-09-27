@@ -20,9 +20,12 @@ image-bound baseline. Base/Tools incompatibility never silently becomes a full
 environment reinstall under `--program-only`.
 
 `mcpgitctl --instance NAME auto-upgrade enable` installs the host-side online
-controller once. Afterwards, advancing the verified GitHub release pointer is
-enough to update that instance during a low-load window with bounded deferral,
-transactional replacement, exact readback, and automatic rollback on failure.
+controller once. Instances follow the production pointer by default. Publishing
+immutable assets or advancing `dev-latest.json` and `main-latest.json` does not
+upgrade them; only an explicit `main -> prod` promotion updates the production
+`offline-latest.json` pointer. Afterwards the instance updates during a low-load
+window with bounded deferral, transactional replacement, exact readback, and
+automatic rollback on failure.
 
 For a normal Linux amd64/arm64 installation, this is the only command you need:
 
@@ -128,14 +131,18 @@ The default release chain is:
 ```text
 reviewed MCPGit source SHA
   -> immutable linux-amd64 + linux-arm64 Releases
-  -> production gates
-  -> offline-latest.json
-  -> install.sh
+  -> dev-latest.json
+  -> main-latest.json
+  -> explicit production promotion
+  -> offline-latest.json (prod compatibility pointer)
+  -> default instances and install.sh
 ```
 
-Publishing binaries does not automatically make them the default. Promotion
-changes only `offline-latest.json`; rollback selects the previous complete
-dual-architecture pair and never rebuilds or mixes layers.
+Publishing binaries does not automatically make them the default. `dev` accepts
+one exact source release pair; `main` copies the exact `dev` selection; `prod`
+copies the exact `main` selection into `offline-latest.json`. Main and production
+promotion never accept an arbitrary source SHA and never rebuild. Rollback selects
+the preceding complete dual-architecture pair and never mixes layers.
 
 The locally executed production promotion gate fails closed:
 it downloads every asset listed by each architecture's immutable manifest and

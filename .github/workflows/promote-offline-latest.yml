@@ -1,17 +1,22 @@
-name: promote-offline-latest
+name: promote-offline-channel
 
 on:
   workflow_dispatch:
     inputs:
-      source_sha:
-        description: Exact reviewed MCPGit source SHA to make the default product release
+      target:
+        description: Channel to update; main and prod only copy the preceding channel
+        type: choice
         required: true
+        options: [dev, main, prod]
+      source_sha:
+        description: Exact reviewed MCPGit source SHA; required only for dev
+        required: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: promote-offline-latest
+  group: promote-offline-${{ inputs.target }}
   cancel-in-progress: false
 
 jobs:
@@ -21,41 +26,52 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify immutable dual-architecture pair
+      - name: Select candidate
+        env:
+          TARGET: ${{ inputs.target }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            dev)
+              [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+                echo "source_sha is required for dev" >&2
+                exit 1
+              }
+              ;;
+            main)
+              [ -z "$SOURCE_SHA" ] || {
+                echo "main promotion copies dev-latest.json; source_sha must be empty" >&2
+                exit 1
+              }
+              cp dev-latest.json candidate-pointer.json
+              ;;
+            prod)
+              [ -z "$SOURCE_SHA" ] || {
+                echo "prod promotion copies main-latest.json; source_sha must be empty" >&2
+                exit 1
+              }
+              cp main-latest.json candidate-pointer.json
+              ;;
+          esac
+      - name: Compose dev candidate
+        if: ${{ inputs.target == 'dev' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           set -euo pipefail
-          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           tmp=$(mktemp -d)
           trap 'rm -rf "$tmp"' EXIT
           for arch in amd64 arm64; do
             tag="mcpgit-git-${SOURCE_SHA}-linux-${arch}"
             gh release view "$tag" --repo "$GH_REPO" >/dev/null
             mkdir -p "$tmp/$arch"
-            gh release download "$tag" --repo "$GH_REPO" --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
-            asset_map="$tmp/$arch/assets.tsv"
-            python3 - "$tmp/$arch/mcpgit-offline-release-v1.json" "$tag" >"$asset_map" <<'PY'
-          import json, re, sys
-          manifest, source_tag = sys.argv[1:]
-          for layer in json.load(open(manifest))["layers"]:
-              tag = layer.get("asset_tag") or source_tag
-              if not re.fullmatch(r"[A-Za-z0-9._-]+", tag):
-                  raise SystemExit("invalid release asset tag in manifest")
-              print(f"{layer['file']}\t{tag}")
-          PY
-            while IFS=$'\t' read -r asset asset_tag; do
-              [ -n "$asset" ] || continue
-              gh release view "$asset_tag" --repo "$GH_REPO" >/dev/null
-              gh release download "$asset_tag" --repo "$GH_REPO" --pattern "$asset" --dir "$tmp/$arch"
-            done < "$asset_map"
-            python3 scripts/mcpgit-offline-release.py verify \
-              --manifest "$tmp/$arch/mcpgit-offline-release-v1.json" \
-              --asset-dir "$tmp/$arch"
+            gh release download "$tag" --repo "$GH_REPO" \
+              --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
           done
-          python3 - "$SOURCE_SHA" "$tmp" > offline-latest.json.new <<'PY'
+          python3 - "$SOURCE_SHA" "$tmp" > candidate-pointer.json <<'PY'
           import hashlib, json, pathlib, sys
           source, root = sys.argv[1], pathlib.Path(sys.argv[2])
           expected = {
@@ -79,19 +95,73 @@ jobs:
               }
           print(json.dumps({"architectures": architectures, "schema": "mcpgit.offline-pointer.v1", "source_sha": source}, indent=2, sort_keys=True))
           PY
-          mv offline-latest.json.new offline-latest.json
-      - name: Validate install contract
-        run: |
-          python3 -m unittest discover -s tests -p 'test_*.py'
-          sh -n install.sh deploy/mcpgit-install.sh deploy/novice-install.sh deploy/novice-fetch.sh
-      - name: Commit default product pointer
+      - name: Verify exact immutable candidate
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          python3 - candidate-pointer.json <<'PY'
+          import json, re, sys
+          pointer = json.load(open(sys.argv[1]))
+          if pointer.get("schema") != "mcpgit.offline-pointer.v1": raise SystemExit("bad pointer schema")
+          source = pointer.get("source_sha", "")
+          if not re.fullmatch(r"[0-9a-f]{40}", source): raise SystemExit("bad pointer source")
+          expected = {
+              "linux-amd64": "x86_64-unknown-linux-musl",
+              "linux-arm64": "aarch64-unknown-linux-musl",
+          }
+          if set(pointer.get("architectures", {})) != set(expected): raise SystemExit("pointer must contain both Linux architectures")
+          for platform, target in expected.items():
+              selected = pointer["architectures"][platform]
+              if selected.get("source_sha") != source or selected.get("target") != target: raise SystemExit(f"{platform}: selection mismatch")
+              if not re.fullmatch(r"[0-9a-f]{64}", selected.get("manifest_sha256", "")): raise SystemExit(f"{platform}: bad manifest digest")
+              if not re.fullmatch(r"[A-Za-z0-9._-]+", selected.get("tag", "")): raise SystemExit(f"{platform}: bad tag")
+          PY
+          for platform in linux-amd64 linux-arm64; do
+            tag=$(jq -r --arg platform "$platform" '.architectures[$platform].tag' candidate-pointer.json)
+            expected_manifest=$(jq -r --arg platform "$platform" '.architectures[$platform].manifest_sha256' candidate-pointer.json)
+            arch_dir="$tmp/$platform"
+            mkdir -p "$arch_dir"
+            gh release view "$tag" --repo "$GH_REPO" >/dev/null
+            gh release download "$tag" --repo "$GH_REPO" \
+              --pattern mcpgit-offline-release-v1.json --dir "$arch_dir"
+            printf '%s  %s\n' "$expected_manifest" "$arch_dir/mcpgit-offline-release-v1.json" | sha256sum -c -
+            python3 - "$arch_dir/mcpgit-offline-release-v1.json" "$tag" > "$arch_dir/assets.tsv" <<'PY'
+          import json, re, sys
+          manifest, source_tag = sys.argv[1:]
+          for layer in json.load(open(manifest))["layers"]:
+              tag = layer.get("asset_tag") or source_tag
+              if not re.fullmatch(r"[A-Za-z0-9._-]+", tag): raise SystemExit("invalid release asset tag")
+              print(f"{layer['file']}\t{tag}")
+          PY
+            while IFS=$'\t' read -r asset asset_tag; do
+              [ -n "$asset" ] || continue
+              gh release download "$asset_tag" --repo "$GH_REPO" --pattern "$asset" --dir "$arch_dir"
+            done < "$arch_dir/assets.tsv"
+            python3 scripts/mcpgit-offline-release.py verify \
+              --manifest "$arch_dir/mcpgit-offline-release-v1.json" \
+              --asset-dir "$arch_dir"
+          done
+      - name: Publish channel pointer
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            dev) output=dev-latest.json ;;
+            main) output=main-latest.json ;;
+            prod) output=offline-latest.json ;;
+          esac
+          mv candidate-pointer.json "$output"
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          sh -n install.sh deploy/mcpgit-install.sh deploy/novice-install.sh deploy/novice-fetch.sh
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add offline-latest.json
+          git add "$output"
           git diff --cached --quiet && exit 0
-          git commit -m "release: promote offline ${SOURCE_SHA:0:8}"
+          source_sha=$(jq -r .source_sha "$output")
+          git commit -m "release: promote offline ${TARGET} ${source_sha:0:8}"
           git push origin HEAD:main

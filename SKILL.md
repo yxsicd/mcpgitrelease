@@ -27,5 +27,10 @@ Public release authority for MCPGit deliverables.
 
 - Immutable tags/releases are artifact authority.
 - Mutable channels are pointers only.
+- Offline Program promotion is ordered: publish immutable assets, select them in
+  `dev-latest.json`, copy the exact selection to `main-latest.json`, then explicitly
+  promote that exact selection to the production compatibility pointer
+  `offline-latest.json`. Default instances follow production; dev/main movement
+  alone must not activate them.
 - Follow child `SKILL.md` files progressively.
 - Use metadata pointers for large machine-readable state instead of expanding frontmatter.

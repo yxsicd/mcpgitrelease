@@ -414,9 +414,13 @@ class ProductInstallerTests(unittest.TestCase):
         )
         self.assertNotIn('MCPGIT_EXECUTABLE_ROUTE_REPOSITORY="${', novice)
 
-    def test_offline_latest_promotion_verifies_dual_arch_releases(self) -> None:
+    def test_offline_channel_promotion_is_ordered_and_verifies_dual_arch_releases(self) -> None:
         workflow = (ROOT / ".github/workflows/promote-offline-latest.yml").read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("options: [dev, main, prod]", workflow)
+        self.assertIn("cp dev-latest.json candidate-pointer.json", workflow)
+        self.assertIn("cp main-latest.json candidate-pointer.json", workflow)
+        self.assertIn("source_sha must be empty", workflow)
         self.assertIn("gh release view", workflow)
         self.assertIn("gh release download", workflow)
         self.assertIn("linux-amd64", workflow)
@@ -428,6 +432,15 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("--asset-dir", workflow)
         self.assertNotIn("verify-layer", workflow)
         self.assertNotIn("--kind base_image", workflow)
+        prod = json.loads((ROOT / "offline-latest.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            prod,
+            json.loads((ROOT / "dev-latest.json").read_text(encoding="utf-8")),
+        )
+        self.assertEqual(
+            prod,
+            json.loads((ROOT / "main-latest.json").read_text(encoding="utf-8")),
+        )
 
     def test_offline_installers_follow_content_addressed_layer_tags(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
