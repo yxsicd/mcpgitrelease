@@ -432,15 +432,27 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn("--asset-dir", workflow)
         self.assertNotIn("verify-layer", workflow)
         self.assertNotIn("--kind base_image", workflow)
-        prod = json.loads((ROOT / "offline-latest.json").read_text(encoding="utf-8"))
-        self.assertEqual(
-            prod,
-            json.loads((ROOT / "dev-latest.json").read_text(encoding="utf-8")),
-        )
-        self.assertEqual(
-            prod,
-            json.loads((ROOT / "main-latest.json").read_text(encoding="utf-8")),
-        )
+        expected_targets = {
+            "linux-amd64": "x86_64-unknown-linux-musl",
+            "linux-arm64": "aarch64-unknown-linux-musl",
+        }
+        for pointer_name in (
+            "dev-latest.json",
+            "main-latest.json",
+            "offline-latest.json",
+        ):
+            pointer = json.loads((ROOT / pointer_name).read_text(encoding="utf-8"))
+            self.assertEqual(pointer["schema"], "mcpgit.offline-pointer.v1")
+            self.assertEqual(set(pointer["architectures"]), set(expected_targets))
+            for architecture, target in expected_targets.items():
+                release = pointer["architectures"][architecture]
+                self.assertEqual(release["source_sha"], pointer["source_sha"])
+                self.assertEqual(release["target"], target)
+                self.assertEqual(
+                    release["tag"],
+                    f"mcpgit-git-{pointer['source_sha']}-{architecture}",
+                )
+                self.assertRegex(release["manifest_sha256"], r"^[0-9a-f]{64}$")
 
     def test_offline_installers_follow_content_addressed_layer_tags(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
