@@ -1,0 +1,12 @@
+{
+  "architectures": {
+    "linux-arm64": {
+      "manifest_sha256": "f383a486ec24dd50382a545a6e5e8f56a9d9bdc635f79f9631d45d182b7f2328",
+      "source_sha": "de0c9cae16e86e7f194b7873c2728dd716eea888",
+      "tag": "mcpgit-git-de0c9cae16e86e7f194b7873c2728dd716eea888-linux-arm64",
+      "target": "aarch64-unknown-linux-musl"
+    }
+  },
+  "schema": "mcpgit.offline-pointer.v1",
+  "source_sha": "de0c9cae16e86e7f194b7873c2728dd716eea888"
+}

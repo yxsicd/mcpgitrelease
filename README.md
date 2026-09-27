@@ -143,6 +143,10 @@ runs the offline release verifier against the complete local asset directory.
 The default pointer is written only after both architecture bundles pass full
 layer digest, size, target, source SHA, and base image identity checks.
 
+`idev-latest.json` is a separate validation-ring pointer for the iDev instance.
+It may select only iDev's native architecture and is never installer, production,
+or cross-architecture promotion authority.
+
 ### Direct installer and offline bundle
 
 For a normal single-node installation, use the product installer instead of
