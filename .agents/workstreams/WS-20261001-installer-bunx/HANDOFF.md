@@ -32,4 +32,4 @@ Reviewed native source `2c3e42c837b1467f039696d6302373d80d8540a9` passed
 local Full and assigned native hwlinux Full, both native production builds,
 immutable dual-architecture publication/readback and all six ordered pinned
 stages with health and official SDK gates. DEV pointer advances to that exact
-pair. MAIN/PROD remain unchanged until explicit ordered pointer promotion.
+pair. MAIN now copies the exact reviewed DEV pair; PROD remains unchanged.
