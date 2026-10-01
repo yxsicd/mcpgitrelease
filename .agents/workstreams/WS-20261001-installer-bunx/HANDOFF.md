@@ -36,7 +36,15 @@ pair. MAIN copies DEV, and PROD now copies the exact reviewed MAIN pair after
 all15 Blue Program health/SDK acceptance and all16 Person-configuration
 acceptance. YXSGIT/cbgroom retain the same image/data and pass new configuration
 preflight, Hosted default/switch/negatives, Basic write ceiling and real CRUD.
-GREEN remains unpinned, following PROD every60s: require ordinary configured
-pointer convergence and real automatic Program activation before fleet closure.
+All16 actual configured PROD pointers converged without cache-busting. GREEN
+automatically activated the exact2c pair before the operator request, which
+returned already_active. Final in-zone health, running/unpinned/noerror, official
+SDK and all four Hosted defaults/chooser/select/readback/negative gates pass.
+All16 data Programs and shared-Person entrances are accepted; immutable images
+and data volumes remain retained. Public PROD commit1e17756c67f035615dbfcb716c0ebd154681292a
+selects the exact pair. Stopped same-image rollback inputs remain; authoritative
+deployment replay reconciliation precedes retirement. wasmc configuration is
+deliberately local-only pending an independently owned remote. Full browser
+visual and quiet performance acceptance are not inferred from these checks.
 The first business409 conflict and its successful rollback are retained;
 resumption retargeted exact pins and passed without hiding the failed receipt.
