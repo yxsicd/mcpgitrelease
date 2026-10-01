@@ -22,5 +22,14 @@ connect/control/business grants, Basic ceilings and revoked-authority rejection.
 Six focused bootstrap tests pass, including zero-write replay and disabled/changed
 grant negatives. Complete public gate exits0:125 Python tests and10 component
 tests. Both public bootstrap and extractor now exactly match canonical source.
-Next: push, repeat fresh install and explicitly prove default Person/chooser,
-not merely health/init.
+Public snapshot `0b9a1012b09f72b22759cae5210ae40a44f1f522` passed a second
+real fresh candidate install. Four Hosted profiles default to mcpadmin;
+chooser includes mcpadmin/builder, selection and readback pass, cross-origin
+and unknown-Person POST are403, anonymous config is401. This is loopback
+HTTP acceptance with an actual Hosted Host, not a full browser visual gate.
+
+Reviewed native source `2c3e42c837b1467f039696d6302373d80d8540a9` passed
+local Full and assigned native hwlinux Full, both native production builds,
+immutable dual-architecture publication/readback and all six ordered pinned
+stages with health and official SDK gates. DEV pointer advances to that exact
+pair. MAIN/PROD remain unchanged until explicit ordered pointer promotion.
