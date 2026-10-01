@@ -39,6 +39,12 @@ Run `tests/test_offline_extract_links.py` plus `scripts/validate.sh` before
 publication, then repeat a fresh public candidate install. An existing-instance
 Program upgrade does not prove the public new-instance installer works.
 
+Public built-in bootstrap also mirrors the canonical source shared `mcpadmin`
+Person policy: separate connect/control/scoped business grants, no SafeGit grant,
+no password/API key/SSO identity, preserve an explicitly provisioned UUID, and
+reject disabled/ambiguous Persons or changed/revoked grants instead of restoring
+authority silently. The valid Basic entrance remains the permission ceiling.
+
 Public Skills answer how to use a released capability.
 Maintainer Skills answer why the capability boundary exists, what may enter it,
 and how to change/release it safely.

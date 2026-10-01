@@ -147,7 +147,13 @@ def active_handles(repo: Path) -> dict[str, str]:
 def bootstrap(repo: Path, instance_id: str, zone: str, guest_repository: str) -> list[str]:
     if not (repo / ".git").exists():
         raise ValueError(f"not a Git repository: {repo}")
-    if run_git(repo, "status", "--porcelain").stdout.strip():
+    tracked_changes = run_git(
+        repo, "status", "--porcelain", "--untracked-files=no"
+    ).stdout.strip()
+    tablegit_untracked = run_git(
+        repo, "ls-files", "--others", "--exclude-standard", "--", "data/tables"
+    ).stdout.strip()
+    if tracked_changes or tablegit_untracked:
         raise ValueError("SystemConfig repository must be clean before built-in auth bootstrap")
 
     changed: list[str] = []
@@ -159,7 +165,18 @@ def bootstrap(repo: Path, instance_id: str, zone: str, guest_repository: str) ->
     guest_id = stable_person_id(instance_id, "guest")
     builder_id = stable_person_id(instance_id, "builder")
     safe_system_id = stable_person_id(instance_id, "safe-system")
+    mcpadmin_id = stable_person_id(instance_id, "mcpadmin")
     handles = active_handles(repo)
+    # A previously explicitly provisioned shared Person keeps its UUID.
+    mcpadmin_id = handles.get("mcpadmin", mcpadmin_id)
+    for path in (repo / "data/tables/system_persons/rows").rglob("*.json"):
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+        row = envelope.get("row") or {}
+        if row.get("handle") == "mcpadmin" and (
+            envelope.get("deleted") or row.get("status", "active") != "active"
+            or row.get("person_id") != mcpadmin_id
+        ):
+            raise ValueError("mcpadmin is disabled or ambiguous; explicit repair is required")
     for handle, person_id in (
         ("systemadmin", systemadmin_id),
         ("guest", guest_id),
@@ -296,6 +313,7 @@ def bootstrap(repo: Path, instance_id: str, zone: str, guest_repository: str) ->
                 "permissions": [
                     "repo.read",
                     "repo.write",
+                    "repo.publish",
                     "table.read",
                     "table.write",
                     "binary.read",
@@ -376,6 +394,40 @@ def bootstrap(repo: Path, instance_id: str, zone: str, guest_repository: str) ->
             False,
         ),
     ]
+    # Shared attribution has no password, API key or SSO binding. Adapters
+    # default only behind a validated ceiling, never anonymous authentication.
+    shared_rows = [
+        ("system_persons", mcpadmin_id, {"person_id": mcpadmin_id, "handle": "mcpadmin", "display_name": "mcpadmin", "status": "active"}, False),
+        ("system_memberships", "builtin-mcpadmin-membership", {"membership_id": "builtin-mcpadmin-membership", "person_id": mcpadmin_id, "zone": zone, "status": "active"}, False),
+        ("system_roles", "builtin-mcpadmin-control", {"role_id": "builtin-mcpadmin-control", "permissions": ["mcp.read", "mcp.write", "mcp.publish", "mcp.admin"], "status": "active"}, False),
+        ("system_roles", "builtin-mcpadmin-business", {"role_id": "builtin-mcpadmin-business", "permissions": ["repo.read", "repo.write", "repo.publish", "table.read", "table.write", "binary.read", "binary.write"], "status": "active"}, False),
+        ("system_grants", "builtin-mcpadmin-connect", {"grant_id": "builtin-mcpadmin-connect", "person_id": mcpadmin_id, "instance_id": instance_id, "role_id": "builtin-connect", "repository_id": None, "resource": None, "status": "active"}, False),
+        ("system_grants", "builtin-mcpadmin-control", {"grant_id": "builtin-mcpadmin-control", "person_id": mcpadmin_id, "instance_id": instance_id, "role_id": "builtin-mcpadmin-control", "repository_id": None, "resource": None, "status": "active"}, False),
+    ]
+    shared_repositories = set(builder_repositories)
+    for path in (repo / "data/tables/system_repositories/rows").rglob("*.json"):
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+        row = envelope.get("row") or {}
+        if not envelope.get("deleted") and row.get("instance_id") == instance_id and row.get("repository_id"):
+            shared_repositories.add(row["repository_id"])
+    for repository_id in sorted(shared_repositories):
+        if repository_id == "safegit":
+            continue
+        key = f"builtin-mcpadmin-business-{repository_id}"
+        shared_rows.append(("system_grants", key, {"grant_id": key, "person_id": mcpadmin_id, "instance_id": instance_id, "role_id": "builtin-mcpadmin-business", "repository_id": repository_id, "resource": None, "status": "active"}, False))
+    # A reinstall must not silently reactivate or widen previously revoked
+    # shared-admin authority. Existing active Person attributes are preserved.
+    for table, key, desired, _ in shared_rows:
+        existing = read_envelope(row_path(repo, table, key), key)
+        if existing is None:
+            continue
+        if table == "system_persons":
+            desired.update(existing["row"])
+        elif any(existing["row"].get(field) != value for field, value in desired.items()):
+            raise ValueError(f"shared-admin row {table}/{key} was changed; explicit repair required")
+        else:
+            desired.update(existing["row"])
+    desired_rows.extend(shared_rows)
     for repository_id in builder_repositories:
         grant_id = f"builtin-builder-{repository_id}"
         desired_rows.append(
