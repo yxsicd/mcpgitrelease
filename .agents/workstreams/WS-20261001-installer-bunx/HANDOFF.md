@@ -32,4 +32,11 @@ Reviewed native source `2c3e42c837b1467f039696d6302373d80d8540a9` passed
 local Full and assigned native hwlinux Full, both native production builds,
 immutable dual-architecture publication/readback and all six ordered pinned
 stages with health and official SDK gates. DEV pointer advances to that exact
-pair. MAIN now copies the exact reviewed DEV pair; PROD remains unchanged.
+pair. MAIN copies DEV, and PROD now copies the exact reviewed MAIN pair after
+all15 Blue Program health/SDK acceptance and all16 Person-configuration
+acceptance. YXSGIT/cbgroom retain the same image/data and pass new configuration
+preflight, Hosted default/switch/negatives, Basic write ceiling and real CRUD.
+GREEN remains unpinned, following PROD every60s: require ordinary configured
+pointer convergence and real automatic Program activation before fleet closure.
+The first business409 conflict and its successful rollback are retained;
+resumption retargeted exact pins and passed without hiding the failed receipt.
