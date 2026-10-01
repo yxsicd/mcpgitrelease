@@ -431,6 +431,7 @@ def command_extract(args: argparse.Namespace) -> None:
     with tarfile.open(archive, "r:gz") as bundle:
         members = bundle.getmembers()
         names: set[str] = set()
+        admitted_symlink: tarfile.TarInfo | None = None
         for member in members:
             path = pathlib.PurePosixPath(member.name)
             if path.is_absolute() or ".." in path.parts or not path.parts:
@@ -441,9 +442,34 @@ def command_extract(args: argparse.Namespace) -> None:
             if normalized in names:
                 fail(f"duplicate archive member: {member.name}")
             names.add(normalized)
-            if member.issym() or member.islnk() or not (member.isdir() or member.isfile()):
+            if member.issym():
+                if (
+                    args.root == "tools"
+                    and normalized == "tools/bin/bunx"
+                    and member.linkname == "bun"
+                    and admitted_symlink is None
+                ):
+                    admitted_symlink = member
+                    continue
                 fail(f"unsupported archive member: {member.name}")
-        bundle.extractall(destination, members=members)
+            if member.islnk() or not (member.isdir() or member.isfile()):
+                fail(f"unsupported archive member: {member.name}")
+        if admitted_symlink is not None:
+            try:
+                bun = bundle.getmember("tools/bin/bun")
+            except KeyError:
+                fail("tools/bin/bunx symlink requires tools/bin/bun")
+            if not bun.isfile():
+                fail("tools/bin/bunx symlink requires a regular tools/bin/bun")
+        bundle.extractall(
+            destination,
+            members=[member for member in members if member is not admitted_symlink],
+        )
+        if admitted_symlink is not None:
+            bunx = destination / "tools" / "bin" / "bunx"
+            if bunx.exists() or bunx.is_symlink():
+                fail("tools/bin/bunx destination already exists")
+            bunx.symlink_to("bun")
 
 
 def parser() -> argparse.ArgumentParser:

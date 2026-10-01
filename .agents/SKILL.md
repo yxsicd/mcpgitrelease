@@ -31,6 +31,14 @@ It is not part of the public consumer Skill registry.
 
 ## Separation rule
 
+Offline installer extraction must mirror the canonical source extractor. The only
+admitted archive alias is `tools/bin/bunx -> bun`, and only with a regular
+`tools/bin/bun` in the same archive. Other symlinks, hardlinks, duplicate members,
+traversal, missing targets and pre-existing alias destinations remain denied.
+Run `tests/test_offline_extract_links.py` plus `scripts/validate.sh` before
+publication, then repeat a fresh public candidate install. An existing-instance
+Program upgrade does not prove the public new-instance installer works.
+
 Public Skills answer how to use a released capability.
 Maintainer Skills answer why the capability boundary exists, what may enter it,
 and how to change/release it safely.
