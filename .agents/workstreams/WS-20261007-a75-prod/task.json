@@ -1,0 +1,44 @@
+{
+  "id": "mcpgit-a75-main-to-prod-20261007",
+  "status": "active",
+  "execution_protocol": {
+    "stage_cycle_version": 1,
+    "current_stage": {
+      "stage_id": "promote-qualified-a75-pair-to-prod",
+      "state": "planned",
+      "planned_at": "2026-10-07T07:04:53Z",
+      "next_checkpoint_at": "2026-10-07T07:34:53Z",
+      "baseline": {
+        "release_head": "1680d3256fca3d53ccb1975037b6a61be00c0af0",
+        "source_head": "1f908b72095768866bc50e3a83ea25244593168e",
+        "program_source": "a75b9809857cea23047b61f3acea17bc09b9996c",
+        "previous_prod_source": "e38cbb2f62b3d95138aa612ea6ebfe38ce066b23",
+        "main_pointer_sha256": "fcae149f5eb0ceb66d6a680841fe5bb0be6aff7c99c586a4daf9dfb07bf0af4e",
+        "complete_asset_count": 8,
+        "complete_asset_bytes": 513166158,
+        "asset_receipt_sha256": "3622fdfa33c12104f1a95ee29cfbf7f2a79b28cd675bf07b7d1b0254f43e6aca",
+        "runtime_gate": "Fresh exact Program/manifest/executable, running phase, health, rollback and official MCP SDK verified; deployment observations stay private.",
+        "coordination": "Shared private task index has unrelated uncommitted changes. Preserve them; this independent release repository owns this persisted stage. Private index integration remains pending."
+      },
+      "objective": "Promote the qualified immutable amd64/arm64 a75 pair MAIN to PROD without rebuilding artifacts or replacing instances.",
+      "actions": [
+        "Validate, commit, ordinary-push and exact-readback this plan before channel effects.",
+        "Refresh clean release HEAD/upstream and exact MAIN pointer bytes.",
+        "Copy exact MAIN pointer to offline-latest.json; retain DEV, MAIN and all rollback assets.",
+        "Run scripts/validate.sh and byte equality checks; commit and ordinary-push intended files only.",
+        "Verify exact remote and ordinary public pointer delivery; record channel selection separately from fleet convergence."
+      ],
+      "validation": [
+        "scripts/validate.sh: 125 Python and 10 Node tests plus syntax/index/build checks",
+        "PROD byte-for-byte equals qualified MAIN and retains both exact manifests",
+        "Exact remote commit and ordinary public readback",
+        "No source, artifact, credential, instance-data, image, pin or unrelated dirty-workspace change"
+      ],
+      "handoff_destinations": [".agents/workstreams/WS-20261007-a75-prod/task.json", ".agents/workstreams/WS-20261007-a75-prod/HANDOFF.md"],
+      "stop_conditions": ["Unexpected dirty state, upstream divergence or changed MAIN pointer", "Validation/identity/artifact mismatch", "Uncertain push requires readback before further effects", "Any force-push, rebuild or unrelated-workspace overwrite"],
+      "running_jobs": []
+    }
+  },
+  "channel_promoted": false,
+  "fleet_complete": false
+}
