@@ -1,11 +1,11 @@
 {
   "id": "mcpgit-a75-main-to-prod-20261007",
-  "status": "active",
+  "status": "checkpointed",
   "execution_protocol": {
     "stage_cycle_version": 1,
     "current_stage": {
       "stage_id": "promote-qualified-a75-pair-to-prod",
-      "state": "planned",
+      "state": "checkpointed",
       "planned_at": "2026-10-07T07:04:53Z",
       "next_checkpoint_at": "2026-10-07T07:34:53Z",
       "baseline": {
@@ -36,9 +36,32 @@
       ],
       "handoff_destinations": [".agents/workstreams/WS-20261007-a75-prod/task.json", ".agents/workstreams/WS-20261007-a75-prod/HANDOFF.md"],
       "stop_conditions": ["Unexpected dirty state, upstream divergence or changed MAIN pointer", "Validation/identity/artifact mismatch", "Uncertain push requires readback before further effects", "Any force-push, rebuild or unrelated-workspace overwrite"],
-      "running_jobs": []
+      "running_jobs": [],
+      "checkpoint": {
+        "observed_at": "2026-10-07T07:12:08Z",
+        "result": "PROD pointer promotion committed and exact remote verified. DEV, MAIN and PROD select the same immutable a75 pair. Final ordinary GitHub Raw delivery matches from all eight checked native deployment environments and the controller; all eight remain healthy with zero container restarts. Other fleet deployments remain separately scoped.",
+        "source_revisions": {
+          "plan": "8a135f4283c4c14f1ae511984546d223e8da3d02",
+          "prod_pointer": "dbcde7680d53f665880a6339f3f6d679bc898c76",
+          "program": "a75b9809857cea23047b61f3acea17bc09b9996c"
+        },
+        "evidence": [
+          "Promotion changed only offline-latest.json: 7 selected identity/digest lines; exact MAIN bytes preserved.",
+          "Validation exit0: 125 Python tests and 10 Node tests, no failures.",
+          "Ordinary Git push followed by refs/heads/main exact readback at dbcde7680d53f665880a6339f3f6d679bc898c76; clean worktree.",
+          "Ordinary jsDelivr pointer GET returned all 748 exact bytes with SHA256 fcae149f5eb0ceb66d6a680841fe5bb0be6aff7c99c586a4daf9dfb07bf0af4e.",
+          "Initial ordinary GitHub Raw delivery was mixed: five selected a75, three returned e38. At 07:12:08Z all eight native deployment reads plus the controller returned the exact 748-byte a75 pointer without cache-busting or configuration changes. Initial observations remain historical, not a current delivery blocker."
+        ],
+        "next_action": "Accept remaining fleet deployments separately; do not rebuild or republish the accepted immutable pair. Retain pins and rollback assets until their own qualification. Merge the private coordination checkpoint only after unrelated dirty ownership is resolved.",
+        "running_jobs": [],
+        "persistence": {
+          "status": "synced",
+          "remote_readback": {"prod_selector": "dbcde7680d53f665880a6339f3f6d679bc898c76"},
+          "scope": "Verified channel effect. This receipt-only successor requires separate final validation and remote readback; the private coordination index remains unchanged and integration pending."
+        }
+      }
     }
   },
-  "channel_promoted": false,
+  "channel_promoted": true,
   "fleet_complete": false
 }
