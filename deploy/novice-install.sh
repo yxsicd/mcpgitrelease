@@ -465,6 +465,20 @@ PY
   fi
 fi
 
+if [ "$install_mode" = exact ] && [ "$current_container" = true ]; then
+  reuse=$(python3 "$install_tool" reuse --plan "$control_dir/plan.json" \
+    --instance "$instance" --volume "$data_volume" --port "$port" --binding "$port_binding" \
+    --netrc "$netrc" --executable-build-repository "$executable_build_repository")
+  if [ "$reuse" = yes ]; then
+    [ "$(curl --max-time 5 -s -o /dev/null -w '%{http_code}' \
+      "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = 204 ] || {
+      echo 'verified unchanged instance failed readiness; no activation performed' >&2; exit 1;
+    }
+    echo 'PASS: exact healthy activation reused; no container or data changes'
+    exit 0
+  fi
+fi
+
 update_mode=false
 created_data_volume=false
 admin_credential_file=

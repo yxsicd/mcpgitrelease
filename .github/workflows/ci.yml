@@ -12,3 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: scripts/validate.sh
+      - name: Exercise exact activation and drift rejection in Rust
+        run: |
+          rustc --edition=2021 --test tests/exact_activation_reuse.rs -o "$RUNNER_TEMP/exact-activation-reuse"
+          "$RUNNER_TEMP/exact-activation-reuse"

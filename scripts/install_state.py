@@ -217,6 +217,50 @@ def shell_plan(answer):
     return "\n".join(key + "=" + shlex.quote(value) for key, value in fields.items())
 
 
+def activation_fingerprint(current):
+    # Hash private configuration, never serialize environment values in receipts.
+    value = {key: current[key] for key in ("Config", "HostConfig", "Mounts")}
+    value["Mounts"] = sorted(current["Mounts"], key=lambda mount: mount["Destination"])
+    value["networks"] = sorted(current["NetworkSettings"]["Networks"])
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def reusable(args):
+    answer = private_json(args.plan)
+    if answer["mode"] != "exact":
+        return False
+    saved = private_json(state_path(args.instance))
+    require(saved == answer["saved"], "installation receipt changed after planning")
+    activation = saved.get("activation")
+    if not activation:
+        return False  # Adoption must first record a qualified activation cut.
+    if (saved["data_volume"] != args.volume or str(saved["port"]) != args.port or
+            saved.get("netrc", "") != args.netrc or
+            saved.get("executable_build_repository", "") != args.executable_build_repository):
+        return False
+    current = inspect("container", args.instance)
+    require(current["Image"] == saved["image_id"], "active image changed after planning")
+    labels = current["Config"].get("Labels") or {}
+    require(labels.get(PREFIX + "manifest-sha256") == saved["manifest_sha256"] and
+            labels.get(PREFIX + "instance-name") == args.instance and
+            labels.get(PREFIX + "instance-id") == saved["organization_id"], "active identity drift")
+    if (current["Id"] != activation["container_id"] or current["State"]["Status"] != "running" or
+            current["State"].get("Health", {}).get("Status") != "healthy" or current["RestartCount"] != 0 or
+            activation_fingerprint(current) != activation["configuration_sha256"]):
+        return False
+    host, port, internal = args.binding.rsplit(":", 2)
+    desired = {internal + "/tcp": [{"HostIp": host.strip("[]"), "HostPort": port}]}
+    if current["HostConfig"].get("PortBindings") != desired:
+        return False
+    if (sha(saved["config"]) != activation["config_sha256"] or
+            sha(saved["credential_file"]) != activation["credential_sha256"]):
+        return False
+    org = run(["docker", "exec", args.instance, "cat", "/data/.mcpgit-org-id"])
+    require(org == saved["organization_id"], "persisted organization drift")
+    probe(args.instance, saved["hashes"], container=True)
+    return True
+
+
 def record(args):
     value = manifest(args.manifest)
     previous_plan = json.loads(Path(args.plan).read_text())
@@ -261,6 +305,9 @@ def record(args):
              "netrc": mounts.get("/root/.netrc", {}).get("Source", ""),
              "executable_build_repository": dict(x.split('=',1) for x in current['Config'].get('Env') or []).get('MCPGIT_EXECUTABLE_BUILD_REPOSITORY', ''),
              "program_chain_depth": 0 if current["Image"] == (previous_plan["foundation_image_id"] or current["Image"]) else 1}
+    state["activation"] = {"container_id": current["Id"],
+                           "configuration_sha256": activation_fingerprint(current),
+                           "config_sha256": sha(args.config), "credential_sha256": sha(args.credential)}
     atomic(state_path(args.instance), state)
     print(json.dumps({"ok": True, "instance": args.instance, "mode": previous_plan["mode"], "state_recorded": True}))
 
@@ -311,6 +358,9 @@ def main():
     upgraded.add_argument("--check", action="store_true")
     preserved = commands.add_parser('preserve')
     preserved.add_argument('--instance', required=True)
+    reuse = commands.add_parser('reuse')
+    for key in ('plan', 'instance', 'volume', 'port', 'binding', 'netrc', 'executable-build-repository'):
+        reuse.add_argument('--' + key, required=True)
     args = parser.parse_args()
     try:
         if args.command == "select":
@@ -330,6 +380,8 @@ def main():
             return upgrade(args)
         elif args.command == 'preserve':
             preserve(args.instance)
+        elif args.command == 'reuse':
+            print('yes' if reusable(args) else 'no')
         return 0
     except (InstallError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         print("install-state: " + (str(error) if isinstance(error, InstallError) else type(error).__name__), file=sys.stderr)
