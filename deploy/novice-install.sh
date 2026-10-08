@@ -468,7 +468,10 @@ fi
 if [ "$install_mode" = exact ] && [ "$current_container" = true ]; then
   reuse=$(python3 "$install_tool" reuse --plan "$control_dir/plan.json" \
     --instance "$instance" --volume "$data_volume" --port "$port" --binding "$port_binding" \
-    --netrc "$netrc" --executable-build-repository "$executable_build_repository")
+    --netrc "$netrc" --executable-build-repository "$executable_build_repository" \
+    --organization-id "$MCPGIT_ORG_ID" \
+    --config "${MCPGIT_INSTANCE_CONFIG_DIR:-$HOME/.mcpgit/instances}/$instance.toml" \
+    --credential "$MCPGIT_CREDENTIAL_DIR/$instance-systemadmin.env")
   if [ "$reuse" = yes ]; then
     [ "$(curl --max-time 5 -s -o /dev/null -w '%{http_code}' \
       "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = 204 ] || {
@@ -759,27 +762,6 @@ ids=subprocess.check_output(['docker','ps','--no-trunc','--filter','volume='+vol
 if any(i != current for i in ids):
     raise SystemExit('data volume has another running consumer; refusing another writer')
 PY
-
-if [ "$current_container" = true ] \
-  && [ "$current_was_running" = true ] \
-  && [ "$current_image_id" = "$desired_runtime_id" ] \
-  && [ "$current_host_port" = "$port" ] \
-  && [ "$current_config_source" = "$requested_config_source" ] \
-  && [ "$current_netrc_source" = "$requested_netrc_source" ] \
-  && [ "$current_executable_build_repository" = "$executable_build_repository" ] \
-  && [ -z "${MCPGIT_BIND_ADDRESS:-}" ] \
-  && [ "$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' \
-    "http://127.0.0.1:$port/healthz" 2>/dev/null || true)" = "204" ]; then
-  record_installation || { echo 'existing instance Agent acceptance failed' >&2; exit 1; }
-  installation_accepted=true
-  docker update --restart unless-stopped "$instance" >/dev/null
-  echo
-  echo "PASS: instance $instance already matches the selected release; no restart required"
-  echo "  organization id (immutable identity): $org_id"
-  echo "  endpoint:  http://127.0.0.1:$port"
-  echo "  data volume: $data_volume"
-  exit 0
-fi
 
 if [ "$update_mode" = false ]; then
 cat > "$ctx/provision-repositories.py" <<'PY'

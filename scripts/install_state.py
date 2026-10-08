@@ -225,6 +225,12 @@ def activation_fingerprint(current):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def private_credential(path):
+    path = Path(path)
+    require(path.is_file() and not path.is_symlink() and stat.S_IMODE(path.stat().st_mode) == 0o600,
+            "credential must remain a private regular file (0600)")
+
+
 def reusable(args):
     answer = private_json(args.plan)
     if answer["mode"] != "exact":
@@ -234,6 +240,10 @@ def reusable(args):
     activation = saved.get("activation")
     if not activation:
         return False  # Adoption must first record a qualified activation cut.
+    require(not args.organization_id or args.organization_id == saved["organization_id"], "immutable organization request differs")
+    require(str(Path(args.config).resolve()) == saved["config"], "config relocation requires its deployment owner")
+    require(str(Path(args.credential).resolve()) == saved["credential_file"], "credential relocation requires its deployment owner")
+    private_credential(saved["credential_file"])
     if (saved["data_volume"] != args.volume or str(saved["port"]) != args.port or
             saved.get("netrc", "") != args.netrc or
             saved.get("executable_build_repository", "") != args.executable_build_repository):
@@ -248,7 +258,11 @@ def reusable(args):
             current["State"].get("Health", {}).get("Status") != "healthy" or current["RestartCount"] != 0 or
             activation_fingerprint(current) != activation["configuration_sha256"]):
         return False
-    host, port, internal = args.binding.rsplit(":", 2)
+    binding = args.binding.rsplit(":", 2)
+    if len(binding) == 2:
+        host, (port, internal) = "", binding
+    else:
+        host, port, internal = binding
     desired = {internal + "/tcp": [{"HostIp": host.strip("[]"), "HostPort": port}]}
     if current["HostConfig"].get("PortBindings") != desired:
         return False
@@ -258,6 +272,8 @@ def reusable(args):
     org = run(["docker", "exec", args.instance, "cat", "/data/.mcpgit-org-id"])
     require(org == saved["organization_id"], "persisted organization drift")
     probe(args.instance, saved["hashes"], container=True)
+    run(["docker", "exec", args.instance, "sh", "-ec",
+         'test "$(stat -c %a /data/repos/safegit/.git/mcpgit/safegit-agent-key.v1.json)" = 600'])
     return True
 
 
@@ -293,7 +309,10 @@ def record(args):
     require(mounts["/config/mcpgit.toml"]["Source"] == str(Path(args.config).resolve()), "active config differs")
     org = run(["docker", "exec", args.instance, "cat", "/data/.mcpgit-org-id"])
     require(org == labels.get(PREFIX + "instance-id"), "persisted organization differs")
+    private_credential(args.credential)
     require(sha(args.credential), "missing generated credential")
+    mounted_config = run(["docker", "exec", args.instance, "sha256sum", "/config/mcpgit.toml"]).split()[0]
+    require(mounted_config == sha(args.config), "mounted configuration differs from selected host bytes")
     state = {"schema": "mcpgit.install-state.v1", "instance": args.instance, "image_id": current["Image"],
              "docker_id": run(["docker", "info", "--format", "{{.ID}}"]), "manifest": value,
              "manifest_sha256": sha(args.manifest), "assembly_sha256": args.assembly, "hashes": hashes,
@@ -359,7 +378,8 @@ def main():
     preserved = commands.add_parser('preserve')
     preserved.add_argument('--instance', required=True)
     reuse = commands.add_parser('reuse')
-    for key in ('plan', 'instance', 'volume', 'port', 'binding', 'netrc', 'executable-build-repository'):
+    for key in ('plan', 'instance', 'volume', 'port', 'binding', 'netrc', 'executable-build-repository',
+                'organization-id', 'config', 'credential'):
         reuse.add_argument('--' + key, required=True)
     args = parser.parse_args()
     try:
