@@ -49,7 +49,10 @@ s.private_json=lambda path: plan if str(path)=='plan' else saved
 s.inspect=lambda *args: current
 s.sha=lambda path: digests[pathlib.Path(path).name]
 s.private_credential=lambda path: None
-s.run=lambda *args,**kwargs: 'organization'
+def fake_run(argv,**kwargs):
+    if variant=='auth' and argv[0]==sys.executable: raise s.InstallError('auth rejected')
+    return 'organization'
+s.run=fake_run
 s.probe=lambda *args,**kwargs: None
 try: print('reuse' if s.reusable(args) else 'activate')
 except s.InstallError: print('reject')
@@ -105,6 +108,7 @@ fn identity_or_receipt_drift_rejects_before_activation() {
         "requested-org",
         "config-path",
         "credential-path",
+        "auth",
     ] {
         check(variant, "reject");
     }

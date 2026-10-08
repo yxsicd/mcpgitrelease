@@ -345,7 +345,9 @@ class ProductInstallerTests(unittest.TestCase):
         self.assertIn('current_config_source', novice)
         self.assertIn('current_netrc_source', novice)
         self.assertIn('desired_runtime_id=$(docker image inspect "$runtime_image" --format \'{{.Id}}\')', novice)
-        self.assertIn('already matches the selected release; no restart required', novice)
+        self.assertIn('exact healthy activation reused; no container or data changes', novice)
+        self.assertIn('reuse --plan', novice)
+        self.assertNotIn('already matches the selected release; no restart required', novice)
         self.assertIn('base_image_identity_matches', novice)
         self.assertIn('--field manifest_id', novice)
 
@@ -409,7 +411,7 @@ class ProductInstallerTests(unittest.TestCase):
             novice,
         )
         self.assertIn(
-            '[ "$current_executable_build_repository" = "$executable_build_repository" ]',
+            '--executable-build-repository "$executable_build_repository"',
             novice,
         )
         self.assertNotIn('MCPGIT_EXECUTABLE_ROUTE_REPOSITORY="${', novice)

@@ -274,6 +274,9 @@ def reusable(args):
     probe(args.instance, saved["hashes"], container=True)
     run(["docker", "exec", args.instance, "sh", "-ec",
          'test "$(stat -c %a /data/repos/safegit/.git/mcpgit/safegit-agent-key.v1.json)" = 600'])
+    run([sys.executable, str(Path(__file__).with_name("agent_onboarding_probe.py")),
+         "--url", "http://127.0.0.1:" + args.port, "--credential-file", saved["credential_file"],
+         "--expected-instance-id", saved["organization_id"]], timeout=60)
     return True
 
 
