@@ -1,0 +1,19 @@
+{
+  "schema": "mcpgit.repository-identities.v2",
+  "topics": [
+    {
+      "uuid": "7682cfda-c9c3-4285-99a4-6d0447e5a2c9",
+      "owner_person_id": "53c9cf9f-8559-5ead-9265-74a0d3747353",
+      "slug": "agentsvg-chart-v1",
+      "display_name": "AgentSVG chart component candidate",
+      "path_prefixes": [
+        "web-components/agentsvg-chart/",
+        ".agents/workstreams/WS-20261016-agentsvg-chart/"
+      ],
+      "status": "active"
+    }
+  ],
+  "default_topic_by_person": {
+    "53c9cf9f-8559-5ead-9265-74a0d3747353": "7682cfda-c9c3-4285-99a4-6d0447e5a2c9"
+  }
+}
