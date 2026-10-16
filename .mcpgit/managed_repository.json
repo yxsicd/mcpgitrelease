@@ -1,0 +1,15 @@
+{
+  "schema": "mcpgit.managed-repository.v1",
+  "repository_id": "mcpgitrelease",
+  "operation_id": "fea10c73-95d8-4647-9e46-c2ea8680906b",
+  "state": "active",
+  "storage_kind": "materialized",
+  "clone_remote_url": "https://github.com/yxsicd/mcpgitrelease.git",
+  "clone_requested_remote_branch": "main",
+  "clone_remote_branch": "main",
+  "clone_imported_revision": "d32300f6953c57af1323ea71b606b363c4d99a3d",
+  "clone_mode": "shared",
+  "clone_lane_local_prefix": "mcpgit/",
+  "clone_lane_remote_prefix": "mcpgit/",
+  "clone_auto_replicate": false
+}
