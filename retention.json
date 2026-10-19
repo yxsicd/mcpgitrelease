@@ -6,6 +6,7 @@
   "keep_newest_deployment": 20,
   "keep_newest_client_sdk": 5,
   "pinned_tags": [
+    "mcpgit-core-25594604de3751a224adb807a6803673a0c0ebf98ab7df631f170d0f4b37c19e",
     "mcpgit-core-2f8b676241dbbb9c858255ef5e0de9384534f48baa2be30777e7bb2f5acad158",
     "mcpgit-wasm-658a583522c48ed54b622d1ad6fd5c0bf58522ae276074e5c933643692dde67f"
   ]
