@@ -27,6 +27,12 @@
     "mcpgit-wasm-8defd63a42820e1a4569dd24f43dcc7a2bb897e72973f210224ea98e37a3166a",
     "mcpgit-wasm-d2a037c7e9e253f0bde70b5401ce6c5ddc06f575ffa9e2a3660e2fbb2d5853ae",
     "mcpgit-wasm-de85c6e2483fed4d21b084a8de7d6a7fab73a34c1caaaefab14c29f211faf091",
-    "mcpgit-wasm-e348d8d8eb8a1086451706d5819dc21c39f7159be44925cf8052c5006f0eb13d"
+    "mcpgit-wasm-e348d8d8eb8a1086451706d5819dc21c39f7159be44925cf8052c5006f0eb13d",
+    "mcpgit-core-784b1ec813c59a22ddd8dcfd8b91dea741a7765676014402eb2ac4cc2ba289dd",
+    "mcpgit-wasm-afcb39f7c49ac2b7ce738852605180647a8a97d877b9457d3bfd7f09f3289dd5",
+    "mcpgit-git-ae72b457a40b37a626742a2d65e1f762ec0edab7-linux-arm64",
+    "mcpgit-layer-tools-sha256-0a263c6c0d239239b04e2c68ddab4e95f75f7ec83b91ec9d6ae5b1b762cb5d4f-linux-arm64",
+    "mcpgit-git-ae72b457a40b37a626742a2d65e1f762ec0edab7-linux-amd64",
+    "mcpgit-layer-tools-sha256-54ff3cd3c6d90d0f7de9fdc48c1da9ea07f0a1eb60f74425cf960bc9ef6c7578-linux-amd64"
   ]
 }
