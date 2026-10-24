@@ -50,6 +50,7 @@
     "mcpgit-core-397094e168747ff5f4a56bd2d7cc1d28494f47d6a8af7242272b2e226b36845b",
     "mcpgit-wasm-226fa9154b873097590c6adec6a7ba96b84a6883438eb7650624b5be108d5d1a",
     "mcpgit-git-619321d568ed5a88be30dbdf038c830d2ab2880b-linux-arm64",
-    "mcpgit-git-619321d568ed5a88be30dbdf038c830d2ab2880b-linux-amd64"
+    "mcpgit-git-619321d568ed5a88be30dbdf038c830d2ab2880b-linux-amd64",
+    "mcpgit-wasm-78ba5180bd2217cbbab8f32e8140a0bb9e150e5559cab14975d1acfcbd228c2c"
   ]
 }
