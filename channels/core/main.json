@@ -1,1 +1,10 @@
-{"channel":"main","component":"core","release":{"bytes":660,"sha256":"e273d33a738bf3ec107e80b008f5ec37b9e3e53a3014897fed2ce5887261d9b2"},"revision":2,"schema":"mcpgit.component-channel.v1"}
+{
+  "schema": "mcpgit.component-channel.v1",
+  "component": "core",
+  "channel": "main",
+  "revision": 3,
+  "release": {
+    "sha256": "616eb2a5a5e7aed7c4ff8f908917831ac3e5c5069fd03948ff4dee980e123412",
+    "bytes": 660
+  }
+}
