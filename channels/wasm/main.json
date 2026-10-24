@@ -1,1 +1,10 @@
-{"channel":"main","component":"wasm","release":{"bytes":164,"sha256":"afcb39f7c49ac2b7ce738852605180647a8a97d877b9457d3bfd7f09f3289dd5"},"revision":1,"schema":"mcpgit.component-channel.v1"}
+{
+  "schema": "mcpgit.component-channel.v1",
+  "component": "wasm",
+  "channel": "main",
+  "revision": 2,
+  "release": {
+    "sha256": "8403ac155a86cc5c335e2a9a02bb10caafe2dd0fadd658978235715f96498e1c",
+    "bytes": 164
+  }
+}
