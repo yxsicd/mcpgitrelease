@@ -190,10 +190,11 @@ def one_run(args: argparse.Namespace) -> int:
             return 0
         release = pointer(str(policy.get("pointer_url") or POINTER_URL))
         current = label(args.instance, "org.opencontainers.image.revision")
+        current_manifest = label(args.instance, "com.yxsicd.mcpgit.manifest-sha256")
         receipt_path = root / f"{args.instance}.receipt.json"
         receipt = read_json(receipt_path, {})
         now = int(time.time())
-        if current == release["source_sha"]:
+        if current == release["source_sha"] and current_manifest == release["manifest_sha256"]:
             atomic_json(receipt_path, {"schema": "mcpgit.auto-upgrade-receipt.v1",
                         "instance": args.instance, "outcome": "current", "checked_at": now,
                         "source_sha": current, "manifest_sha256": release["manifest_sha256"]})
@@ -201,7 +202,8 @@ def one_run(args: argparse.Namespace) -> int:
                               "source_sha": current}))
             return 0
         first_seen = now
-        if receipt.get("candidate_source_sha") == release["source_sha"]:
+        if (receipt.get("candidate_source_sha") == release["source_sha"] and
+                receipt.get("candidate_manifest_sha256") == release["manifest_sha256"]):
             first_seen = int(receipt.get("candidate_first_seen_at") or now)
         host_load = load_per_core()
         cpu = container_cpu(args.instance)
@@ -211,6 +213,7 @@ def one_run(args: argparse.Namespace) -> int:
             value = {"schema": "mcpgit.auto-upgrade-receipt.v1", "instance": args.instance,
                      "outcome": "deferred_busy", "checked_at": now,
                      "current_source_sha": current, "candidate_source_sha": release["source_sha"],
+                     "candidate_manifest_sha256": release["manifest_sha256"],
                      "candidate_first_seen_at": first_seen, "host_load_per_core": host_load,
                      "container_cpu_percent": cpu}
             atomic_json(receipt_path, value)
@@ -226,6 +229,8 @@ def one_run(args: argparse.Namespace) -> int:
         after = label(args.instance, "org.opencontainers.image.revision")
         if after != release["source_sha"]:
             fail(f"upgrade returned success but source is {after or 'missing'}")
+        if label(args.instance, "com.yxsicd.mcpgit.manifest-sha256") != release["manifest_sha256"]:
+            fail("upgrade returned success but active manifest differs")
         value = {"schema": "mcpgit.auto-upgrade-receipt.v1", "instance": args.instance,
                  "outcome": "upgraded", "checked_at": now, "completed_at": int(time.time()),
                  "previous_source_sha": current, "source_sha": after,

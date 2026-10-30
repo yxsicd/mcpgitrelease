@@ -80,6 +80,15 @@ class InstallStateTests(unittest.TestCase):
             state.manifest(self.path, selected)
         load.assert_not_called()
 
+    def test_pointer_requires_same_exact_bundle_for_both_architectures(self):
+        pointer = json.loads((ROOT / 'offline-latest.json').read_text())
+        for arch, entry in pointer['architectures'].items():
+            entry['tag'] = 'mcpgit-git-' + pointer['source_sha'] + '-' + arch + '-bundle-' + 'c' * 64
+        self.assertEqual(state.select(pointer, 'linux-amd64'), pointer['architectures']['linux-amd64'])
+        pointer['architectures']['linux-arm64']['tag'] = pointer['architectures']['linux-arm64']['tag'][:-64] + 'd' * 64
+        with self.assertRaises(state.InstallError):
+            state.select(pointer, 'linux-amd64')
+
     def test_manifest_source_and_target_are_checked_even_with_matching_digest(self):
         selected = {'source_sha': 'f' * 40, 'target': state.TARGETS['linux-amd64'], 'manifest_sha256': state.sha(self.path)}
         with self.assertRaisesRegex(state.InstallError, 'source or target'):

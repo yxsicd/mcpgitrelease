@@ -24,7 +24,7 @@ class AutoUpgradeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, \
              mock.patch.object(MODULE, "state_root", return_value=Path(directory)), \
              mock.patch.object(MODULE, "pointer", return_value=RELEASE), \
-             mock.patch.object(MODULE, "label", return_value=SOURCE), \
+             mock.patch.object(MODULE, "label", side_effect=[SOURCE, RELEASE["manifest_sha256"]]), \
              mock.patch.object(MODULE, "run") as runner:
             self.assertEqual(MODULE.one_run(self.args()), 0)
             runner.assert_not_called()
@@ -49,7 +49,7 @@ class AutoUpgradeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, \
              mock.patch.object(MODULE, "state_root", return_value=Path(directory)), \
              mock.patch.object(MODULE, "pointer", return_value=RELEASE), \
-             mock.patch.object(MODULE, "label", side_effect=[OLD, SOURCE]), \
+             mock.patch.object(MODULE, "label", side_effect=[OLD, "d" * 64, SOURCE, RELEASE["manifest_sha256"]]), \
              mock.patch.object(MODULE, "load_per_core", return_value=0.1), \
              mock.patch.object(MODULE, "container_cpu", return_value=2.0), \
              mock.patch.object(MODULE, "ctl_path", return_value="/bin/mcpgitctl"), \
@@ -60,6 +60,19 @@ class AutoUpgradeTest(unittest.TestCase):
             receipt = json.loads((Path(directory) / "demo.receipt.json").read_text())
             self.assertEqual(receipt["outcome"], "upgraded")
             self.assertEqual(receipt["source_sha"], SOURCE)
+
+    def test_same_core_new_manifest_is_upgraded_and_verified(self):
+        completed = types.SimpleNamespace(returncode=0, stdout="ok")
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(MODULE, "state_root", return_value=Path(directory)), \
+             mock.patch.object(MODULE, "pointer", return_value=RELEASE), \
+             mock.patch.object(MODULE, "label", side_effect=[SOURCE, "d" * 64, SOURCE, RELEASE["manifest_sha256"]]), \
+             mock.patch.object(MODULE, "load_per_core", return_value=0.1), \
+             mock.patch.object(MODULE, "container_cpu", return_value=2.0), \
+             mock.patch.object(MODULE, "ctl_path", return_value="/bin/mcpgitctl"), \
+             mock.patch.object(MODULE, "run", return_value=completed) as runner:
+            self.assertEqual(MODULE.one_run(self.args()), 0)
+            self.assertEqual(runner.call_count, 2)
 
     def test_custom_adapter_is_copied_rendered_and_never_uses_a_shell(self):
         completed = types.SimpleNamespace(returncode=0, stdout="ok")
@@ -76,7 +89,7 @@ class AutoUpgradeTest(unittest.TestCase):
             (root / "demo.policy.json").write_text(json.dumps({"adapter": adapter}))
             with mock.patch.object(MODULE, "state_root", return_value=root), \
                  mock.patch.object(MODULE, "pointer", return_value=RELEASE), \
-                 mock.patch.object(MODULE, "label", side_effect=[OLD, SOURCE]), \
+                 mock.patch.object(MODULE, "label", side_effect=[OLD, "d" * 64, SOURCE, RELEASE["manifest_sha256"]]), \
                  mock.patch.object(MODULE, "load_per_core", return_value=0.1), \
                  mock.patch.object(MODULE, "container_cpu", return_value=2.0), \
                  mock.patch.object(MODULE, "run", return_value=completed) as runner:

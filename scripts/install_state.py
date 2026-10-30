@@ -92,13 +92,19 @@ def select(pointer, platform):
     require(isinstance(source, str) and re.fullmatch(r"[0-9a-f]{40}", source), "invalid pointer source")
     entries = pointer.get("architectures")
     require(isinstance(entries, dict) and set(entries) == set(TARGETS), "pointer needs both native architectures")
+    bundles = set()
     for arch, target in TARGETS.items():
         entry = entries[arch]
         require(isinstance(entry, dict) and entry.get("source_sha") == source and entry.get("target") == target,
                 "pointer architecture/source mismatch")
-        require(entry.get("tag") == "mcpgit-git-" + source + "-" + arch, "pointer tag not source-bound")
+        tag = entry.get("tag")
+        prefix = "mcpgit-git-" + source + "-" + arch
+        match = re.fullmatch(re.escape(prefix) + r"(?:-bundle-([0-9a-f]{64}))?", tag) if isinstance(tag, str) else None
+        require(match is not None, "pointer tag not source-bound")
+        bundles.add(match.group(1))
         require(isinstance(entry.get("manifest_sha256"), str) and
                 re.fullmatch(r"[0-9a-f]{64}", entry["manifest_sha256"]), "invalid manifest pin")
+    require(len(bundles) == 1, "pointer architectures must use the same bundle")
     return entries[platform]
 
 

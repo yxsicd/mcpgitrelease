@@ -60,7 +60,7 @@ if [[ -n "$expected_source_sha" && ! "$expected_source_sha" =~ ^[0-9a-f]{40}$ ]]
 fi
 
 if [[ -n "$release_tag" || -n "$manifest_sha256" ]]; then
-  [[ -n "$expected_source_sha" && "$release_tag" =~ ^mcpgit-git-${expected_source_sha}-linux-(amd64|arm64)$ && "$manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  [[ -n "$expected_source_sha" && "$release_tag" =~ ^mcpgit-git-${expected_source_sha}-linux-(amd64|arm64)(-bundle-[0-9a-f]{64})?$ && "$manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || {
     echo 'new-agent-smoke: candidate requires matching source, immutable tag and manifest SHA-256' >&2; exit 1;
   }
 fi

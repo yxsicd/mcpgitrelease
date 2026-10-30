@@ -15,6 +15,10 @@ on:
         description: Required manifest SHA-256 for an explicit candidate
         required: false
         type: string
+      bundle_sha256:
+        description: Optional whole-Wasm SHA-256 for an explicit candidate
+        required: false
+        type: string
   push:
     branches: [main]
     paths: [offline-latest.json]
@@ -44,6 +48,7 @@ jobs:
           CANDIDATE_SOURCE: ${{ inputs.source_sha }}
           AMD64_DIGEST: ${{ inputs.amd64_manifest_sha256 }}
           ARM64_DIGEST: ${{ inputs.arm64_manifest_sha256 }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
           ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
@@ -51,15 +56,19 @@ jobs:
             [[ "$AMD64_DIGEST" =~ ^[0-9a-f]{64}$ && "$ARM64_DIGEST" =~ ^[0-9a-f]{64}$ ]]
             source_sha="$CANDIDATE_SOURCE"
             if [[ "$ARCH" == amd64 ]]; then digest="$AMD64_DIGEST"; else digest="$ARM64_DIGEST"; fi
+            [[ -z "$BUNDLE_SHA256" || "$BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+            tag="mcpgit-git-$source_sha-linux-$ARCH"
+            if [[ -n "$BUNDLE_SHA256" ]]; then tag="$tag-bundle-$BUNDLE_SHA256"; fi
           else
-            [[ -z "$AMD64_DIGEST" && -z "$ARM64_DIGEST" ]]
+            [[ -z "$AMD64_DIGEST" && -z "$ARM64_DIGEST" && -z "$BUNDLE_SHA256" ]]
             source_sha=$(jq -r .source_sha offline-latest.json)
             digest=$(jq -r --arg platform "linux-$ARCH" '.architectures[$platform].manifest_sha256' offline-latest.json)
+            tag=$(jq -r --arg platform "linux-$ARCH" '.architectures[$platform].tag' offline-latest.json)
           fi
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
           [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
-          echo "tag=mcpgit-git-$source_sha-linux-$ARCH" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "instance=mcpgit-gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$ARCH" >> "$GITHUB_OUTPUT"
       - name: Install exact immutable package and run baseline smoke

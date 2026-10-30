@@ -171,7 +171,7 @@ resolve_tag() {
     python3 - "$MCPGIT_RELEASE_TAG" "${MCPGIT_EXPECTED_MANIFEST_SHA256:-}" "$(platform_key)" "$control_dir/selection.json" <<'PY'
 import json,re,sys
 tag,digest,platform,out=sys.argv[1:]
-match=re.fullmatch(r'mcpgit-git-([0-9a-f]{40})-linux-(amd64|arm64)',tag)
+match=re.fullmatch(r'mcpgit-git-([0-9a-f]{40})-linux-(amd64|arm64)(?:-bundle-[0-9a-f]{64})?',tag)
 if not match or not re.fullmatch(r'[0-9a-f]{64}',digest) or platform != 'linux-'+match[2]:
     raise SystemExit('explicit tag requires matching architecture and MCPGIT_EXPECTED_MANIFEST_SHA256')
 target={'linux-amd64':'x86_64-unknown-linux-musl','linux-arm64':'aarch64-unknown-linux-musl'}[platform]
