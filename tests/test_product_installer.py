@@ -446,15 +446,16 @@ class ProductInstallerTests(unittest.TestCase):
             pointer = json.loads((ROOT / pointer_name).read_text(encoding="utf-8"))
             self.assertEqual(pointer["schema"], "mcpgit.offline-pointer.v1")
             self.assertEqual(set(pointer["architectures"]), set(expected_targets))
+            bundles = set()
             for architecture, target in expected_targets.items():
                 release = pointer["architectures"][architecture]
                 self.assertEqual(release["source_sha"], pointer["source_sha"])
                 self.assertEqual(release["target"], target)
-                self.assertEqual(
-                    release["tag"],
-                    f"mcpgit-git-{pointer['source_sha']}-{architecture}",
-                )
+                prefix = f"mcpgit-git-{pointer['source_sha']}-{architecture}"
+                self.assertRegex(release["tag"], rf"^{prefix}(?:-bundle-[0-9a-f]{{64}})?$")
+                bundles.add(release["tag"][len(prefix):])
                 self.assertRegex(release["manifest_sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(len(bundles), 1)
 
     def test_offline_installers_follow_content_addressed_layer_tags(self) -> None:
         novice = (ROOT / "deploy/novice-install.sh").read_text(encoding="utf-8")
