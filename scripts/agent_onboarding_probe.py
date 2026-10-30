@@ -140,7 +140,7 @@ def probe(url, credential_file, expected_instance_id, write_probe=False):
     repo = client.operation("repo.read", "repo_status", {"repo": "rootskills"})
     require(repo.get("dirty") is False and repo.get("head"), "rootskills is not a clean revisioned repository")
     wasmc = client.operation("executable.build", "wasmc_status", {})
-    require(wasmc.get("outcome") == "ready" and wasmc.get("compiler_mode") == "embedded_offline"
+    require(wasmc.get("outcome") == "ready" and wasmc.get("compiler_mode") in {"embedded_offline", "system_bundle"}
             and wasmc.get("offline_sdk_available") is True, "offline WAsmC discovery is not ready")
     report = {"schema": "mcpgitrelease.agent-onboarding.v1", "ok": True,
               "checks": {"eight_kernel_tools": True, "expected_instance": True,

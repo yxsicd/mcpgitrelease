@@ -53,7 +53,7 @@ class Handler(BaseHTTPRequestHandler):
                 if op == "repo_status":
                     data = {"dirty": False, "head": "a" * 40}
                 elif op == "wasmc_status":
-                    data = {"outcome": "ready", "compiler_mode": "embedded_offline",
+                    data = {"outcome": "ready", "compiler_mode": self.server.compiler_mode,
                             "offline_sdk_available": self.server.sdk_available, "release_tag": "v0.0.4"}
                 elif op == "write_file":
                     self.server.files[inner["path"]] = inner["content"]
@@ -83,6 +83,7 @@ class AgentProbeTests(unittest.TestCase):
         self.server.requests, self.server.files = [], {}
         self.server.instance_id, self.server.tool_count = INSTANCE, 8
         self.server.sdk_available, self.server.corrupt = True, False
+        self.server.compiler_mode = "embedded_offline"
         self.thread = threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         self.thread.start()
         self.url = "http://127.0.0.1:" + str(self.server.server_port)
@@ -108,6 +109,13 @@ class AgentProbeTests(unittest.TestCase):
         self.assertTrue(report["checks"]["committed_write_readback"])
         self.assertTrue(report["probe_path"].startswith("acceptance/agent-probe-"))
         self.assertEqual(len(self.server.files), 1)
+
+    def test_system_bundle_compiler_is_offline_and_unknown_modes_are_rejected(self):
+        self.server.compiler_mode = "system_bundle"
+        self.assertTrue(probe.probe(self.url, self.credential, INSTANCE)["ok"])
+        self.server.compiler_mode = "unrecognized"
+        with self.assertRaisesRegex(probe.ProbeError, "WAsmC"):
+            probe.probe(self.url, self.credential, INSTANCE)
 
     def test_identity_mismatch_stops_before_write(self):
         self.server.instance_id = "33333333-3333-4333-8333-333333333333"
