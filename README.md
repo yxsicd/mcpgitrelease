@@ -144,6 +144,12 @@ copies the exact `main` selection into `offline-latest.json`. Main and productio
 promotion never accept an arbitrary source SHA and never rebuild. Rollback selects
 the preceding complete dual-architecture pair and never mixes layers.
 
+For a new whole-Wasm package combined with an existing Core, provide its full
+`bundle_sha256` when promoting to dev. Both architecture releases use that
+content-addressed suffix and their Program bytes are checked against it. Omit
+the field for the existing source-only release format. Main and prod still copy
+the exact preceding selection.
+
 The locally executed production promotion gate fails closed:
 it downloads every asset listed by each architecture's immutable manifest and
 runs the offline release verifier against the complete local asset directory.

@@ -32,5 +32,8 @@ Public release authority for MCPGit deliverables.
   promote that exact selection to the production compatibility pointer
   `offline-latest.json`. Default instances follow production; dev/main movement
   alone must not activate them.
+- For a new Wasm composition of the same Core, pass the exact `bundle_sha256`
+  on the dev promotion. Both architecture tags and the composed Program bytes
+  must match it; main and prod copy the verified preceding pointer unchanged.
 - Follow child `SKILL.md` files progressively.
 - Use metadata pointers for large machine-readable state instead of expanding frontmatter.

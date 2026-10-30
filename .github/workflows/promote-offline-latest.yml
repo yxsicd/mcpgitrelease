@@ -11,6 +11,9 @@ on:
       source_sha:
         description: Exact reviewed MCPGit source SHA; required only for dev
         required: false
+      bundle_sha256:
+        description: Optional exact whole-Wasm SHA-256 for a composed dev release
+        required: false
 
 permissions:
   contents: write
@@ -30,6 +33,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           SOURCE_SHA: ${{ inputs.source_sha }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
         run: |
           set -euo pipefail
           case "$TARGET" in
@@ -38,16 +42,20 @@ jobs:
                 echo "source_sha is required for dev" >&2
                 exit 1
               }
+              [[ -z "$BUNDLE_SHA256" || "$BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+                echo "bundle_sha256 must be a full lowercase SHA-256" >&2
+                exit 1
+              }
               ;;
             main)
-              [ -z "$SOURCE_SHA" ] || {
+              [ -z "$SOURCE_SHA" ] && [ -z "$BUNDLE_SHA256" ] || {
                 echo "main promotion copies dev-latest.json; source_sha must be empty" >&2
                 exit 1
               }
               cp dev-latest.json candidate-pointer.json
               ;;
             prod)
-              [ -z "$SOURCE_SHA" ] || {
+              [ -z "$SOURCE_SHA" ] && [ -z "$BUNDLE_SHA256" ] || {
                 echo "prod promotion copies main-latest.json; source_sha must be empty" >&2
                 exit 1
               }
@@ -60,20 +68,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_SHA: ${{ inputs.source_sha }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
         run: |
           set -euo pipefail
           tmp=$(mktemp -d)
           trap 'rm -rf "$tmp"' EXIT
           for arch in amd64 arm64; do
             tag="mcpgit-git-${SOURCE_SHA}-linux-${arch}"
+            if [ -n "$BUNDLE_SHA256" ]; then tag="${tag}-bundle-${BUNDLE_SHA256}"; fi
             gh release view "$tag" --repo "$GH_REPO" >/dev/null
             mkdir -p "$tmp/$arch"
             gh release download "$tag" --repo "$GH_REPO" \
               --pattern mcpgit-offline-release-v1.json --dir "$tmp/$arch"
           done
-          python3 - "$SOURCE_SHA" "$tmp" > candidate-pointer.json <<'PY'
+          python3 - "$SOURCE_SHA" "$tmp" "$BUNDLE_SHA256" > candidate-pointer.json <<'PY'
           import hashlib, json, pathlib, sys
-          source, root = sys.argv[1], pathlib.Path(sys.argv[2])
+          source, root, bundle = sys.argv[1], pathlib.Path(sys.argv[2]), sys.argv[3]
           expected = {
               "amd64": ("linux-amd64", "x86_64-unknown-linux-musl"),
               "arm64": ("linux-arm64", "aarch64-unknown-linux-musl"),
@@ -90,7 +100,7 @@ jobs:
               architectures[platform] = {
                   "manifest_sha256": hashlib.sha256(raw).hexdigest(),
                   "source_sha": source,
-                  "tag": f"mcpgit-git-{source}-linux-{arch}",
+                  "tag": f"mcpgit-git-{source}-linux-{arch}" + (f"-bundle-{bundle}" if bundle else ""),
                   "target": target,
               }
           print(json.dumps({"architectures": architectures, "schema": "mcpgit.offline-pointer.v1", "source_sha": source}, indent=2, sort_keys=True))
@@ -114,11 +124,17 @@ jobs:
               "linux-arm64": "aarch64-unknown-linux-musl",
           }
           if set(pointer.get("architectures", {})) != set(expected): raise SystemExit("pointer must contain both Linux architectures")
+          bundles = set()
           for platform, target in expected.items():
               selected = pointer["architectures"][platform]
               if selected.get("source_sha") != source or selected.get("target") != target: raise SystemExit(f"{platform}: selection mismatch")
               if not re.fullmatch(r"[0-9a-f]{64}", selected.get("manifest_sha256", "")): raise SystemExit(f"{platform}: bad manifest digest")
               if not re.fullmatch(r"[A-Za-z0-9._-]+", selected.get("tag", "")): raise SystemExit(f"{platform}: bad tag")
+              tag = selected["tag"]
+              match = re.fullmatch(rf"mcpgit-git-{source}-{platform}-bundle-([0-9a-f]{{64}})", tag)
+              if "-bundle-" in tag and not match: raise SystemExit(f"{platform}: invalid composition tag")
+              bundles.add(match.group(1) if match else None)
+          if len(bundles) != 1: raise SystemExit("architectures must use the same composition")
           PY
           for platform in linux-amd64 linux-arm64; do
             tag=$(jq -r --arg platform "$platform" '.architectures[$platform].tag' candidate-pointer.json)
@@ -144,6 +160,10 @@ jobs:
             python3 scripts/mcpgit-offline-release.py verify \
               --manifest "$arch_dir/mcpgit-offline-release-v1.json" \
               --asset-dir "$arch_dir"
+            if [[ "$tag" =~ -bundle-([0-9a-f]{64})$ ]]; then
+              program=$(jq -r '.layers[] | select(.kind == "program") | .file' "$arch_dir/mcpgit-offline-release-v1.json")
+              python3 scripts/verify-offline-composition.py "$arch_dir/$program" "${BASH_REMATCH[1]}"
+            fi
           done
       - name: Publish channel pointer
         env:
