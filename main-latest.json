@@ -1,18 +1,18 @@
 {
-  "schema": "mcpgit.offline-pointer.v1",
-  "source_sha": "2118c759be6ee29ec1b9de719890cc2c8d87ef1f",
   "architectures": {
-    "linux-arm64": {
-      "manifest_sha256": "323f640f255db2926ba3278d203fd7a58a1eca37220c20e9a26ceefb8f9f88e8",
-      "source_sha": "2118c759be6ee29ec1b9de719890cc2c8d87ef1f",
-      "tag": "mcpgit-git-2118c759be6ee29ec1b9de719890cc2c8d87ef1f-linux-arm64",
-      "target": "aarch64-unknown-linux-musl"
-    },
     "linux-amd64": {
-      "manifest_sha256": "af51ea80f470d02abb4e14eb78139e1deda6a2f60598f596cfa99480427672ea",
-      "source_sha": "2118c759be6ee29ec1b9de719890cc2c8d87ef1f",
-      "tag": "mcpgit-git-2118c759be6ee29ec1b9de719890cc2c8d87ef1f-linux-amd64",
+      "manifest_sha256": "e95cd394df2f9986608846d6260cbb14a84739f522d2d2142c537492afdb33ce",
+      "source_sha": "0293216755f61e09bd42757c5698522b0ac47d3d",
+      "tag": "mcpgit-git-0293216755f61e09bd42757c5698522b0ac47d3d-linux-amd64-bundle-6bccc4f3bdb5eaeba893f98e8f8278332aa5ac7a8df04dc4f4a677902f460d28",
       "target": "x86_64-unknown-linux-musl"
+    },
+    "linux-arm64": {
+      "manifest_sha256": "adadf8ca8672e69d2aeecb246655e008eb351f20595f64b0f30f8eae0ce934de",
+      "source_sha": "0293216755f61e09bd42757c5698522b0ac47d3d",
+      "tag": "mcpgit-git-0293216755f61e09bd42757c5698522b0ac47d3d-linux-arm64-bundle-6bccc4f3bdb5eaeba893f98e8f8278332aa5ac7a8df04dc4f4a677902f460d28",
+      "target": "aarch64-unknown-linux-musl"
     }
-  }
+  },
+  "schema": "mcpgit.offline-pointer.v1",
+  "source_sha": "0293216755f61e09bd42757c5698522b0ac47d3d"
 }
