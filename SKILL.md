@@ -22,11 +22,14 @@ Public release authority for MCPGit deliverables.
 - [Web Component Agent Composition](./web-components/AGENT_COMPOSITION.md)
 - [README](./README.md)
 - [MCP Agent Quickstart](./docs/MCP_AGENT_QUICKSTART.md)
+- [Rust translator service: public Linux images and installation](https://github.com/yxsicd/mcpgitrelease/releases/tag/rustc-service-343d802d9)
 
 ## Rules
 
 - Immutable tags/releases are artifact authority.
 - Mutable channels are pointers only.
+- Rust translator is an independent service release; published image archives do
+  not activate a service or participate in Core/Wasm automatic upgrades.
 - Offline Program promotion is ordered: publish immutable assets, select them in
   `dev-latest.json`, copy the exact selection to `main-latest.json`, then explicitly
   promote that exact selection to the production compatibility pointer
