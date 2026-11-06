@@ -8,6 +8,12 @@
   ],
   "idev_acceptance": "OAuth and default Person worktree open/status; combined10/10",
   "fleet_complete": false,
-  "stage": "dev selected; exact-candidate fleet acceptance next",
-  "scope": "modern offline programme only; independent component and legacy channels unchanged"
+  "stage": "dev/main same pair; prod pending remaining exact-candidate fleet acceptance",
+  "scope": "modern offline programme only; independent component and legacy channels unchanged",
+  "six_m4_stage_mcp_aliases_passed": 12,
+  "amd_native_runtime_canaries": [
+    "tpc-mcpgit-cbgroom",
+    "lrigreen"
+  ],
+  "gateway": "actual image/hash/health/default service and public WSS forwarding pass"
 }
