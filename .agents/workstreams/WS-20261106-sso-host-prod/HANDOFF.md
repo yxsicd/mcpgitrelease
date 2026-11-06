@@ -1,3 +1,5 @@
 # SSO Host policy B runtime release
 
 User authorizes complete fleet rollout. Exact dual-native Core Sourcee3ff7377 plus approved whole-Wasm44 is published with complete remote byte readbacks. IDEV actual programme/hash/health, retained Basic URL, OAuth MCP and real GitHub browser-derived Guest ceiling pass. Promote the exact candidate dev, then main, then prod; do not replace immutable assets or rebuild Wasm. Preserve data/config and independent runtime component choices. Existing SSO URL recipients receive permissions, never issuer identity. Programme fleet and gateway acceptance are recorded in the private source workstream WS-20261106-sso-prod-rollout.
+
+Formal fleet adoption is complete:16 data instances and one volume-free gateway, with actual runtime hashes/health and MCP/whole-Wasm44 readbacks qualified. Temporary rollout pins are cleared; IDEV retains manual dev/interval0 and ordinary production followers retain their policy. Runtime custody remains in the private owning source workstream; no instance state or credentials are published here. Public dev/main/prod pointer bytes independently match commit45d50adc.
