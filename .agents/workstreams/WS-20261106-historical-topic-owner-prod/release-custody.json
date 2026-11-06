@@ -7,8 +7,8 @@
     "linux-amd64"
   ],
   "idev_acceptance": "OAuth and default Person worktree open/status; combined10/10",
-  "fleet_complete": false,
-  "stage": "modern dev/main/prod exact pair selected; ordinary pointer convergence and candidate unpin pending",
+  "fleet_complete": true,
+  "stage": "COMPLETE: dev/main/prod,16data+Gateway,ordinary pointer convergence and post-unpin automatic-interval refresh accepted",
   "scope": "modern offline programme only; independent component and legacy channels unchanged",
   "six_m4_stage_mcp_aliases_passed": 12,
   "amd_native_runtime_canaries": [
@@ -20,5 +20,9 @@
   "accepted_gateway_instances": 1,
   "public_mcp_aliases_passed": 30,
   "green_local_mcp": true,
-  "temporary_pins_remaining": 16
+  "temporary_pins_remaining": 0,
+  "prod_pointer_commit": "f3be5ae72b99b2858b58955ccd7985e382087e3a",
+  "channel_policy_preserved": "idev dev/0; other15 prod/60",
+  "retained_idev_oauth": true,
+  "runtime_receipt": "private MCPGit Source WS-20261106-historical-topic-owner/runtime-acceptance.json"
 }
