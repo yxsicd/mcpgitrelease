@@ -1,0 +1,24 @@
+{
+  "source": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a",
+  "whole_wasm_sha256": "9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+  "generation": 44,
+  "architectures": {
+    "linux-arm64": {
+      "tag": "mcpgit-git-e3ff7377b898fb41ffa98d5322db82abc50e1d5a-linux-arm64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+      "manifest_sha256": "59e770aafd13e0cd58c580f30082d31ab57a710f42a1d83509f93886a13871d8",
+      "source_sha": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a",
+      "ok": true
+    },
+    "linux-amd64": {
+      "tag": "mcpgit-git-e3ff7377b898fb41ffa98d5322db82abc50e1d5a-linux-amd64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+      "manifest_sha256": "c99cf6a785aff241301081a0f3d77346672a437fb87f89eae1b0d20e32f19344",
+      "source_sha": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a",
+      "ok": true
+    }
+  },
+  "native_builds": true,
+  "complete_remote_byte_readbacks": true,
+  "idev_actual_composite_sha256": "c3b18d452f5b623aef798498a7bc7ac7ce6b13e1165645dac776e0d054c1143e",
+  "idev_basic_oauth_mcp_and_sso_guest_host_acceptance": true,
+  "source_tests": "Full357s; integrated Standard298s; native four-executable smokes per arch"
+}
