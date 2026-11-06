@@ -1,18 +1,18 @@
 {
   "architectures": {
     "linux-amd64": {
-      "manifest_sha256": "c99cf6a785aff241301081a0f3d77346672a437fb87f89eae1b0d20e32f19344",
-      "source_sha": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a",
-      "tag": "mcpgit-git-e3ff7377b898fb41ffa98d5322db82abc50e1d5a-linux-amd64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+      "manifest_sha256": "9941102a9dcb60c10748403bcad6dede0dfb459f0babdc94c7cb3f5b5c65962c",
+      "source_sha": "c6786177ec1a649d627649366953789be146f073",
+      "tag": "mcpgit-git-c6786177ec1a649d627649366953789be146f073-linux-amd64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
       "target": "x86_64-unknown-linux-musl"
     },
     "linux-arm64": {
-      "manifest_sha256": "59e770aafd13e0cd58c580f30082d31ab57a710f42a1d83509f93886a13871d8",
-      "source_sha": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a",
-      "tag": "mcpgit-git-e3ff7377b898fb41ffa98d5322db82abc50e1d5a-linux-arm64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+      "manifest_sha256": "e1accbbc51bf47eb104ae292a49a1ab1e06f24737ff4d6acb1c703750547243b",
+      "source_sha": "c6786177ec1a649d627649366953789be146f073",
+      "tag": "mcpgit-git-c6786177ec1a649d627649366953789be146f073-linux-arm64-bundle-9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
       "target": "aarch64-unknown-linux-musl"
     }
   },
   "schema": "mcpgit.offline-pointer.v1",
-  "source_sha": "e3ff7377b898fb41ffa98d5322db82abc50e1d5a"
+  "source_sha": "c6786177ec1a649d627649366953789be146f073"
 }
