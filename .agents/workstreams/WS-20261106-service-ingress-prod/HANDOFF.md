@@ -1,0 +1,3 @@
+# Service-adaptive Core programme publication
+
+Corec6786177ec1a649d627649366953789be146f073 plus approved Wasm44 is published as immutable native ARM64/AMD64 compositions. Both original architecture publishers completed actual full-byte provider readback; source Full494s and deployment-helper Full253s passed. IDEV and TPC CBG canaries run exact actual executables with unchanged data bindings; RU+DE MCP/Skills and retained IDEV OAuth Person pass. Promote this exact canonical validated pair dev, then main, then prod via ordinary commits; no Actions/build dispatch. The fleet rollout and Gateway default-service transition remain in progress.
