@@ -1,0 +1,13 @@
+{
+  "source": "5dc775e8df1f3bd04426f6f50599d997e44069ea",
+  "wasm_generation": 44,
+  "wasm_sha256": "9d191e59213115481aba6669d659fad0a7a386e5ef91458a8148d8c49e47052c",
+  "full_provider_readbacks": [
+    "linux-arm64",
+    "linux-amd64"
+  ],
+  "idev_acceptance": "OAuth and default Person worktree open/status; combined10/10",
+  "fleet_complete": false,
+  "stage": "dev selected; exact-candidate fleet acceptance next",
+  "scope": "modern offline programme only; independent component and legacy channels unchanged"
+}

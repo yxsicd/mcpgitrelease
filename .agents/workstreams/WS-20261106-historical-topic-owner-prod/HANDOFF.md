@@ -1,0 +1,5 @@
+# Historical Topic-owner programme release
+
+Frozen Source5dc775e8df1f3bd04426f6f50599d997e44069ea and unchanged Wasm44 are published for both native Linux architectures with complete independent provider-byte readback. Source focused2/2, Full407s/process20s pass. IDEV exact native programme and actual OAuth/default Person own worktree operations pass; identity registry and Works main are unchanged, no Person/grant is created. Retained combined browser acceptance closes10/10.
+
+This checkpoint selects the verified pair in modern dev only; main/prod still select priorc678. M4 remaining candidate upgrades are serialized with exact pins and operation journals. Next require six M4 stage roles and full MCP/actual executable/health/binding acceptance, then AMD fleet/Gateway; promote the same bytes to main then prod. Clear accepted pins only after normal configured pointer convergence in each authority. Preserve independent component/legacy channels and service-only ingress. No business data/config/permission changes or data copies.
